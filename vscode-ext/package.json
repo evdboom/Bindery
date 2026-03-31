@@ -3,7 +3,7 @@
   "displayName": "Bindery",
   "description": "Markdown book authoring tools: typography formatting (curly quotes, em-dashes, ellipses), multi-language chapter export (DOCX, EPUB, PDF), and dialect conversion.",
   "version": "0.2.0",
-  "publisher": "evdboom",
+  "publisher": "option-a",
   "repository": {
     "type": "git",
     "url": "https://github.com/evdboom/bindery"
@@ -172,56 +172,153 @@
         "command": "bindery.addUkReplacement",
         "title": "Add Substitution Rule",
         "category": "Bindery"
+      },
+      {
+        "command": "bindery.openTranslations",
+        "title": "Open translations.json",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.registerMcp",
+        "title": "Register MCP Server",
+        "category": "Bindery"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "bindery_health",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Health",
+        "modelDescription": "Check Bindery workspace status: settings, index, embedding backend.",
+        "inputSchema": { "type": "object", "properties": {} }
+      },
+      {
+        "name": "bindery_index_build",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Build Index",
+        "modelDescription": "Build or rebuild the full-text search index for the book workspace.",
+        "inputSchema": { "type": "object", "properties": {} }
+      },
+      {
+        "name": "bindery_index_status",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Index Status",
+        "modelDescription": "Show current index metadata: chunk count and build time.",
+        "inputSchema": { "type": "object", "properties": {} }
+      },
+      {
+        "name": "bindery_get_text",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Get Text",
+        "modelDescription": "Read a source file by relative path, optionally restricted to a line range.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "identifier": { "type": "string", "description": "Relative path from workspace root" },
+            "startLine":  { "type": "number" },
+            "endLine":    { "type": "number" }
+          },
+          "required": ["identifier"]
+        }
+      },
+      {
+        "name": "bindery_get_chapter",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Get Chapter",
+        "modelDescription": "Fetch the full content of a chapter by number and language code (e.g. EN or NL).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "chapterNumber": { "type": "number" },
+            "language":      { "type": "string" }
+          },
+          "required": ["chapterNumber", "language"]
+        }
+      },
+      {
+        "name": "bindery_get_overview",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Get Overview",
+        "modelDescription": "List the chapter structure (acts, chapters, titles) for one or all languages.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "language": { "type": "string", "description": "Language code or ALL" },
+            "act":      { "type": "number", "description": "Act number 1, 2 or 3" }
+          }
+        }
+      },
+      {
+        "name": "bindery_get_notes",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Get Notes",
+        "modelDescription": "Read from Notes/ and Details_*.md, optionally filtered by category or character name.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "category": { "type": "string" },
+            "name":     { "type": "string" }
+          }
+        }
+      },
+      {
+        "name": "bindery_search",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Search",
+        "modelDescription": "Full-text BM25 search across all story and notes files. Returns ranked snippets with file path and line numbers.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query":      { "type": "string" },
+            "language":   { "type": "string" },
+            "maxResults": { "type": "number" }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "bindery_retrieve_context",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Retrieve Context",
+        "modelDescription": "Retrieve the most relevant passages for a query. Best for 'where did X happen' or 'what did character Y say about Z'.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query":    { "type": "string" },
+            "language": { "type": "string" },
+            "topK":     { "type": "number" }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "bindery_format",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Format",
+        "modelDescription": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filePath":  { "type": "string" },
+            "dryRun":    { "type": "boolean" },
+            "noRecurse": { "type": "boolean" }
+          }
+        }
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "bindery.formatDocument",
+          "submenu": "bindery.contextMenu",
           "when": "resourceLangId == markdown",
           "group": "1_modification@10"
-        },
-        {
-          "command": "bindery.findProbableUsToUkWords",
-          "when": "resourceLangId == markdown",
-          "group": "1_modification@11"
-        },
-        {
-          "command": "bindery.addUkReplacement",
-          "when": "resourceLangId == markdown",
-          "group": "1_modification@12"
-        },
-        {
-          "command": "bindery.mergeMarkdown",
-          "when": "resourceLangId == markdown",
-          "group": "1_modification@13"
         }
       ],
       "explorer/context": [
         {
-          "command": "bindery.formatDocument",
-          "when": "resourceLangId == markdown",
+          "submenu": "bindery.contextMenu",
+          "when": "resourceLangId == markdown || explorerResourceIsFolder",
           "group": "7_modification@10"
-        },
-        {
-          "command": "bindery.formatFolder",
-          "when": "explorerResourceIsFolder",
-          "group": "7_modification@11"
-        },
-        {
-          "command": "bindery.mergeMarkdown",
-          "when": "explorerResourceIsFolder",
-          "group": "7_modification@12"
-        },
-        {
-          "command": "bindery.findProbableUsToUkWords",
-          "when": "resourceLangId == markdown",
-          "group": "7_modification@13"
-        },
-        {
-          "command": "bindery.addUkReplacement",
-          "when": "resourceLangId == markdown",
-          "group": "7_modification@14"
         }
       ],
       "editor/title": [
@@ -230,6 +327,17 @@
           "when": "resourceLangId == markdown",
           "group": "navigation@100"
         }
+      ],
+      "bindery.contextMenu": [
+        { "command": "bindery.formatDocument",          "when": "resourceLangId == markdown", "group": "1_format@1"  },
+        { "command": "bindery.formatFolder",            "when": "explorerResourceIsFolder",   "group": "1_format@2"  },
+        { "command": "bindery.findProbableUsToUkWords", "when": "resourceLangId == markdown", "group": "2_dialect@1" },
+        { "command": "bindery.addUkReplacement",        "when": "resourceLangId == markdown", "group": "2_dialect@2" },
+        { "command": "bindery.mergeMarkdown",           "group": "3_export@1"                                        },
+        { "command": "bindery.mergeDocx",               "group": "3_export@2"                                        },
+        { "command": "bindery.mergeEpub",               "group": "3_export@3"                                        },
+        { "command": "bindery.mergePdf",                "group": "3_export@4"                                        },
+        { "command": "bindery.mergeAll",                "group": "3_export@5"                                        }
       ],
       "bindery.exportMenu": [
         { "command": "bindery.mergeMarkdown", "group": "1_merge@1" },
@@ -241,6 +349,11 @@
     },
     "submenus": [
       {
+        "id":    "bindery.contextMenu",
+        "label": "Bindery",
+        "icon":  "$(book)"
+      },
+      {
         "id":    "bindery.exportMenu",
         "label": "Bindery Export",
         "icon":  "$(book)"
@@ -248,10 +361,11 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run build:mcp && npm run compile",
     "compile": "tsc -p ./",
     "watch":   "tsc -watch -p ./",
-    "lint":    "eslint src --ext ts"
+    "lint":    "eslint src --ext ts",
+    "build:mcp": "cd ../mcp-ts && npm ci && npm run compile"
   },
   "devDependencies": {
     "@types/node":   "^20.0.0",

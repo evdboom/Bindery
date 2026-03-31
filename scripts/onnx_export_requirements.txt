@@ -1,8 +1,0 @@
-# One-time export dependencies (PyTorch → ONNX conversion)
-# After export, switch to onnx_requirements.txt for runtime
-optimum[onnxruntime]==2.1.0
-onnx==1.20.1
-torch==2.10.0
-transformers==4.57.6
-accelerate==1.12.0
-sentence-transformers==5.2.1

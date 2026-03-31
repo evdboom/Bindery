@@ -1,0 +1,170 @@
+/**
+ * Bindery MCP integration for VS Code.
+ *
+ * Two surfaces:
+ *  1. vscode.lm.registerTool — makes tools available to GitHub Copilot Chat
+ *     (must also be declared in package.json `languageModelTools`).
+ *  2. writeMcpJson — writes .vscode/mcp.json so Claude for VS Code / Codex
+ *     can discover the bundled Node.js MCP server.
+ */
+
+import * as vscode from 'vscode';
+import * as fs     from 'fs';
+import * as path   from 'path';
+
+// ─── Types mirrored from mcp-ts ───────────────────────────────────────────────
+
+interface GetTextInput    { identifier: string; startLine?: number; endLine?: number }
+interface GetChapterInput { chapterNumber: number; language: string }
+interface GetOverviewInput { language?: string; act?: number }
+interface GetNotesInput   { category?: string; name?: string }
+interface SearchInput     { query: string; language?: string; maxResults?: number }
+interface RetrieveInput   { query: string; language?: string; topK?: number }
+interface FormatInput     { filePath?: string; dryRun?: boolean; noRecurse?: boolean }
+
+interface McpTools {
+    toolHealth:           (root: string) => string;
+    toolIndexBuild:       (root: string) => string;
+    toolIndexStatus:      (root: string) => string;
+    toolGetText:          (root: string, args: GetTextInput) => string;
+    toolGetChapter:       (root: string, args: GetChapterInput) => string;
+    toolGetOverview:      (root: string, args: GetOverviewInput) => string;
+    toolGetNotes:         (root: string, args: GetNotesInput) => string;
+    toolSearch:           (root: string, args: SearchInput) => Promise<string>;
+    toolRetrieveContext:  (root: string, args: RetrieveInput) => Promise<string>;
+    toolFormat:           (root: string, args: FormatInput) => string;
+}
+
+/**
+ * Lazily load the compiled mcp-ts tools at runtime from the extension's
+ * bundled output directory. This avoids a cross-project TypeScript import.
+ */
+function loadMcpTools(extensionPath: string): McpTools {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require(path.join(extensionPath, 'mcp-ts', 'out', 'tools')) as McpTools;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getWorkspaceRoot(): string | undefined {
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+
+function ok(text: string): vscode.LanguageModelToolResult {
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(text)]);
+}
+
+// ─── Tool registrations ───────────────────────────────────────────────────────
+
+export function registerLmTools(context: vscode.ExtensionContext): void {
+
+    const requireRoot = (): string => {
+        const r = getWorkspaceRoot();
+        if (!r) { throw new Error('No workspace folder open.'); }
+        return r;
+    };
+
+    const t = loadMcpTools(context.extensionPath);
+
+    context.subscriptions.push(
+        vscode.lm.registerTool('bindery_health', {
+            invoke: async (_opts, _token) => ok(t.toolHealth(requireRoot())),
+        }),
+
+        vscode.lm.registerTool('bindery_index_build', {
+            invoke: async (_opts, _token) => ok(t.toolIndexBuild(requireRoot())),
+        }),
+
+        vscode.lm.registerTool('bindery_index_status', {
+            invoke: async (_opts, _token) => ok(t.toolIndexStatus(requireRoot())),
+        }),
+
+        vscode.lm.registerTool<GetTextInput>('bindery_get_text', {
+            invoke: async (opts, _token) => ok(t.toolGetText(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<GetChapterInput>('bindery_get_chapter', {
+            invoke: async (opts, _token) => ok(t.toolGetChapter(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<GetOverviewInput>('bindery_get_overview', {
+            invoke: async (opts, _token) => ok(t.toolGetOverview(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<GetNotesInput>('bindery_get_notes', {
+            invoke: async (opts, _token) => ok(t.toolGetNotes(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<SearchInput>('bindery_search', {
+            invoke: async (opts, _token) => ok(await t.toolSearch(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<RetrieveInput>('bindery_retrieve_context', {
+            invoke: async (opts, _token) => ok(await t.toolRetrieveContext(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<FormatInput>('bindery_format', {
+            invoke: async (opts, _token) => ok(t.toolFormat(requireRoot(), opts.input)),
+        }),
+    );
+}
+
+// ─── .vscode/mcp.json writer ─────────────────────────────────────────────────
+
+/**
+ * Write (or update) .vscode/mcp.json with a bindery-mcp server entry.
+ * The server is the bundled Node.js package; no npm install required —
+ * VS Code resolves the extension path at runtime.
+ *
+ * Called by `bindery.registerMcp` command and optionally from the init wizard.
+ */
+export async function writeMcpJson(
+    context:  vscode.ExtensionContext,
+    root:     string,
+): Promise<void> {
+    const mcpJsonPath = path.join(root, '.vscode', 'mcp.json');
+
+    // Server entry: node <extension>/mcp-ts/out/index.js
+    // --root is omitted — cwd will be the workspace folder
+    const serverEntry = {
+        command: 'node',
+        args:    [path.join(context.extensionPath, 'mcp-ts', 'out', 'index.js')],
+        env:     {} as Record<string, string>,
+    };
+
+    // Optional Ollama URL from VS Code settings
+    const ollamaUrl = vscode.workspace.getConfiguration('bindery').get<string>('ollamaUrl');
+    if (ollamaUrl) { serverEntry.env['BINDERY_OLLAMA_URL'] = ollamaUrl; }
+
+    // Read existing mcp.json if present
+    let existing: Record<string, unknown> = {};
+    if (fs.existsSync(mcpJsonPath)) {
+        try { existing = JSON.parse(fs.readFileSync(mcpJsonPath, 'utf-8')); }
+        catch { /* treat as empty */ }
+    }
+
+    const servers = (existing['servers'] ?? {}) as Record<string, unknown>;
+    servers['bindery'] = serverEntry;
+    existing['servers'] = servers;
+
+    fs.mkdirSync(path.dirname(mcpJsonPath), { recursive: true });
+    fs.writeFileSync(mcpJsonPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+}
+
+// ─── Command: Register MCP ────────────────────────────────────────────────────
+
+export async function registerMcpCommand(context: vscode.ExtensionContext): Promise<void> {
+    const root = getWorkspaceRoot();
+    if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
+
+    await writeMcpJson(context, root);
+
+    const action = await vscode.window.showInformationMessage(
+        'Bindery MCP server registered in .vscode/mcp.json. Claude and Codex extensions will pick it up automatically.',
+        'Open mcp.json'
+    );
+    if (action === 'Open mcp.json') {
+        const mcpPath = path.join(root, '.vscode', 'mcp.json');
+        vscode.window.showTextDocument(await vscode.workspace.openTextDocument(mcpPath));
+    }
+}

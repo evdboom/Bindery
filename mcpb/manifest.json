@@ -2,6 +2,48 @@
   "manifest_version": "0.3",
   "name": "bindery-mcp",
   "display_name": "Bindery MCP",
+  "version": "0.2.0",
+  "description": "Book authoring tools for Claude Desktop: chapter navigation, full-text search, typography formatting, and export. Works with any Bindery markdown book project.",
+  "author": {
+    "name": "Erik van der Boom"
+  },
+  "icon": "icon.png",
+  "keywords": ["writing", "search", "book", "markdown", "bindery"],
+  "license": "MIT",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "BINDERY_OLLAMA_URL": "${user_config.ollama_url}"
+      }
+    }
+  },
+  "user_config": {
+    "ollama_url": {
+      "type": "string",
+      "title": "Ollama URL (optional)",
+      "description": "If you run Ollama locally, set this to enable semantic reranking (e.g. http://localhost:11434). Leave empty to use fast lexical-only search, which works well for most books.",
+      "default": "",
+      "required": false
+    }
+  },
+  "tools": [
+    { "name": "health",           "description": "Check workspace status: settings, search index, and embedding backend." },
+    { "name": "index_build",      "description": "Build or rebuild the full-text search index. Run once after cloning, then as needed." },
+    { "name": "index_status",     "description": "Show current index metadata: chunk count and build time." },
+    { "name": "retrieve_context", "description": "Find the most relevant passages for a query. Use for 'where did X happen' or 'what did character Y say about Z'." },
+    { "name": "search",           "description": "Full-text BM25 search across all story and notes files. Returns ranked snippets with file paths and line numbers." },
+    { "name": "get_text",         "description": "Read a source file by relative path, optionally restricted to a line range." },
+    { "name": "get_chapter",      "description": "Fetch the full content of a chapter by number and language code (e.g. EN or NL)." },
+    { "name": "get_overview",     "description": "List the chapter structure (acts, chapters, titles) for one or all languages." },
+    { "name": "get_notes",        "description": "Read from Notes/ and Details_*.md, optionally filtered by category or character name." },
+    { "name": "format",           "description": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder." }
+  ]
+}
+  "display_name": "Bindery MCP",
   "version": "1.0.0",
   "description": "Semantic search, retrieval, and book management tools for markdown book projects. Provides hybrid BM25 + vector search, chapter navigation, typography formatting, and DOCX/EPUB export.",
   "author": {

@@ -30,6 +30,7 @@ import {
     setupAiFiles, ALL_SKILLS,
     type AiTarget, type SkillTemplate,
 } from './ai-setup';
+import { registerLmTools, registerMcpCommand } from './mcp';
 
 // ─── Known language presets ───────────────────────────────────────────────────
 
@@ -321,26 +322,111 @@ async function initWorkspaceCommand() {
     }
 }
 
+// ─── Command: Open translations.json ─────────────────────────────────────────
+
+async function openTranslationsCommand() {
+    const root = getWorkspaceRoot();
+    if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
+
+    const translationsPath = getTranslationsPath(root);
+
+    if (!fs.existsSync(translationsPath)) {
+        const create = await vscode.window.showWarningMessage(
+            '.bindery/translations.json does not exist yet.',
+            'Create it',
+            'Cancel'
+        );
+        if (create !== 'Create it') { return; }
+
+        // Auto-detect substitution languages from settings
+        const wsSettings = readWorkspaceSettings(root);
+        const languages  = wsSettings?.languages ?? [DEFAULT_LANGUAGE];
+        const skeleton: Record<string, unknown> = {};
+
+        for (const lang of languages) {
+            const code = lang.code.toUpperCase();
+            if (code !== 'EN') {
+                const key = code.toLowerCase();
+                skeleton[key] = {
+                    label:          lang.folderName,
+                    type:           'substitution',
+                    sourceLanguage: 'en',
+                    rules:          [],
+                    ignoredWords:   [],
+                };
+            }
+        }
+
+        // Always include en-gb for British English substitutions if not already present
+        if (!skeleton['en-gb'] && !skeleton['uk']) {
+            skeleton['en-gb'] = {
+                label:          'British English',
+                type:           'substitution',
+                sourceLanguage: 'en',
+                rules:          [],
+                ignoredWords:   [],
+            };
+        }
+
+        fs.mkdirSync(path.dirname(translationsPath), { recursive: true });
+        fs.writeFileSync(translationsPath, JSON.stringify(skeleton, null, 2) + '\n', 'utf-8');
+    }
+
+    vscode.window.showTextDocument(await vscode.workspace.openTextDocument(translationsPath));
+}
+
 // ─── Command: Add substitution rule ──────────────────────────────────────────
 
 async function addUkReplacementCommand() {
     const root = getWorkspaceRoot();
 
-    const us = await vscode.window.showInputBox({
+    // Determine which substitution entry to target from translations.json
+    let langKey = 'en-gb';
+    let fromLabel = 'source';
+    let toLabel   = 'target';
+
+    if (root) {
+        const translations = readTranslations(root);
+        const substitutionEntries = Object.entries(translations ?? {})
+            .filter(([, entry]) => entry.type === 'substitution');
+
+        if (substitutionEntries.length === 1) {
+            langKey   = substitutionEntries[0][0];
+            const e   = substitutionEntries[0][1];
+            fromLabel = e.sourceLanguage ?? 'source';
+            toLabel   = e.label ?? langKey;
+        } else if (substitutionEntries.length > 1) {
+            const picked = await vscode.window.showQuickPick(
+                substitutionEntries.map(([key, entry]) => ({
+                    label:       entry.label ?? key,
+                    description: `key: ${key}`,
+                    key,
+                    entry,
+                })),
+                { placeHolder: 'Which substitution language?' }
+            );
+            if (!picked) { return; }
+            langKey   = picked.key;
+            fromLabel = picked.entry.sourceLanguage ?? 'source';
+            toLabel   = picked.entry.label ?? langKey;
+        }
+    }
+
+    const fromWord = await vscode.window.showInputBox({
         title:       'Add Substitution Rule — source word',
-        prompt:      'US English word',
+        prompt:      `${fromLabel} word`,
         placeHolder: 'e.g. airplane',
     });
-    if (!us) { return; }
+    if (!fromWord) { return; }
 
-    const suggested = suggestUkSpelling(us) ?? '';
-    const uk = await vscode.window.showInputBox({
+    const suggested = suggestUkSpelling(fromWord) ?? '';
+    const toWord = await vscode.window.showInputBox({
         title:       'Add Substitution Rule — target word',
-        prompt:      'UK English word',
+        prompt:      `${toLabel} word`,
         value:       suggested,
         placeHolder: 'e.g. aeroplane',
     });
-    if (!uk) { return; }
+    if (!toWord) { return; }
 
     const scope = await vscode.window.showQuickPick(
         [
@@ -353,11 +439,11 @@ async function addUkReplacementCommand() {
 
     if (scope.value === 'project') {
         if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
-        upsertSubstitutionRule(root, 'en-gb', { from: us.toLowerCase(), to: uk });
-        vscode.window.showInformationMessage(`Saved to .bindery/translations.json: ${us.toLowerCase()} → ${uk}`);
+        upsertSubstitutionRule(root, langKey, { from: fromWord.toLowerCase(), to: toWord });
+        vscode.window.showInformationMessage(`Saved to .bindery/translations.json: ${fromWord.toLowerCase()} → ${toWord}`);
     } else {
-        await upsertGeneralSubstitution({ from: us.toLowerCase(), to: uk });
-        vscode.window.showInformationMessage(`Saved to general user settings: ${us.toLowerCase()} → ${uk}`);
+        await upsertGeneralSubstitution({ from: fromWord.toLowerCase(), to: toWord });
+        vscode.window.showInformationMessage(`Saved to general user settings: ${fromWord.toLowerCase()} → ${toWord}`);
     }
 }
 
@@ -828,7 +914,12 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bindery.mergeAll',                () => mergeCommand(['md', 'docx', 'epub', 'pdf'])),
         vscode.commands.registerCommand('bindery.findProbableUsToUkWords', findProbableUsToUkWordsCommand),
         vscode.commands.registerCommand('bindery.addUkReplacement',        addUkReplacementCommand),
+        vscode.commands.registerCommand('bindery.openTranslations',        openTranslationsCommand),
+        vscode.commands.registerCommand('bindery.registerMcp',             () => registerMcpCommand(context)),
     );
+
+    // LM tools (Copilot Chat)
+    registerLmTools(context);
 
     // Status bar — shown when a markdown file is active
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);

@@ -49,8 +49,20 @@ Supported commands:
 - `Bindery: Merge Chapters → All Formats`
 - `Bindery: Find Probable US→UK Words`
 - `Bindery: Add Substitution Rule`
+- `Bindery: Open translations.json`
 - `Bindery: Initialise Workspace`
 - `Bindery: Setup AI Assistant Files`
+- `Bindery: Register MCP Server`
+
+### AI Assistant Integration (MCP)
+
+Bindery includes a bundled MCP server that makes your book's chapters, notes, and search index available to AI assistants directly inside VS Code.
+
+**GitHub Copilot Chat** — tools are registered automatically when the extension activates. Use `#bindery_search`, `#bindery_get_chapter`, etc. in chat.
+
+**Claude for VS Code / Codex** — run `Bindery: Register MCP Server` once per workspace. This writes `.vscode/mcp.json` pointing to the bundled server. Both extensions pick this up automatically on next reload.
+
+Available tools: `bindery_health`, `bindery_index_build`, `bindery_index_status`, `bindery_get_text`, `bindery_get_chapter`, `bindery_get_overview`, `bindery_get_notes`, `bindery_search`, `bindery_retrieve_context`, `bindery_format`.
 
 ### File Discovery
 
@@ -60,10 +72,10 @@ The extension automatically discovers and orders your chapter files:
 Story/
   EN/                          ← language folder
     Prologue.md                ← first
-    Act I - Awakening/         ← act folders (sorted by Roman numeral)
+    Act I/                     ← act folders (sorted by Roman numeral)
       Chapter1.md              ← chapters (sorted by number)
       Chapter2.md
-    Act II - Resonance/
+    Act II/
       Chapter9.md
     Epilogue.md                ← last
 ```

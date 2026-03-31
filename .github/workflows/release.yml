@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # ── Job 1: Build .mcpb for Claude Desktop ───────────────────────────────────
+  build-mcpb:
+    name: Build .mcpb
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build mcp-ts
+        run: |
+          cd mcp-ts
+          npm ci
+          npm run compile
+
+      - name: Copy built server into mcpb
+        run: |
+          mkdir -p mcpb/server
+          cp -r mcp-ts/out/. mcpb/server/
+          # Include node_modules needed at runtime (minisearch + @modelcontextprotocol/sdk)
+          cd mcp-ts
+          npm ci --omit=dev
+          cp -r node_modules ../mcpb/node_modules
+
+      - name: Pack .mcpb
+        run: |
+          npm install -g @anthropic-ai/mcpb
+          cd mcpb
+          mcpb pack
+
+      - name: Upload .mcpb to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mcpb/*.mcpb
+          fail_on_unmatched_files: true
+
+  # ── Job 2: Publish VS Code extension ────────────────────────────────────────
+  publish-vscode:
+    name: Publish VS Code Extension
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build mcp-ts (bundled inside extension)
+        run: |
+          cd mcp-ts
+          npm ci
+          npm run compile
+
+      - name: Publish extension
+        run: |
+          cd vscode-ext
+          npm ci
+          npx vsce publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
