@@ -40,6 +40,11 @@ jobs:
           npm install -g @anthropic-ai/mcpb
           cd mcpb
           mcpb pack
+          # Ensure consistent filename: bindery-<version>.mcpb
+          VERSION=${GITHUB_REF_NAME#v}
+          for f in *.mcpb; do
+            mv "$f" "bindery-${VERSION}.mcpb" 2>/dev/null || true
+          done
 
       - name: Upload .mcpb to release
         uses: softprops/action-gh-release@v2
@@ -65,8 +70,10 @@ jobs:
           npm ci
           npm run compile
 
-      - name: Publish extension
+      - name: Set version from tag and publish extension
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
           cd vscode-ext
           npm ci
+          npm version "$VERSION" --no-git-tag-version
           npx vsce publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
