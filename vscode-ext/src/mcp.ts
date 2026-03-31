@@ -116,6 +116,9 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
  * The server is the bundled Node.js package; no npm install required —
  * VS Code resolves the extension path at runtime.
  *
+ * Passes --book with the workspace folder name and path so the MCP server
+ * knows which book it's serving.
+ *
  * Called by `bindery.registerMcp` command and optionally from the init wizard.
  */
 export async function writeMcpJson(
@@ -124,11 +127,14 @@ export async function writeMcpJson(
 ): Promise<void> {
     const mcpJsonPath = path.join(root, '.vscode', 'mcp.json');
 
-    // Server entry: node <extension>/mcp-ts/out/index.js
-    // --root is omitted — cwd will be the workspace folder
+    // Server entry: node <extension>/mcp-ts/out/index.js --book Name=path
+    const bookName = path.basename(root);
     const serverEntry = {
         command: 'node',
-        args:    [path.join(context.extensionPath, 'mcp-ts', 'out', 'index.js')],
+        args:    [
+            path.join(context.extensionPath, 'mcp-ts', 'out', 'index.js'),
+            '--book', `${bookName}=${root}`,
+        ],
         env:     {} as Record<string, string>,
     };
 

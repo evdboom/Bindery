@@ -78,7 +78,7 @@ interface OrderedFile {
 
 // ─── Regex Patterns ─────────────────────────────────────────────────────────
 
-/** Matches Act/Deel folder names: "Act I - Awakening", "Deel II - Resonantie" */
+/** Matches Act/Deel folder names: "Act I - [X]", "Deel II - [X]" */
 const ACT_FOLDER_RE = /^(Act|Deel)\s+(I{1,3}|IV|V)(?:\s*[-–—]\s*(.+))?$/;
 
 /** Matches chapter filenames: "Chapter8.md", "chapter 12.md" */

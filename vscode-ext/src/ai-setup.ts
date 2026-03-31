@@ -342,7 +342,7 @@ User says \`/review\`, "review chapter X", "quick review", or "review my changes
 
 ### 1. Load context
 - Read \`${notesFolder}/Memories/global.md\`
-- For a Full review, read the relevant arc file: \`${arcFolder}/Act_I_Awakening.md\`, \`Act_II_Resonance.md\`, or \`Act_III_Collapse.md\`
+- For a Full review, read the relevant arc file: \`${arcFolder}/Act_I_[X].md\`, \`Act_II_[X].md\`, or \`Act_III_[X].md\`
 - For "review changes", use the git diff tool if available
 
 ### 2. Perform the review
