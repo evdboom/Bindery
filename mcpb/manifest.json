@@ -11,10 +11,7 @@
   "keywords": ["writing", "search", "book", "markdown", "bindery"],
   "license": "MIT",
   "privacy_policies": [
-    {
-      "url": "https://option-a.tech/bindery/privacy",
-      "label": "Privacy Policy"
-    }
+    "https://option-a.tech/projects/bindery/privacy"
   ],
   "server": {
     "type": "node",
@@ -45,20 +42,20 @@
     }
   },
   "tools": [
-    { "name": "list_books",       "description": "List all books configured in the MCP server. Call this first to discover available book names.", "annotations": { "readOnlyHint": true } },
-    { "name": "identify_book",    "description": "Identify which book matches a working directory. Pass your cwd and the server matches by folder name or .bindery/settings.json.", "annotations": { "readOnlyHint": true } },
-    { "name": "health",           "description": "Check server status: active book, settings, search index, and embedding backend.", "annotations": { "readOnlyHint": true } },
-    { "name": "index_build",      "description": "Build or rebuild the full-text search index for a book. Run once after cloning, then as needed.", "annotations": { "destructiveHint": true } },
-    { "name": "index_status",     "description": "Show current index metadata: chunk count and build time.", "annotations": { "readOnlyHint": true } },
-    { "name": "retrieve_context", "description": "Find the most relevant passages for a query. Use for 'where did X happen' or 'what did character Y say about Z'.", "annotations": { "readOnlyHint": true } },
-    { "name": "search",           "description": "Full-text BM25 search across all story and notes files. Returns ranked snippets with file paths and line numbers.", "annotations": { "readOnlyHint": true } },
-    { "name": "get_text",         "description": "Read a source file by relative path, optionally restricted to a line range.", "annotations": { "readOnlyHint": true } },
-    { "name": "get_chapter",      "description": "Fetch the full content of a chapter by number and language code (e.g. EN or NL).", "annotations": { "readOnlyHint": true } },
-    { "name": "get_overview",     "description": "List the chapter structure (acts, chapters, titles) for one or all languages.", "annotations": { "readOnlyHint": true } },
-    { "name": "get_notes",        "description": "Read from Notes/ and Details_*.md, optionally filtered by category or character name.", "annotations": { "readOnlyHint": true } },
-    { "name": "format",           "description": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder.", "annotations": { "destructiveHint": true } },
-    { "name": "get_review_text",  "description": "Structured git diff of uncommitted changes. Filter by language (EN, NL, ALL). Set autoStage to stage reviewed files.", "annotations": { "destructiveHint": true } },
-    { "name": "git_snapshot",     "description": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Use after writing sessions or reviews.", "annotations": { "destructiveHint": true } },
-    { "name": "add_translation",  "description": "Add or update a substitution rule in .bindery/translations.json for dialect conversion (e.g. US→UK spelling).", "annotations": { "destructiveHint": true } }
+    { "name": "list_books",       "description": "List all books configured in the MCP server. Call this first to discover available book names." },
+    { "name": "identify_book",    "description": "Identify which book matches a working directory. Pass your cwd and the server matches by folder name or .bindery/settings.json." },
+    { "name": "health",           "description": "Check server status: active book, settings, search index, and embedding backend." },
+    { "name": "index_build",      "description": "Build or rebuild the full-text search index for a book. Run once after cloning, then as needed." },
+    { "name": "index_status",     "description": "Show current index metadata: chunk count and build time." },
+    { "name": "retrieve_context", "description": "Find the most relevant passages for a query. Use for 'where did X happen' or 'what did character Y say about Z'." },
+    { "name": "search",           "description": "Full-text BM25 search across all story and notes files. Returns ranked snippets with file paths and line numbers." },
+    { "name": "get_text",         "description": "Read a source file by relative path, optionally restricted to a line range." },
+    { "name": "get_chapter",      "description": "Fetch the full content of a chapter by number and language code (e.g. EN or NL)." },
+    { "name": "get_overview",     "description": "List the chapter structure (acts, chapters, titles) for one or all languages." },
+    { "name": "get_notes",        "description": "Read from Notes/ and Details_*.md, optionally filtered by category or character name." },
+    { "name": "format",           "description": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder." },
+    { "name": "get_review_text",  "description": "Structured git diff of uncommitted changes. Filter by language (EN, NL, ALL). Set autoStage to stage reviewed files." },
+    { "name": "git_snapshot",     "description": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Use after writing sessions or reviews." },
+    { "name": "add_translation",  "description": "Add or update a substitution rule in .bindery/translations.json for dialect conversion (e.g. US→UK spelling)." }
   ]
 }
