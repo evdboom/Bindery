@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "bindery-mcp",
   "display_name": "Bindery MCP",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Book authoring tools for Claude Desktop: chapter navigation, full-text search, typography formatting, and export. Works with any Bindery markdown book project.",
   "author": {
     "name": "Erik van der Boom"
