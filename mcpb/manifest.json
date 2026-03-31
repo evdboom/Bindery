@@ -1,0 +1,132 @@
+{
+  "manifest_version": "0.3",
+  "name": "bindery-mcp",
+  "display_name": "Bindery MCP",
+  "version": "1.0.0",
+  "description": "Semantic search, retrieval, and book management tools for markdown book projects. Provides hybrid BM25 + vector search, chapter navigation, typography formatting, and DOCX/EPUB export.",
+  "author": {
+    "name": "Erik van der Boom"
+  },
+  "icon": "icon.png",
+  "keywords": ["writing", "search", "indexing", "book", "semantic-search"],
+  "license": "MIT",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "BINDERY_WSL_BINARY": "${user_config.wsl_binary}",
+        "BINDERY_SOURCE_ROOT": "${user_config.source_root}",
+        "BINDERY_WORK_ROOT": "${user_config.work_root}",
+        "BINDERY_INDEX_DIR": "${user_config.index_dir}",
+        "BINDERY_EMBEDDINGS_BACKEND": "${user_config.embeddings_backend}",
+        "BINDERY_ONNX_URL": "${user_config.onnx_url}",
+        "BINDERY_ONNX_PORT": "${user_config.onnx_port}",
+        "BINDERY_ONNX_MODEL": "${user_config.onnx_model}",
+        "BINDERY_ONNX_SERVER_DIR": "${user_config.onnx_server_dir}",
+        "BINDERY_LIBREOFFICE_PATH": "${user_config.libreoffice_path}",
+        "BINDERY_MAX_RESPONSE_BYTES": "60000",
+        "BINDERY_SNIPPET_MAX_CHARS": "1600",
+        "BINDERY_DEFAULT_TOPK": "6",
+        "BINDERY_AUTHOR": "${user_config.author}"
+      }
+    }
+  },
+  "user_config": {
+    "wsl_binary": {
+      "type": "string",
+      "title": "WSL Binary Path",
+      "description": "Full path to the compiled bindery-mcp binary inside WSL (e.g. /home/user/bindery_source/target/release/bindery-mcp)",
+      "default": "/home/user/bindery_source/target/release/bindery-mcp",
+      "required": true
+    },
+    "source_root": {
+      "type": "directory",
+      "title": "Source Repository",
+      "description": "Path to the repository root containing your Story/ folder (e.g. C:\\Users\\YourUser\\MyBook or /mnt/c/Users/YourUser/MyBook)",
+      "required": true
+    },
+    "work_root": {
+      "type": "directory",
+      "title": "Work Directory",
+      "description": "Workspace for synced content and indexing. Use a fast local filesystem (e.g. WSL ext4 path like /home/user/bindery_work)",
+      "required": true
+    },
+    "index_dir": {
+      "type": "directory",
+      "title": "Index Directory",
+      "description": "Where lexical and vector indices are stored (e.g. /home/user/bindery_cache/.bindery/index)",
+      "required": true
+    },
+    "embeddings_backend": {
+      "type": "string",
+      "title": "Embeddings Backend",
+      "description": "Embedding backend: onnx, ollama, or none",
+      "default": "onnx",
+      "required": false
+    },
+    "onnx_url": {
+      "type": "string",
+      "title": "ONNX Server URL",
+      "description": "Full URL override for the ONNX embedding server. Leave empty to auto-detect the Windows host IP at startup.",
+      "default": "",
+      "required": false
+    },
+    "onnx_port": {
+      "type": "string",
+      "title": "ONNX Server Port",
+      "description": "Port the ONNX server listens on. Used with auto-detected IP if ONNX Server URL is not set.",
+      "default": "11435",
+      "required": false
+    },
+    "onnx_model": {
+      "type": "string",
+      "title": "ONNX Model",
+      "description": "Embedding model name",
+      "default": "bge-m3",
+      "required": false
+    },
+    "onnx_server_dir": {
+      "type": "string",
+      "title": "ONNX Server Directory",
+      "description": "Windows path to standalone ONNX server install (for auto-start)",
+      "default": "/mnt/c/Tools/onnx-embeddings",
+      "required": false
+    },
+    "libreoffice_path": {
+      "type": "string",
+      "title": "LibreOffice Path",
+      "description": "Path to the LibreOffice executable for PDF export. On WSL/Linux (default): 'libreoffice'. On Windows: full path to soffice.exe, e.g. C:\\Program Files\\LibreOffice\\program\\soffice.exe",
+      "default": "libreoffice",
+      "required": false
+    },
+    "author": {
+      "type": "string",
+      "title": "Author Name",
+      "description": "Author name for EPUB/DOCX metadata",
+      "default": "",
+      "required": false
+    }
+  },
+  "tools": [
+    { "name": "health", "description": "Return health and diagnostics for the MCP server" },
+    { "name": "retrieve_context", "description": "Hybrid retrieval (BM25 + vector) for story context. Use language=EN, NL, or ALL." },
+    { "name": "get_text", "description": "Read text by identifier from the source repo" },
+    { "name": "get_chapter", "description": "Get a full chapter by number and language" },
+    { "name": "get_overview", "description": "Get an overview of acts and chapters" },
+    { "name": "get_notes", "description": "Get an entry from Notes/Details_Notes.md" },
+    { "name": "get_review_text", "description": "Return git diff from the source repo (EN/NL/ALL)" },
+    { "name": "search", "description": "Literal or regex search under the source repo" },
+    { "name": "index_build", "description": "Build or rebuild lexical/vector indices for all languages" },
+    { "name": "index_status", "description": "Return index status and metadata" },
+    { "name": "sync_workspace", "description": "Sync workspace files between source and work directories" },
+    { "name": "format", "description": "Format typography in markdown files under the source repo" },
+    { "name": "merge", "description": "Merge markdown chapters into a book, optionally exporting DOCX/EPUB" },
+    { "name": "task_status", "description": "Check status of background tasks" }
+  ],
+  "compatibility": {
+    "platforms": ["win32"]
+  }
+}

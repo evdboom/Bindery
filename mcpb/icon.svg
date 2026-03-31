@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1e2e"/>
+      <stop offset="100%" style="stop-color:#151928"/>
+    </linearGradient>
+    <linearGradient id="pageL" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3a8a9e"/>
+      <stop offset="100%" style="stop-color:#2e7a8e"/>
+    </linearGradient>
+    <linearGradient id="pageR" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#2a6e80"/>
+      <stop offset="100%" style="stop-color:#245e6e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="128" height="128" rx="22" fill="url(#bg)"/>
+
+  <!-- Left page -->
+  <path d="M 16 30 Q 16 24 22 23 L 58 18 Q 62 17.5 64 21 L 64 102 Q 62 106 58 106.5 L 22 111 Q 16 112 16 106 Z"
+        fill="url(#pageL)" opacity="0.9"/>
+
+  <!-- Right page -->
+  <path d="M 112 30 Q 112 24 106 23 L 70 18 Q 66 17.5 64 21 L 64 102 Q 66 106 70 106.5 L 106 111 Q 112 112 112 106 Z"
+        fill="url(#pageR)" opacity="0.9"/>
+
+  <!-- Spine shadow -->
+  <rect x="61" y="17" width="6" height="92" rx="2" fill="#1a3a4a" opacity="0.7"/>
+
+  <!-- Text lines left page -->
+  <line x1="26" y1="42" x2="54" y2="39" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="26" y1="52" x2="54" y2="50" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="26" y1="62" x2="54" y2="61" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="26" y1="72" x2="44" y2="71" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+  <line x1="26" y1="82" x2="54" y2="82" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="26" y1="92" x2="40" y2="92" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Text lines right page -->
+  <line x1="74" y1="39" x2="102" y2="42" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="74" y1="50" x2="102" y2="52" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="74" y1="61" x2="102" y2="62" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="74" y1="71" x2="92"  y2="72" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+  <line x1="74" y1="82" x2="102" y2="82" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="74" y1="92" x2="88"  y2="92" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Binding stitches along the spine — the "bindery" signature -->
+  <g stroke="#d4a857" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.9">
+    <!-- Cross stitches -->
+    <line x1="57" y1="30" x2="71" y2="38"/>
+    <line x1="71" y1="30" x2="57" y2="38"/>
+
+    <line x1="57" y1="48" x2="71" y2="56"/>
+    <line x1="71" y1="48" x2="57" y2="56"/>
+
+    <line x1="57" y1="66" x2="71" y2="74"/>
+    <line x1="71" y1="66" x2="57" y2="74"/>
+
+    <line x1="57" y1="84" x2="71" y2="92"/>
+    <line x1="71" y1="84" x2="57" y2="92"/>
+  </g>
+
+  <!-- Thread running along the spine (vertical connecting line) -->
+  <line x1="64" y1="26" x2="64" y2="96" stroke="#d4a857" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Small needle at top -->
+  <ellipse cx="64" cy="22" rx="1.5" ry="3" fill="#e8c87a" opacity="0.8"/>
+</svg>

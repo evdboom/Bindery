@@ -1,0 +1,261 @@
+{
+  "name": "bindery",
+  "displayName": "Bindery",
+  "description": "Markdown book authoring tools: typography formatting (curly quotes, em-dashes, ellipses), multi-language chapter export (DOCX, EPUB, PDF), and dialect conversion.",
+  "version": "0.2.0",
+  "publisher": "evdboom",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/evdboom/bindery"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Formatters",
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "book",
+    "writing",
+    "author",
+    "typography",
+    "epub",
+    "docx",
+    "merge",
+    "export",
+    "dialect"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "main": "./out/extension.js",
+  "icon": "icon.png",
+  "contributes": {
+    "configuration": {
+      "title": "Bindery",
+      "properties": {
+        "bindery.pandocPath": {
+          "type": "string",
+          "default": "pandoc",
+          "description": "Path to the pandoc executable. Machine-specific — set in user settings, not workspace settings. Install from https://pandoc.org"
+        },
+        "bindery.libreOfficePath": {
+          "type": "string",
+          "default": "libreoffice",
+          "description": "Path to the LibreOffice executable for PDF export. Machine-specific — set in user settings. On Windows use the full path to soffice.exe, e.g. C:\\Program Files\\LibreOffice\\program\\soffice.exe"
+        },
+        "bindery.generalSubstitutions": {
+          "type": "array",
+          "default": [],
+          "description": "Dialect substitution rules applied across all projects (e.g. US→UK spelling). Applied after the built-in rules but before project-specific rules in .bindery/translations.json. Store in user settings so they follow you to every workspace.",
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "properties": {
+              "from": { "type": "string", "description": "Source word (e.g. US English)" },
+              "to":   { "type": "string", "description": "Target word (e.g. UK English)" }
+            }
+          }
+        },
+        "bindery.storyFolder": {
+          "type": "string",
+          "default": "Story",
+          "description": "Fallback story folder name if .bindery/settings.json is not present. Run 'Bindery: Initialise Workspace' to create the settings file."
+        },
+        "bindery.mergedOutputDir": {
+          "type": "string",
+          "default": "Merged",
+          "description": "Fallback output directory for merged files (relative to workspace root). Prefer .bindery/settings.json."
+        },
+        "bindery.mergeFilePrefix": {
+          "type": "string",
+          "default": "Book",
+          "description": "Fallback prefix for merged output filenames, e.g. 'Book' → Book_EN_Merged.md. Prefer .bindery/settings.json."
+        },
+        "bindery.author": {
+          "type": "string",
+          "default": "",
+          "description": "Fallback author name for EPUB/DOCX metadata. Prefer .bindery/settings.json."
+        },
+        "bindery.bookTitle": {
+          "type": "string",
+          "default": "",
+          "description": "Fallback book title for EPUB/DOCX metadata. Prefer .bindery/settings.json, which also supports per-language titles."
+        },
+        "bindery.formatOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Fallback: auto-apply typography formatting when saving markdown files inside the story folder. Prefer .bindery/settings.json."
+        },
+        "bindery.languages": {
+          "type": "array",
+          "default": [
+            {
+              "code": "EN",
+              "folderName": "EN",
+              "chapterWord": "Chapter",
+              "actPrefix": "Act",
+              "prologueLabel": "Prologue",
+              "epilogueLabel": "Epilogue"
+            }
+          ],
+          "description": "Fallback language configurations for merge/export. Prefer .bindery/settings.json.",
+          "items": {
+            "type": "object",
+            "required": ["code", "folderName", "chapterWord", "actPrefix", "prologueLabel", "epilogueLabel"],
+            "properties": {
+              "code":           { "type": "string" },
+              "folderName":     { "type": "string" },
+              "chapterWord":    { "type": "string" },
+              "actPrefix":      { "type": "string" },
+              "prologueLabel":  { "type": "string" },
+              "epilogueLabel":  { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "bindery.init",
+        "title": "Initialise Workspace",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.setupAI",
+        "title": "Setup AI Assistant Files",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.formatDocument",
+        "title": "Format Typography",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.formatFolder",
+        "title": "Format All Markdown in Folder",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.mergeMarkdown",
+        "title": "Merge Chapters → Markdown",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.mergeDocx",
+        "title": "Merge Chapters → DOCX",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.mergeEpub",
+        "title": "Merge Chapters → EPUB",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.mergePdf",
+        "title": "Merge Chapters → PDF",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.mergeAll",
+        "title": "Merge Chapters → All Formats",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.findProbableUsToUkWords",
+        "title": "Find Probable US→UK Words",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.addUkReplacement",
+        "title": "Add Substitution Rule",
+        "category": "Bindery"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "bindery.formatDocument",
+          "when": "resourceLangId == markdown",
+          "group": "1_modification@10"
+        },
+        {
+          "command": "bindery.findProbableUsToUkWords",
+          "when": "resourceLangId == markdown",
+          "group": "1_modification@11"
+        },
+        {
+          "command": "bindery.addUkReplacement",
+          "when": "resourceLangId == markdown",
+          "group": "1_modification@12"
+        },
+        {
+          "command": "bindery.mergeMarkdown",
+          "when": "resourceLangId == markdown",
+          "group": "1_modification@13"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "bindery.formatDocument",
+          "when": "resourceLangId == markdown",
+          "group": "7_modification@10"
+        },
+        {
+          "command": "bindery.formatFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "7_modification@11"
+        },
+        {
+          "command": "bindery.mergeMarkdown",
+          "when": "explorerResourceIsFolder",
+          "group": "7_modification@12"
+        },
+        {
+          "command": "bindery.findProbableUsToUkWords",
+          "when": "resourceLangId == markdown",
+          "group": "7_modification@13"
+        },
+        {
+          "command": "bindery.addUkReplacement",
+          "when": "resourceLangId == markdown",
+          "group": "7_modification@14"
+        }
+      ],
+      "editor/title": [
+        {
+          "submenu": "bindery.exportMenu",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@100"
+        }
+      ],
+      "bindery.exportMenu": [
+        { "command": "bindery.mergeMarkdown", "group": "1_merge@1" },
+        { "command": "bindery.mergeDocx",     "group": "1_merge@2" },
+        { "command": "bindery.mergeEpub",     "group": "1_merge@3" },
+        { "command": "bindery.mergePdf",      "group": "1_merge@4" },
+        { "command": "bindery.mergeAll",      "group": "2_all@1"   }
+      ]
+    },
+    "submenus": [
+      {
+        "id":    "bindery.exportMenu",
+        "label": "Bindery Export",
+        "icon":  "$(book)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch":   "tsc -watch -p ./",
+    "lint":    "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node":   "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript":    "^5.3.0"
+  }
+}

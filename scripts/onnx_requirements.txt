@@ -1,0 +1,9 @@
+# Runtime dependencies for ONNX embedding server (DirectML GPU inference)
+# For one-time model export, first use onnx_export_requirements.txt
+fastapi==0.128.0
+uvicorn==0.40.0
+optimum==2.1.0
+onnxruntime-directml==1.23.0
+pydantic==2.12.5
+numpy==2.4.1
+hf-xet==1.2.0

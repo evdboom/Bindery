@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+vscode-ext/out/
+mcp-rust/target/
+
+# Packaged extensions
+*.vsix
+*.mcpb
+
+# Environment (contains personal paths)
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+onnx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
