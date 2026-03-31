@@ -50,6 +50,7 @@ function err(e: unknown)   { return { content: [{ type: 'text' as const, text: `
 // ─── Tools ────────────────────────────────────────────────────────────────────
 
 server.registerTool('list_books', {
+    title: 'List Books',
     description: 'List all books registered via --book args in the MCP server config. Call this first to discover available book names.',
     inputSchema: {},
     annotations: { readOnlyHint: true },
@@ -66,6 +67,7 @@ server.registerTool('list_books', {
 });
 
 server.registerTool('identify_book', {
+    title: 'Identify Book',
     description:
         'Identify which book matches the directory you are working in. ' +
         'Pass your current working directory (e.g. /home/user/Me/MyNovel) and the server ' +
@@ -94,6 +96,7 @@ server.registerTool('identify_book', {
 });
 
 server.registerTool('health', {
+    title: 'Health Check',
     description: 'Check server status: active book, settings, index, and embedding backend.',
     inputSchema: { book: bookSchema },
     annotations: { readOnlyHint: true },
@@ -102,6 +105,7 @@ server.registerTool('health', {
 });
 
 server.registerTool('index_build', {
+    title: 'Build Index',
     description: 'Build or rebuild the search index for a book. Run after adding/editing chapters.',
     inputSchema: { book: bookSchema },
     annotations: { destructiveHint: true },
@@ -110,6 +114,7 @@ server.registerTool('index_build', {
 });
 
 server.registerTool('index_status', {
+    title: 'Index Status',
     description: 'Show current index metadata: chunk count and build time.',
     inputSchema: { book: bookSchema },
     annotations: { readOnlyHint: true },
@@ -118,6 +123,7 @@ server.registerTool('index_status', {
 });
 
 server.registerTool('get_text', {
+    title: 'Get Text',
     description: 'Read a source file by relative path, optionally restricted to a line range.',
     inputSchema: {
         book:      bookSchema,
@@ -131,6 +137,7 @@ server.registerTool('get_text', {
 });
 
 server.registerTool('get_chapter', {
+    title: 'Get Chapter',
     description: 'Fetch the full content of a chapter by number and language.',
     inputSchema: {
         book:          bookSchema,
@@ -143,6 +150,7 @@ server.registerTool('get_chapter', {
 });
 
 server.registerTool('get_overview', {
+    title: 'Get Overview',
     description: 'List the chapter structure (acts, chapters, titles) for one or all languages.',
     inputSchema: {
         book:     bookSchema,
@@ -155,6 +163,7 @@ server.registerTool('get_overview', {
 });
 
 server.registerTool('get_notes', {
+    title: 'Get Notes',
     description: 'Read from Notes/ and Details_*.md files, optionally filtered by category name or character/place name.',
     inputSchema: {
         book:     bookSchema,
@@ -167,6 +176,7 @@ server.registerTool('get_notes', {
 });
 
 server.registerTool('search', {
+    title: 'Search',
     description: 'Full-text BM25 search across all story and notes files. Returns ranked snippets.',
     inputSchema: {
         book:       bookSchema,
@@ -180,6 +190,7 @@ server.registerTool('search', {
 });
 
 server.registerTool('retrieve_context', {
+    title: 'Retrieve Context',
     description: 'Retrieve the most relevant passages for a query. Best for "where did X happen" or "what did character Y say about Z".',
     inputSchema: {
         book:     bookSchema,
@@ -193,6 +204,7 @@ server.registerTool('retrieve_context', {
 });
 
 server.registerTool('format', {
+    title: 'Format Typography',
     description: 'Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder.',
     inputSchema: {
         book:      bookSchema,
@@ -206,6 +218,7 @@ server.registerTool('format', {
 });
 
 server.registerTool('get_review_text', {
+    title: 'Review Text',
     description:
         'Structured git diff of uncommitted changes with context lines. ' +
         'Filter by language folder (EN, NL, or ALL). Ignores CR-at-EOL to avoid CRLF noise. ' +
@@ -222,6 +235,7 @@ server.registerTool('get_review_text', {
 });
 
 server.registerTool('git_snapshot', {
+    title: 'Git Snapshot',
     description:
         'Save a snapshot (git commit) of all changes in story, notes, and arc folders. ' +
         'Provides an optional commit message — defaults to a timestamp. ' +
@@ -236,6 +250,7 @@ server.registerTool('git_snapshot', {
 });
 
 server.registerTool('add_translation', {
+    title: 'Add Translation',
     description:
         'Add or update a substitution rule in .bindery/translations.json. ' +
         'Creates the entry if it does not exist. ' +

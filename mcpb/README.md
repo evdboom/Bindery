@@ -67,7 +67,7 @@ Bindery MCP runs entirely on your local machine. No data is sent to external
 servers. All file operations are performed on your local filesystem. If you
 configure an Ollama URL, embedding requests are sent to that local instance only.
 
-Full policy: https://option-a.tech/bindery/privacy
+Full policy: https://option-a.tech/projects/bindery/privacy
 
 ## Support
 
