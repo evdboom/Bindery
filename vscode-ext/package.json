@@ -170,7 +170,7 @@
       },
       {
         "command": "bindery.addUkReplacement",
-        "title": "Add Substitution Rule",
+        "title": "Add Translation Rule",
         "category": "Bindery"
       },
       {
@@ -303,6 +303,47 @@
             "dryRun":    { "type": "boolean" },
             "noRecurse": { "type": "boolean" }
           }
+        }
+      },
+      {
+        "name": "bindery_get_review_text",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Review Text",
+        "modelDescription": "Structured git diff of uncommitted changes with context lines. Filter by language (EN, NL, ALL). Set autoStage to true to stage reviewed files so the next call only shows new changes.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "language":     { "type": "string", "description": "Language filter: EN, NL, or ALL (default ALL)" },
+            "contextLines": { "type": "number", "description": "Context lines around each change (default 3)" },
+            "autoStage":    { "type": "boolean", "description": "Stage reviewed files after producing diff (default false)" }
+          }
+        }
+      },
+      {
+        "name": "bindery_git_snapshot",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Git Snapshot",
+        "modelDescription": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Use after writing sessions or successful reviews.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "description": "Snapshot message (default: timestamp)" }
+          }
+        }
+      },
+      {
+        "name": "bindery_add_translation",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Add Translation",
+        "modelDescription": "Add or update a substitution rule in .bindery/translations.json. Used for dialect conversion (e.g. US→UK spelling).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "langKey": { "type": "string", "description": "Language key in translations.json, e.g. 'en-gb' or 'nl'" },
+            "from":    { "type": "string", "description": "Source word or phrase" },
+            "to":      { "type": "string", "description": "Target word or phrase" }
+          },
+          "required": ["langKey", "from", "to"]
         }
       }
     ],

@@ -138,6 +138,7 @@ Add to `.bindery/settings.json` (or `bindery.languages` in VS Code settings):
 ## Requirements
 
 - **VS Code** 1.85+
+- **Git** (recommended) — needed for version tracking and review features (`get_review_text`, `git_snapshot`). Auto-initialised during workspace setup. [Install](https://git-scm.com)
 - **Pandoc** (needed for DOCX/EPUB/PDF export) — [Install](https://pandoc.org/installing.html)
 - **LibreOffice** (needed for PDF export) — used to convert the intermediate DOCX to PDF
   - Linux/WSL: `sudo apt install libreoffice`

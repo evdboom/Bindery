@@ -8,6 +8,7 @@
 
 import * as fs   from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 import { updateTypography }                 from './format.js';
 import { chunkFile, discoverFiles, type Language } from './docstore.js';
 import {
@@ -411,6 +412,248 @@ function processFormatFile(filePath: string, dry: boolean): boolean {
     if (original === formatted) { return false; }
     if (!dry) { fs.writeFileSync(filePath, formatted, 'utf-8'); }
     return true;
+}
+
+// ─── get_review_text ──────────────────────────────────────────────────────────
+
+export interface GetReviewTextArgs {
+    language?:     string;
+    contextLines?: number;
+    autoStage?:    boolean;
+}
+
+interface DiffFile {
+    file: string;
+    hunks: DiffHunk[];
+}
+
+interface DiffHunk {
+    beforeStart: number;
+    beforeCount: number;
+    afterStart:  number;
+    afterCount:  number;
+    lines: DiffLine[];
+}
+
+interface DiffLine {
+    type: 'context' | 'insert' | 'delete';
+    text: string;
+    oldLine?: number;
+    newLine?: number;
+}
+
+export function toolGetReviewText(root: string, args: GetReviewTextArgs): string {
+    const contextLines = args.contextLines ?? 3;
+    const language     = (args.language ?? 'ALL').toUpperCase();
+
+    let raw: string;
+    try {
+        raw = execSync(
+            `git diff --ignore-cr-at-eol -U${contextLines}`,
+            { cwd: root, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
+        );
+    } catch {
+        return 'Failed to run git diff. Is this a git repository?';
+    }
+
+    if (!raw.trim()) { return 'No uncommitted changes.'; }
+
+    const files = parseUnifiedDiff(raw);
+
+    const filtered = language === 'ALL'
+        ? files
+        : files.filter(f => {
+            const upper = f.file.toUpperCase().replace(/\\/g, '/');
+            return upper.includes(`/${language}/`);
+        });
+
+    if (filtered.length === 0) {
+        return language === 'ALL'
+            ? 'No uncommitted changes.'
+            : `No uncommitted changes in ${language} files.`;
+    }
+
+    const result = formatReviewFiles(filtered);
+
+    // Stage reviewed files so the next review only shows new changes
+    if (args.autoStage) {
+        const contentDirs = contentFolders(root);
+        try {
+            execSync(`git add ${contentDirs.map(d => `"${d}"`).join(' ')}`, { cwd: root, encoding: 'utf-8' });
+        } catch { /* best effort — staging failure shouldn't break the review */ }
+    }
+
+    return result;
+}
+
+/** Content folders that git operations should scope to. */
+function contentFolders(root: string): string[] {
+    const story = storyFolder(root);
+    return [story, 'Notes', 'Arc'].filter(d => fs.existsSync(path.join(root, d)));
+}
+
+// ─── git_snapshot ─────────────────────────────────────────────────────────────
+
+export interface GitSnapshotArgs {
+    message?: string;
+}
+
+export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
+    const dirs = contentFolders(root);
+    if (dirs.length === 0) { return 'No content folders found to snapshot.'; }
+
+    // Stage content folders
+    try {
+        execSync(`git add ${dirs.map(d => `"${d}"`).join(' ')}`, { cwd: root, encoding: 'utf-8' });
+    } catch {
+        return 'Failed to stage files. Is this a git repository?';
+    }
+
+    // Check if there is anything staged
+    let staged: string;
+    try {
+        staged = execSync('git diff --cached --name-only', { cwd: root, encoding: 'utf-8' });
+    } catch {
+        return 'Failed to check staged files.';
+    }
+
+    if (!staged.trim()) { return 'Nothing to snapshot — no changes in content folders.'; }
+
+    const fileCount = staged.trim().split('\n').length;
+    const msg       = args.message ?? `Snapshot ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+
+    try {
+        execSync(`git commit -m "${msg.replace(/"/g, '\\"')}"`, { cwd: root, encoding: 'utf-8' });
+    } catch (e) {
+        return `Failed to commit: ${e instanceof Error ? e.message : String(e)}`;
+    }
+
+    return `Snapshot saved: "${msg}" (${fileCount} file${fileCount === 1 ? '' : 's'})`;
+}
+
+// ─── add_translation ──────────────────────────────────────────────────────────
+
+export interface AddTranslationArgs {
+    langKey: string;
+    from:    string;
+    to:      string;
+}
+
+interface TranslationRule  { from: string; to: string }
+interface TranslationEntry { label?: string; type: string; sourceLanguage?: string; rules?: TranslationRule[]; ignoredWords?: string[] }
+type TranslationsFile = Record<string, TranslationEntry>;
+
+export function toolAddTranslation(root: string, args: AddTranslationArgs): string {
+    const { langKey, from, to } = args;
+    if (!from.trim() || !to.trim()) { return 'Error: both "from" and "to" must be non-empty.'; }
+
+    const filePath = path.join(root, '.bindery', 'translations.json');
+    let translations: TranslationsFile = {};
+    if (fs.existsSync(filePath)) {
+        try { translations = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as TranslationsFile; }
+        catch { return 'Error: failed to parse .bindery/translations.json'; }
+    }
+
+    if (!translations[langKey]) {
+        translations[langKey] = { type: 'substitution', sourceLanguage: 'en', rules: [], ignoredWords: [] };
+    }
+    const entry = translations[langKey];
+    if (entry.type !== 'substitution') {
+        return `Error: entry '${langKey}' has type '${entry.type}', expected 'substitution'.`;
+    }
+
+    const rules = entry.rules ?? [];
+    const fromLower = from.toLowerCase();
+    const idx = rules.findIndex(r => r.from.toLowerCase() === fromLower);
+    const isUpdate = idx >= 0;
+    if (isUpdate) {
+        rules[idx] = { from: fromLower, to };
+    } else {
+        rules.push({ from: fromLower, to });
+        rules.sort((a, b) => a.from.localeCompare(b.from));
+    }
+    entry.rules = rules;
+
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(translations, null, 2) + '\n', 'utf-8');
+
+    return `${isUpdate ? 'Updated' : 'Added'}: ${fromLower} → ${to} (${langKey})`;
+}
+
+// ─── diff helpers ─────────────────────────────────────────────────────────────
+
+function parseUnifiedDiff(raw: string): DiffFile[] {
+    const files: DiffFile[] = [];
+    const fileChunks = raw.split(/^diff --git /m).filter(Boolean);
+
+    for (const chunk of fileChunks) {
+        const nameMatch = /^a\/(.+?)\s+b\/(.+)/m.exec(chunk);
+        if (!nameMatch) { continue; }
+        const fileName = nameMatch[2];
+
+        const hunks: DiffHunk[] = [];
+        const hunkParts = chunk.split(/^@@\s+/m).slice(1);
+
+        for (const hunkPart of hunkParts) {
+            const headerMatch = /^-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)/.exec(hunkPart);
+            if (!headerMatch) { continue; }
+
+            const beforeStart = parseInt(headerMatch[1], 10);
+            const beforeCount = headerMatch[2] !== undefined ? parseInt(headerMatch[2], 10) : 1;
+            const afterStart  = parseInt(headerMatch[3], 10);
+            const afterCount  = headerMatch[4] !== undefined ? parseInt(headerMatch[4], 10) : 1;
+
+            const body = headerMatch[5] + '\n' + hunkPart.slice(headerMatch[0].length);
+            const bodyLines = body.split('\n');
+
+            const lines: DiffLine[] = [];
+            let oldLine = beforeStart;
+            let newLine = afterStart;
+
+            for (const line of bodyLines) {
+                if (line.startsWith('+')) {
+                    lines.push({ type: 'insert', text: line.slice(1), newLine: newLine });
+                    newLine++;
+                } else if (line.startsWith('-')) {
+                    lines.push({ type: 'delete', text: line.slice(1), oldLine: oldLine });
+                    oldLine++;
+                } else if (line.startsWith(' ') || line === '') {
+                    // context line — but skip trailing empty from split
+                    if (line.startsWith(' ')) {
+                        lines.push({ type: 'context', text: line.slice(1), oldLine: oldLine, newLine: newLine });
+                        oldLine++;
+                        newLine++;
+                    }
+                }
+            }
+
+            hunks.push({ beforeStart, beforeCount, afterStart, afterCount, lines });
+        }
+
+        files.push({ file: fileName, hunks });
+    }
+
+    return files;
+}
+
+function formatReviewFiles(files: DiffFile[]): string {
+    const parts: string[] = [];
+
+    for (const file of files) {
+        const lines: string[] = [`## ${file.file}`];
+
+        for (const hunk of file.hunks) {
+            lines.push(`\n@@ -${hunk.beforeStart},${hunk.beforeCount} +${hunk.afterStart},${hunk.afterCount} @@`);
+            for (const l of hunk.lines) {
+                const prefix = l.type === 'insert' ? '+' : l.type === 'delete' ? '-' : ' ';
+                lines.push(`${prefix} ${l.text}`);
+            }
+        }
+
+        parts.push(lines.join('\n'));
+    }
+
+    return parts.join('\n\n---\n\n');
 }
 
 // ─── Shared formatter ─────────────────────────────────────────────────────────

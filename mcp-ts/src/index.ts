@@ -25,6 +25,9 @@ import {
     toolSearch,
     toolRetrieveContext,
     toolFormat,
+    toolGetReviewText,
+    toolGitSnapshot,
+    toolAddTranslation,
 } from './tools.js';
 import { resolveBook, listBooks, findBookByPath } from './registry.js';
 
@@ -49,6 +52,7 @@ function err(e: unknown)   { return { content: [{ type: 'text' as const, text: `
 server.registerTool('list_books', {
     description: 'List all books registered via --book args in the MCP server config. Call this first to discover available book names.',
     inputSchema: {},
+    annotations: { readOnlyHint: true },
 }, async () => {
     const books = listBooks();
     if (books.length === 0) {
@@ -72,6 +76,7 @@ server.registerTool('identify_book', {
             'The absolute path of your current working directory or project root.'
         ),
     },
+    annotations: { readOnlyHint: true },
 }, async ({ workingDirectory }) => {
     try {
         const match = findBookByPath(workingDirectory);
@@ -91,6 +96,7 @@ server.registerTool('identify_book', {
 server.registerTool('health', {
     description: 'Check server status: active book, settings, index, and embedding backend.',
     inputSchema: { book: bookSchema },
+    annotations: { readOnlyHint: true },
 }, async ({ book }) => {
     try { return ok(toolHealth(resolveBook(book).root)); } catch (e) { return err(e); }
 });
@@ -98,6 +104,7 @@ server.registerTool('health', {
 server.registerTool('index_build', {
     description: 'Build or rebuild the search index for a book. Run after adding/editing chapters.',
     inputSchema: { book: bookSchema },
+    annotations: { destructiveHint: true },
 }, async ({ book }) => {
     try { return ok(toolIndexBuild(resolveBook(book).root)); } catch (e) { return err(e); }
 });
@@ -105,6 +112,7 @@ server.registerTool('index_build', {
 server.registerTool('index_status', {
     description: 'Show current index metadata: chunk count and build time.',
     inputSchema: { book: bookSchema },
+    annotations: { readOnlyHint: true },
 }, async ({ book }) => {
     try { return ok(toolIndexStatus(resolveBook(book).root)); } catch (e) { return err(e); }
 });
@@ -117,6 +125,7 @@ server.registerTool('get_text', {
         startLine:  z.number().optional().describe('1-based start line (optional)'),
         endLine:    z.number().optional().describe('1-based end line inclusive (optional)'),
     },
+    annotations: { readOnlyHint: true },
 }, async ({ book, identifier, startLine, endLine }) => {
     try { return ok(toolGetText(resolveBook(book).root, { identifier, startLine, endLine })); } catch (e) { return err(e); }
 });
@@ -128,6 +137,7 @@ server.registerTool('get_chapter', {
         chapterNumber: z.number().describe('Chapter number (1-based)'),
         language:      z.string().describe('Language code, e.g. EN or NL'),
     },
+    annotations: { readOnlyHint: true },
 }, async ({ book, chapterNumber, language }) => {
     try { return ok(toolGetChapter(resolveBook(book).root, { chapterNumber, language })); } catch (e) { return err(e); }
 });
@@ -139,6 +149,7 @@ server.registerTool('get_overview', {
         language: z.string().optional().describe('Language code or ALL (default: ALL)'),
         act:      z.number().optional().describe('Filter to act number 1, 2, or 3 (optional)'),
     },
+    annotations: { readOnlyHint: true },
 }, async ({ book, language, act }) => {
     try { return ok(toolGetOverview(resolveBook(book).root, { language, act })); } catch (e) { return err(e); }
 });
@@ -150,6 +161,7 @@ server.registerTool('get_notes', {
         category: z.string().optional().describe('Filter by file/category name substring'),
         name:     z.string().optional().describe('Filter sections containing this name'),
     },
+    annotations: { readOnlyHint: true },
 }, async ({ book, category, name }) => {
     try { return ok(toolGetNotes(resolveBook(book).root, { category, name })); } catch (e) { return err(e); }
 });
@@ -162,6 +174,7 @@ server.registerTool('search', {
         language:   z.string().optional().describe('Language filter: EN, NL, or ALL'),
         maxResults: z.number().optional().describe('Max results to return (default 10)'),
     },
+    annotations: { readOnlyHint: true },
 }, async ({ book, query, language, maxResults }) => {
     try { return ok(await toolSearch(resolveBook(book).root, { query, language, maxResults })); } catch (e) { return err(e); }
 });
@@ -174,6 +187,7 @@ server.registerTool('retrieve_context', {
         language: z.string().optional().describe('Language filter: EN, NL, or ALL'),
         topK:     z.number().optional().describe('Number of results (default 6)'),
     },
+    annotations: { readOnlyHint: true },
 }, async ({ book, query, language, topK }) => {
     try { return ok(await toolRetrieveContext(resolveBook(book).root, { query, language, topK })); } catch (e) { return err(e); }
 });
@@ -186,8 +200,55 @@ server.registerTool('format', {
         dryRun:    z.boolean().optional().describe('Preview changes without writing (default false)'),
         noRecurse: z.boolean().optional().describe('Do not recurse into subdirectories (default false)'),
     },
+    annotations: { destructiveHint: true },
 }, async ({ book, filePath, dryRun, noRecurse }) => {
     try { return ok(toolFormat(resolveBook(book).root, { filePath, dryRun, noRecurse })); } catch (e) { return err(e); }
+});
+
+server.registerTool('get_review_text', {
+    description:
+        'Structured git diff of uncommitted changes with context lines. ' +
+        'Filter by language folder (EN, NL, or ALL). Ignores CR-at-EOL to avoid CRLF noise. ' +
+        'Set autoStage to true to stage reviewed files so the next call only shows new changes.',
+    inputSchema: {
+        book:         bookSchema,
+        language:     z.string().optional().describe('Language filter: EN, NL, or ALL (default ALL)'),
+        contextLines: z.number().optional().describe('Context lines around each change (default 3)'),
+        autoStage:    z.boolean().optional().describe('Stage reviewed files after producing diff (default false)'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, language, contextLines, autoStage }) => {
+    try { return ok(toolGetReviewText(resolveBook(book).root, { language, contextLines, autoStage })); } catch (e) { return err(e); }
+});
+
+server.registerTool('git_snapshot', {
+    description:
+        'Save a snapshot (git commit) of all changes in story, notes, and arc folders. ' +
+        'Provides an optional commit message — defaults to a timestamp. ' +
+        'Use this to create save points after writing sessions or successful reviews.',
+    inputSchema: {
+        book:    bookSchema,
+        message: z.string().optional().describe('Snapshot message (default: timestamp)'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, message }) => {
+    try { return ok(toolGitSnapshot(resolveBook(book).root, { message })); } catch (e) { return err(e); }
+});
+
+server.registerTool('add_translation', {
+    description:
+        'Add or update a substitution rule in .bindery/translations.json. ' +
+        'Creates the entry if it does not exist. ' +
+        'Rules are used during chapter export to convert dialect-specific words (e.g. US→UK spelling).',
+    inputSchema: {
+        book:    bookSchema,
+        langKey: z.string().describe('Language key in translations.json, e.g. "en-gb" or "nl"'),
+        from:    z.string().describe('Source word or phrase (e.g. "airplane")'),
+        to:      z.string().describe('Target word or phrase (e.g. "aeroplane")'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, langKey, from, to }) => {
+    try { return ok(toolAddTranslation(resolveBook(book).root, { langKey, from, to })); } catch (e) { return err(e); }
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────

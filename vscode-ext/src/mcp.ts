@@ -21,6 +21,9 @@ interface GetNotesInput   { category?: string; name?: string }
 interface SearchInput     { query: string; language?: string; maxResults?: number }
 interface RetrieveInput   { query: string; language?: string; topK?: number }
 interface FormatInput     { filePath?: string; dryRun?: boolean; noRecurse?: boolean }
+interface GetReviewTextInput { language?: string; contextLines?: number; autoStage?: boolean }
+interface GitSnapshotInput   { message?: string }
+interface AddTranslationInput { langKey: string; from: string; to: string }
 
 interface McpTools {
     toolHealth:           (root: string) => string;
@@ -33,6 +36,9 @@ interface McpTools {
     toolSearch:           (root: string, args: SearchInput) => Promise<string>;
     toolRetrieveContext:  (root: string, args: RetrieveInput) => Promise<string>;
     toolFormat:           (root: string, args: FormatInput) => string;
+    toolGetReviewText:    (root: string, args: GetReviewTextInput) => string;
+    toolGitSnapshot:      (root: string, args: GitSnapshotInput) => string;
+    toolAddTranslation:   (root: string, args: AddTranslationInput) => string;
 }
 
 /**
@@ -105,6 +111,18 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<FormatInput>('bindery_format', {
             invoke: async (opts, _token) => ok(t.toolFormat(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<GetReviewTextInput>('bindery_get_review_text', {
+            invoke: async (opts, _token) => ok(t.toolGetReviewText(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<GitSnapshotInput>('bindery_git_snapshot', {
+            invoke: async (opts, _token) => ok(t.toolGitSnapshot(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<AddTranslationInput>('bindery_add_translation', {
+            invoke: async (opts, _token) => ok(t.toolAddTranslation(requireRoot(), opts.input)),
         }),
     );
 }
