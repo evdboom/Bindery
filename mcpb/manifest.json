@@ -17,11 +17,19 @@
       "command": "node",
       "args": ["${__dirname}/server/index.js"],
       "env": {
+        "BINDERY_BOOKS": "${user_config.books}",
         "BINDERY_OLLAMA_URL": "${user_config.ollama_url}"
       }
     }
   },
   "user_config": {
+    "books": {
+      "type": "string",
+      "title": "Books",
+      "description": "Semicolon-separated Name=path pairs pointing to your book projects. Example: MyBook=C:\\Users\\Me\\MyBook;MyNovel=D:\\Writing\\MyNovel",
+      "default": "",
+      "required": true
+    },
     "ollama_url": {
       "type": "string",
       "title": "Ollama URL (optional)",
@@ -31,8 +39,10 @@
     }
   },
   "tools": [
-    { "name": "health",           "description": "Check workspace status: settings, search index, and embedding backend." },
-    { "name": "index_build",      "description": "Build or rebuild the full-text search index. Run once after cloning, then as needed." },
+    { "name": "list_books",      "description": "List all books configured in the MCP server. Call this first to discover available book names." },
+    { "name": "identify_book",   "description": "Identify which book matches a working directory. Pass your cwd and the server matches by folder name or .bindery/settings.json." },
+    { "name": "health",           "description": "Check server status: active book, settings, search index, and embedding backend." },
+    { "name": "index_build",      "description": "Build or rebuild the full-text search index for a book. Run once after cloning, then as needed." },
     { "name": "index_status",     "description": "Show current index metadata: chunk count and build time." },
     { "name": "retrieve_context", "description": "Find the most relevant passages for a query. Use for 'where did X happen' or 'what did character Y say about Z'." },
     { "name": "search",           "description": "Full-text BM25 search across all story and notes files. Returns ranked snippets with file paths and line numbers." },

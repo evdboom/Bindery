@@ -2,19 +2,17 @@
 /**
  * Bindery MCP Server — stdio entry point.
  *
- * Usage:
- *   bindery-mcp [--root <path>]
+ * Book selection is configured at startup via one of:
+ *   --book Name=path   CLI flags (claude_desktop_config.json, .vscode/mcp.json)
+ *   BINDERY_BOOKS       env var with semicolon-separated Name=path pairs (mcpb)
  *
- * --root defaults to process.cwd(), so Cowork/Claude Code projects that bind
- * to a directory need no configuration at all.
+ * Every tool requires an explicit `book` argument. Use list_books to discover
+ * available names. Agents never receive or provide raw filesystem paths.
  */
 
-import { Server }                  from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport }    from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-    CallToolRequestSchema,
-    ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { McpServer }             from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport }  from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z }                     from 'zod';
 
 import {
     toolHealth,
@@ -28,211 +26,168 @@ import {
     toolRetrieveContext,
     toolFormat,
 } from './tools.js';
-
-// ─── Resolve root ─────────────────────────────────────────────────────────────
-
-function resolveRoot(): string {
-    const rootFlag = process.argv.indexOf('--root');
-    if (rootFlag !== -1 && process.argv[rootFlag + 1]) {
-        return process.argv[rootFlag + 1];
-    }
-    return process.env['BINDERY_SOURCE_ROOT'] ?? process.cwd();
-}
-
-const ROOT = resolveRoot();
-
-// ─── Tool definitions ─────────────────────────────────────────────────────────
-
-const TOOLS = [
-    {
-        name:        'health',
-        description: 'Check server status: workspace root, settings, index, and embedding backend.',
-        inputSchema: { type: 'object', properties: {}, required: [] },
-    },
-    {
-        name:        'index_build',
-        description: 'Build or rebuild the search index for this workspace. Run after adding/editing chapters.',
-        inputSchema: { type: 'object', properties: {}, required: [] },
-    },
-    {
-        name:        'index_status',
-        description: 'Show current index metadata: chunk count and build time.',
-        inputSchema: { type: 'object', properties: {}, required: [] },
-    },
-    {
-        name:        'get_text',
-        description: 'Read a source file by relative path, optionally restricted to a line range.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                identifier: { type: 'string', description: 'Relative path from workspace root, e.g. Story/EN/Act I/Chapter01.md' },
-                startLine:  { type: 'number', description: '1-based start line (optional)' },
-                endLine:    { type: 'number', description: '1-based end line inclusive (optional)' },
-            },
-            required: ['identifier'],
-        },
-    },
-    {
-        name:        'get_chapter',
-        description: 'Fetch the full content of a chapter by number and language.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                chapterNumber: { type: 'number', description: 'Chapter number (1-based)' },
-                language:      { type: 'string', description: 'Language code, e.g. EN or NL' },
-            },
-            required: ['chapterNumber', 'language'],
-        },
-    },
-    {
-        name:        'get_overview',
-        description: 'List the chapter structure (acts, chapters, titles) for one or all languages.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                language: { type: 'string', description: 'Language code or ALL (default: ALL)' },
-                act:      { type: 'number', description: 'Filter to act number 1, 2, or 3 (optional)' },
-            },
-            required: [],
-        },
-    },
-    {
-        name:        'get_notes',
-        description: 'Read from Notes/ and Details_*.md files, optionally filtered by category name or character/place name.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                category: { type: 'string', description: 'Filter by file/category name substring' },
-                name:     { type: 'string', description: 'Filter sections containing this name' },
-            },
-            required: [],
-        },
-    },
-    {
-        name:        'search',
-        description: 'Full-text BM25 search across all story and notes files. Returns ranked snippets.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                query:       { type: 'string', description: 'Search query' },
-                language:    { type: 'string', description: 'Language filter: EN, NL, or ALL' },
-                maxResults:  { type: 'number', description: 'Max results to return (default 10)' },
-            },
-            required: ['query'],
-        },
-    },
-    {
-        name:        'retrieve_context',
-        description: 'Retrieve the most relevant passages for a query. Best for "where did X happen" or "what did character Y say about Z".',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                query:    { type: 'string', description: 'Natural language query' },
-                language: { type: 'string', description: 'Language filter: EN, NL, or ALL' },
-                topK:     { type: 'number', description: 'Number of results (default 6)' },
-            },
-            required: ['query'],
-        },
-    },
-    {
-        name:        'format',
-        description: 'Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                filePath:  { type: 'string', description: 'Relative path to file or folder (default: entire workspace)' },
-                dryRun:    { type: 'boolean', description: 'Preview changes without writing (default false)' },
-                noRecurse: { type: 'boolean', description: 'Do not recurse into subdirectories (default false)' },
-            },
-            required: [],
-        },
-    },
-] as const;
+import { resolveBook, listBooks, findBookByPath } from './registry.js';
 
 // ─── Server ───────────────────────────────────────────────────────────────────
 
-const server = new Server(
+const server = new McpServer(
     { name: 'bindery-mcp', version: '0.1.0' },
     { capabilities: { tools: {} } }
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: TOOLS,
-}));
+// ─── Shared helpers ───────────────────────────────────────────────────────────
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-    const a = (args ?? {}) as Record<string, unknown>;
+const bookSchema = z.string().describe(
+    'Book name as configured via --book args (e.g. "MyNovel"). Call list_books to see available names.'
+);
 
-    try {
-        let text: string;
+function ok(text: string)  { return { content: [{ type: 'text' as const, text }] }; }
+function err(e: unknown)   { return { content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }], isError: true as const }; }
 
-        switch (name) {
-            case 'health':
-                text = toolHealth(ROOT);
-                break;
-            case 'index_build':
-                text = toolIndexBuild(ROOT);
-                break;
-            case 'index_status':
-                text = toolIndexStatus(ROOT);
-                break;
-            case 'get_text':
-                text = toolGetText(ROOT, {
-                    identifier: a['identifier'] as string,
-                    startLine:  a['startLine'] as number | undefined,
-                    endLine:    a['endLine']   as number | undefined,
-                });
-                break;
-            case 'get_chapter':
-                text = toolGetChapter(ROOT, {
-                    chapterNumber: a['chapterNumber'] as number,
-                    language:      a['language']      as string,
-                });
-                break;
-            case 'get_overview':
-                text = toolGetOverview(ROOT, {
-                    language: a['language'] as string | undefined,
-                    act:      a['act']      as number | undefined,
-                });
-                break;
-            case 'get_notes':
-                text = toolGetNotes(ROOT, {
-                    category: a['category'] as string | undefined,
-                    name:     a['name']     as string | undefined,
-                });
-                break;
-            case 'search':
-                text = await toolSearch(ROOT, {
-                    query:       a['query']       as string,
-                    language:    a['language']    as string | undefined,
-                    maxResults:  a['maxResults']  as number | undefined,
-                    caseSensitive: a['caseSensitive'] as boolean | undefined,
-                });
-                break;
-            case 'retrieve_context':
-                text = await toolRetrieveContext(ROOT, {
-                    query:    a['query']    as string,
-                    language: a['language'] as string | undefined,
-                    topK:     a['topK']     as number | undefined,
-                });
-                break;
-            case 'format':
-                text = toolFormat(ROOT, {
-                    filePath:  a['filePath']  as string | undefined,
-                    dryRun:    a['dryRun']    as boolean | undefined,
-                    noRecurse: a['noRecurse'] as boolean | undefined,
-                });
-                break;
-            default:
-                return { content: [{ type: 'text', text: `Unknown tool: ${name}` }], isError: true };
-        }
+// ─── Tools ────────────────────────────────────────────────────────────────────
 
-        return { content: [{ type: 'text', text }] };
-    } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return { content: [{ type: 'text', text: `Error: ${msg}` }], isError: true };
+server.registerTool('list_books', {
+    description: 'List all books registered via --book args in the MCP server config. Call this first to discover available book names.',
+    inputSchema: {},
+}, async () => {
+    const books = listBooks();
+    if (books.length === 0) {
+        return ok(
+            'No books configured.\n\n' +
+            'Add --book args to the MCP server in your claude_desktop_config.json:\n\n' +
+            '  "args": ["dist/index.js", "--book", "MyNovel=/path/to/project"]'
+        );
     }
+    return ok(books.map(b => `${b.name}  →  ${b.path}`).join('\n'));
+});
+
+server.registerTool('identify_book', {
+    description:
+        'Identify which book matches the directory you are working in. ' +
+        'Pass your current working directory (e.g. /home/user/Me/MyNovel) and the server ' +
+        'will match it against registered books by folder name or .bindery/settings.json. ' +
+        'Use this when you know your workspace path but not the book name.',
+    inputSchema: {
+        workingDirectory: z.string().describe(
+            'The absolute path of your current working directory or project root.'
+        ),
+    },
+}, async ({ workingDirectory }) => {
+    try {
+        const match = findBookByPath(workingDirectory);
+        if (!match) {
+            const books = listBooks();
+            return ok(
+                `No book matches directory "${workingDirectory}".\n\n` +
+                (books.length
+                    ? `Available books:\n${books.map(b => `  ${b.name}  →  ${b.path}`).join('\n')}`
+                    : 'No books configured.')
+            );
+        }
+        return ok(match.name);
+    } catch (e) { return err(e); }
+});
+
+server.registerTool('health', {
+    description: 'Check server status: active book, settings, index, and embedding backend.',
+    inputSchema: { book: bookSchema },
+}, async ({ book }) => {
+    try { return ok(toolHealth(resolveBook(book).root)); } catch (e) { return err(e); }
+});
+
+server.registerTool('index_build', {
+    description: 'Build or rebuild the search index for a book. Run after adding/editing chapters.',
+    inputSchema: { book: bookSchema },
+}, async ({ book }) => {
+    try { return ok(toolIndexBuild(resolveBook(book).root)); } catch (e) { return err(e); }
+});
+
+server.registerTool('index_status', {
+    description: 'Show current index metadata: chunk count and build time.',
+    inputSchema: { book: bookSchema },
+}, async ({ book }) => {
+    try { return ok(toolIndexStatus(resolveBook(book).root)); } catch (e) { return err(e); }
+});
+
+server.registerTool('get_text', {
+    description: 'Read a source file by relative path, optionally restricted to a line range.',
+    inputSchema: {
+        book:      bookSchema,
+        identifier: z.string().describe('Relative path from workspace root, e.g. Story/EN/Act I/Chapter01.md'),
+        startLine:  z.number().optional().describe('1-based start line (optional)'),
+        endLine:    z.number().optional().describe('1-based end line inclusive (optional)'),
+    },
+}, async ({ book, identifier, startLine, endLine }) => {
+    try { return ok(toolGetText(resolveBook(book).root, { identifier, startLine, endLine })); } catch (e) { return err(e); }
+});
+
+server.registerTool('get_chapter', {
+    description: 'Fetch the full content of a chapter by number and language.',
+    inputSchema: {
+        book:          bookSchema,
+        chapterNumber: z.number().describe('Chapter number (1-based)'),
+        language:      z.string().describe('Language code, e.g. EN or NL'),
+    },
+}, async ({ book, chapterNumber, language }) => {
+    try { return ok(toolGetChapter(resolveBook(book).root, { chapterNumber, language })); } catch (e) { return err(e); }
+});
+
+server.registerTool('get_overview', {
+    description: 'List the chapter structure (acts, chapters, titles) for one or all languages.',
+    inputSchema: {
+        book:     bookSchema,
+        language: z.string().optional().describe('Language code or ALL (default: ALL)'),
+        act:      z.number().optional().describe('Filter to act number 1, 2, or 3 (optional)'),
+    },
+}, async ({ book, language, act }) => {
+    try { return ok(toolGetOverview(resolveBook(book).root, { language, act })); } catch (e) { return err(e); }
+});
+
+server.registerTool('get_notes', {
+    description: 'Read from Notes/ and Details_*.md files, optionally filtered by category name or character/place name.',
+    inputSchema: {
+        book:     bookSchema,
+        category: z.string().optional().describe('Filter by file/category name substring'),
+        name:     z.string().optional().describe('Filter sections containing this name'),
+    },
+}, async ({ book, category, name }) => {
+    try { return ok(toolGetNotes(resolveBook(book).root, { category, name })); } catch (e) { return err(e); }
+});
+
+server.registerTool('search', {
+    description: 'Full-text BM25 search across all story and notes files. Returns ranked snippets.',
+    inputSchema: {
+        book:       bookSchema,
+        query:      z.string().describe('Search query'),
+        language:   z.string().optional().describe('Language filter: EN, NL, or ALL'),
+        maxResults: z.number().optional().describe('Max results to return (default 10)'),
+    },
+}, async ({ book, query, language, maxResults }) => {
+    try { return ok(await toolSearch(resolveBook(book).root, { query, language, maxResults })); } catch (e) { return err(e); }
+});
+
+server.registerTool('retrieve_context', {
+    description: 'Retrieve the most relevant passages for a query. Best for "where did X happen" or "what did character Y say about Z".',
+    inputSchema: {
+        book:     bookSchema,
+        query:    z.string().describe('Natural language query'),
+        language: z.string().optional().describe('Language filter: EN, NL, or ALL'),
+        topK:     z.number().optional().describe('Number of results (default 6)'),
+    },
+}, async ({ book, query, language, topK }) => {
+    try { return ok(await toolRetrieveContext(resolveBook(book).root, { query, language, topK })); } catch (e) { return err(e); }
+});
+
+server.registerTool('format', {
+    description: 'Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder.',
+    inputSchema: {
+        book:      bookSchema,
+        filePath:  z.string().optional().describe('Relative path to file or folder (default: entire book)'),
+        dryRun:    z.boolean().optional().describe('Preview changes without writing (default false)'),
+        noRecurse: z.boolean().optional().describe('Do not recurse into subdirectories (default false)'),
+    },
+}, async ({ book, filePath, dryRun, noRecurse }) => {
+    try { return ok(toolFormat(resolveBook(book).root, { filePath, dryRun, noRecurse })); } catch (e) { return err(e); }
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
