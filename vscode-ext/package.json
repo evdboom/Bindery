@@ -2,7 +2,7 @@
   "name": "bindery",
   "displayName": "Bindery",
   "description": "Markdown book authoring tools: typography formatting (curly quotes, em-dashes, ellipses), multi-language chapter export (DOCX, EPUB, PDF), and dialect conversion.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "option-a",
   "repository": {
     "type": "git",
