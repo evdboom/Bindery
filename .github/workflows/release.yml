@@ -35,6 +35,12 @@ jobs:
           npm ci --omit=dev
           cp -r node_modules ../mcpb/node_modules
 
+      - name: Set version in manifest
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd mcpb
+          jq --arg v "$VERSION" '.version = $v' manifest.json > tmp.json && mv tmp.json manifest.json
+
       - name: Pack .mcpb
         run: |
           npm install -g @anthropic-ai/mcpb
