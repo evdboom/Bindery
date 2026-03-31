@@ -338,12 +338,21 @@ User says \`/review\`, "review chapter X", "quick review", or "review my changes
 - Which chapter number?
 - Type: **Full** (language + arc + age-appropriateness) or **Quick** (language and typos only)?
 
+## Tools
+Use these Bindery MCP tools to gather context:
+- \`get_review_text(language)\` — get the git diff of uncommitted changes (for "review my changes")
+- \`get_chapter(chapterNumber, language)\` — read the full chapter text
+- \`get_notes(category, name)\` — look up character profiles (\`category: "Characters"\`) or world rules
+- \`retrieve_context(query, language)\` — find related passages across the book
+- \`git_snapshot(message)\` — after a successful review, suggest saving a snapshot
+
 ## Steps
 
 ### 1. Load context
 - Read \`${notesFolder}/Memories/global.md\`
+- Use \`get_chapter\` to load the chapter
 - For a Full review, read the relevant arc file: \`${arcFolder}/Act_I_[X].md\`, \`Act_II_[X].md\`, or \`Act_III_[X].md\`
-- For "review changes", use the git diff tool if available
+- For "review my changes", use \`get_review_text\` to get the diff
 
 ### 2. Perform the review
 
@@ -352,7 +361,7 @@ User says \`/review\`, "review chapter X", "quick review", or "review my changes
 **Full** — adds:
 - Arc consistency with the arc file
 - Age-appropriateness for ${audienceStr}
-- Character consistency with Notes/Details_Characters.md
+- Character consistency (use \`get_notes(category: "Characters")\`)
 
 ### 3. Output format
 
@@ -363,6 +372,9 @@ User says \`/review\`, "review chapter X", "quick review", or "review my changes
 - Bold changed words
 - Group by category for Full reviews
 - End with a 2-3 sentence overall impression
+
+### 4. After review
+If the review looks good, suggest: "Want me to save a snapshot?" (calls \`git_snapshot\`).
 
 ## Rules
 - Do not rewrite unless asked — suggest only
@@ -381,11 +393,18 @@ User says \`/brainstorm\`, "I'm stuck", "help me think of ideas", or "Am I stuck
 - Which chapter or story point?
 - Any constraints to respect?
 
+## Tools
+Use these Bindery MCP tools to gather context:
+- \`retrieve_context(query, language)\` — find thematic parallels and related moments across the book
+- \`get_notes(category, name)\` — look up character profiles, world rules, or equipment details
+- \`get_chapter(chapterNumber, language)\` — read a specific chapter for reference
+
 ## Steps
 
 1. Read \`${notesFolder}/Memories/global.md\` and the relevant arc file from \`${arcFolder}/\`.
-2. If character-focused, read \`${notesFolder}/Details_Characters.md\`.
-3. Generate 3–5 concrete ideas that fit the arc and feel true to the characters.
+2. If character-focused, use \`get_notes(category: "Characters")\` for character profiles.
+3. Use \`retrieve_context\` to find related moments or themes already in the book.
+4. Generate 3–5 concrete ideas that fit the arc and feel true to the characters.
 
 ## Output format
 
@@ -409,13 +428,20 @@ Update project memory files with decisions from the current session.
 ## Trigger
 User says \`/memory\`, "save this to memory", "update memories", or at session end.
 
+## Tools
+Use these Bindery MCP tools:
+- \`get_text(identifier)\` — read current memory files before appending (e.g. \`${notesFolder}/Memories/global.md\`)
+- \`git_snapshot(message)\` — after updating memories, offer to save a snapshot
+
 ## Steps
 
 1. Identify decisions/insights from the session.
-2. Write to \`${notesFolder}/Memories/global.md\` (cross-chapter) or \`${notesFolder}/Memories/chXX.md\` (chapter-specific).
-3. Append only — never edit existing entries.
-4. Format: \`**[YYYY-MM-DD]:** - [decision]\`
-5. If a file exceeds ~150 lines, offer to compact the oldest 50% into a summary block.
+2. Use \`get_text\` to read the current content of the target memory file.
+3. Write to \`${notesFolder}/Memories/global.md\` (cross-chapter) or \`${notesFolder}/Memories/chXX.md\` (chapter-specific).
+4. Append only — never edit existing entries.
+5. Format: \`**[YYYY-MM-DD]:** - [decision]\`
+6. If a file exceeds ~150 lines, offer to compact the oldest 50% into a summary block.
+7. Offer to save a snapshot with \`git_snapshot\`.
 
 ## Rules
 - Append only
@@ -435,10 +461,16 @@ User says \`/translate\`, "translate chapter X", or "help me with the translatio
 - Which chapter or passage?
 - Full translation or spot-check an existing translation?
 
+## Tools
+Use these Bindery MCP tools:
+- \`get_chapter(chapterNumber, language)\` — read the source chapter
+- \`get_notes(category: "Translation")\` — load the translation table (\`Details_Translation_notes.md\`)
+- \`get_text(identifier)\` — read any specific file (e.g. an existing translation to spot-check)
+
 ## Steps
 
-1. Read \`${notesFolder}/Details_Translation_notes.md\` for world-specific term translations.
-2. Read the source chapter from \`${storyFolder}/\`.
+1. Use \`get_notes(category: "Translation")\` to load world-specific term translations.
+2. Use \`get_chapter\` to read the source chapter.
 3. Translate paragraph by paragraph, applying all terms from the translation table.
 4. Output the translation in a fenced \`\`\`markdown code block for easy pasting.
 
@@ -457,11 +489,17 @@ Snapshot of the book's progress: what's done, in progress, and coming up.
 ## Trigger
 User says \`/status\`, "what's the book status", or "where are we".
 
+## Tools
+Use these Bindery MCP tools:
+- \`get_overview(language)\` — list all acts and chapters with titles
+- \`get_text(identifier)\` — read COWORK.md, \`${notesFolder}/Chapter_Status.md\`, and \`${notesFolder}/Memories/global.md\`
+
 ## Steps
 
-1. Read COWORK.md (current focus), \`${notesFolder}/Chapter_Status.md\`, and \`${notesFolder}/Memories/global.md\`.
-2. Check \`${arcFolder}/\` for what's planned vs written (Overall.md + the relevant act file).
-3. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
+1. Use \`get_text\` to read COWORK.md (current focus), \`${notesFolder}/Chapter_Status.md\`, and \`${notesFolder}/Memories/global.md\`.
+2. Use \`get_overview\` for the full chapter listing.
+3. Check \`${arcFolder}/\` for what's planned vs written (Overall.md + the relevant act file).
+4. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
 
 ## Output
 Keep it scannable — bold headers, short lines. This is a working tool, not a narrative summary.
@@ -478,11 +516,20 @@ User says \`/continuity\`, "check continuity", or "check chapter X for errors".
 - Chapter number?
 - Focus: All / Characters / World rules / Timeline?
 
+## Tools
+Use these Bindery MCP tools:
+- \`get_chapter(chapterNumber, language)\` — read the chapter (and previous chapter for timeline checks)
+- \`get_notes(category, name)\` — look up character profiles or world rules
+- \`retrieve_context(query, language)\` — find earlier mentions of a character detail or event
+- \`search(query, language)\` — exact-match search for names, places, or specific terms
+
 ## Steps
 
-1. Read the chapter, \`${notesFolder}/Memories/global.md\`, and \`${notesFolder}/Details_Characters.md\`.
-2. For world rules: read \`${notesFolder}/Details_World_and_Magic.md\`.
-3. For timeline: also read the previous chapter.
+1. Use \`get_chapter\` to read the chapter.
+2. Load \`${notesFolder}/Memories/global.md\` and use \`get_notes(category: "Characters")\` for character profiles.
+3. For world rules: use \`get_notes(category: "World")\`.
+4. For timeline: also use \`get_chapter\` to read the previous chapter.
+5. Use \`retrieve_context\` or \`search\` to verify specific details against earlier chapters.
 
 ## Output format
 
@@ -507,6 +554,11 @@ User says \`/read-aloud\`, "reading test", or "how does this sound".
 
 ## Clarify first
 - Whole chapter or specific passage?
+
+## Tools
+Use these Bindery MCP tools:
+- \`get_chapter(chapterNumber, language)\` — read the full chapter
+- \`get_text(identifier, startLine, endLine)\` — read a specific passage by line range
 
 ## What to check
 - Sentences over ~30 words

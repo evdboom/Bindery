@@ -14,6 +14,7 @@
 import * as vscode from 'vscode';
 import * as fs     from 'fs';
 import * as path   from 'path';
+import { execSync } from 'child_process';
 import { updateTypography }                    from './format';
 import {
     mergeBook, checkPandoc, getBuiltInUkReplacements,
@@ -307,11 +308,42 @@ async function initWorkspaceCommand() {
         fs.writeFileSync(translationsPath, JSON.stringify(translations, null, 2) + '\n', 'utf-8');
     }
 
+    // Ensure git repo exists for version tracking
+    let gitNote = '';
+    if (!fs.existsSync(path.join(root, '.git'))) {
+        try {
+            execSync('git --version', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
+            execSync('git init', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
+
+            // Create .gitignore if it doesn't exist
+            const gitignorePath = path.join(root, '.gitignore');
+            if (!fs.existsSync(gitignorePath)) {
+                fs.writeFileSync(gitignorePath, [
+                    'Merged/',
+                    '*.docx',
+                    '*.epub',
+                    '*.pdf',
+                    'node_modules/',
+                    '',
+                ].join('\n'), 'utf-8');
+            }
+
+            execSync('git add .bindery/ .gitignore', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
+            execSync('git commit -m "Bindery: initial setup"', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
+            gitNote = ' Git repository initialised.';
+        } catch {
+            vscode.window.showWarningMessage(
+                'Git is recommended for version tracking and review features. ' +
+                'Install from https://git-scm.com'
+            );
+        }
+    }
+
     const langNote = detectedLangs.length > 0
         ? ` Detected: ${detectedLangs.map(l => l.code).join(', ')}.`
         : '';
     const action = await vscode.window.showInformationMessage(
-        `Bindery workspace initialised.${langNote}`,
+        `Bindery workspace initialised.${langNote}${gitNote}`,
         'Open settings.json',
         'Open translations.json'
     );
@@ -377,11 +409,17 @@ async function openTranslationsCommand() {
 
 // ─── Command: Add substitution rule ──────────────────────────────────────────
 
-async function addUkReplacementCommand() {
+async function addTranslationCommand() {
     const root = getWorkspaceRoot();
 
+    // Pre-fill "from" with editor selection (if any)
+    const editor   = vscode.window.activeTextEditor;
+    const selected = editor && !editor.selection.isEmpty
+        ? editor.document.getText(editor.selection).trim()
+        : '';
+
     // Determine which substitution entry to target from translations.json
-    let langKey = 'en-gb';
+    let langKey   = 'en-gb';
     let fromLabel = 'source';
     let toLabel   = 'target';
 
@@ -396,25 +434,53 @@ async function addUkReplacementCommand() {
             fromLabel = e.sourceLanguage ?? 'source';
             toLabel   = e.label ?? langKey;
         } else if (substitutionEntries.length > 1) {
-            const picked = await vscode.window.showQuickPick(
-                substitutionEntries.map(([key, entry]) => ({
-                    label:       entry.label ?? key,
-                    description: `key: ${key}`,
-                    key,
-                    entry,
-                })),
-                { placeHolder: 'Which substitution language?' }
-            );
-            if (!picked) { return; }
-            langKey   = picked.key;
-            fromLabel = picked.entry.sourceLanguage ?? 'source';
-            toLabel   = picked.entry.label ?? langKey;
+            // Try to auto-detect from active file path
+            let autoKey: string | undefined;
+            if (editor) {
+                const wsSettings = readWorkspaceSettings(root);
+                const sf = wsSettings?.storyFolder ?? 'Story';
+                const filePath = editor.document.uri.fsPath.replace(/\\/g, '/');
+                const storyBase = path.join(root, sf).replace(/\\/g, '/');
+                if (filePath.startsWith(storyBase)) {
+                    const rel = filePath.slice(storyBase.length + 1);
+                    const folderName = rel.split('/')[0];
+                    // Match folder to a substitution entry's sourceLanguage
+                    for (const [key, entry] of substitutionEntries) {
+                        if (entry.sourceLanguage?.toUpperCase() === folderName?.toUpperCase()) {
+                            autoKey = key;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (autoKey) {
+                langKey = autoKey;
+                const e = substitutionEntries.find(([k]) => k === autoKey)![1];
+                fromLabel = e.sourceLanguage ?? 'source';
+                toLabel   = e.label ?? langKey;
+            } else {
+                const picked = await vscode.window.showQuickPick(
+                    substitutionEntries.map(([key, entry]) => ({
+                        label:       entry.label ?? key,
+                        description: `key: ${key}`,
+                        key,
+                        entry,
+                    })),
+                    { placeHolder: 'Which substitution language?' }
+                );
+                if (!picked) { return; }
+                langKey   = picked.key;
+                fromLabel = picked.entry.sourceLanguage ?? 'source';
+                toLabel   = picked.entry.label ?? langKey;
+            }
         }
     }
 
     const fromWord = await vscode.window.showInputBox({
         title:       'Add Substitution Rule — source word',
         prompt:      `${fromLabel} word`,
+        value:       selected,
         placeHolder: 'e.g. airplane',
     });
     if (!fromWord) { return; }
@@ -913,7 +979,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bindery.mergePdf',                () => mergeCommand(['pdf'])),
         vscode.commands.registerCommand('bindery.mergeAll',                () => mergeCommand(['md', 'docx', 'epub', 'pdf'])),
         vscode.commands.registerCommand('bindery.findProbableUsToUkWords', findProbableUsToUkWordsCommand),
-        vscode.commands.registerCommand('bindery.addUkReplacement',        addUkReplacementCommand),
+        vscode.commands.registerCommand('bindery.addUkReplacement',        addTranslationCommand),
         vscode.commands.registerCommand('bindery.openTranslations',        openTranslationsCommand),
         vscode.commands.registerCommand('bindery.registerMcp',             () => registerMcpCommand(context)),
     );
