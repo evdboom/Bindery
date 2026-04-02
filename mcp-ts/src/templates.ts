@@ -230,7 +230,12 @@ function agentsMd(ctx: TemplateContext): string {
 function skillReview(ctx: TemplateContext): string {
     const { title, arcFolder, memoriesFolder } = ctx;
     const audienceStr = ctx.audience || 'the target audience';
-    return `# Skill: /review
+    return `---
+name: Review
+description: Review a chapter of "${title}" for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
+---
+
+# Skill: /review
 
 Review a chapter of "${title}" and give structured feedback.
 
@@ -287,7 +292,12 @@ If the review looks good, suggest: "Want me to save a snapshot?" (calls \`git_sn
 function skillBrainstorm(ctx: TemplateContext): string {
     const { title, arcFolder, memoriesFolder } = ctx;
     const audienceStr = ctx.audience || 'the target audience';
-    return `# Skill: /brainstorm
+    return `---
+name: Brainstorm
+description: Brainstorm story ideas, plot beats, character moments, or scene concepts for "${title}". Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
+---
+
+# Skill: /brainstorm
 
 Brainstorm story ideas, character moments, or plot solutions for "${title}".
 
@@ -328,7 +338,12 @@ End with a brief note on which options feel most aligned with the arc.
 }
 
 function skillMemory(ctx: TemplateContext): string {
-    return `# Skill: /memory
+    return `---
+name: Memory
+description: Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
+---
+
+# Skill: /memory
 
 Update project memory files with decisions from the current session.
 
@@ -378,7 +393,12 @@ Offer to save a snapshot with \`git_snapshot\`.
 }
 
 function skillTranslate(ctx: TemplateContext): string {
-    return `# Skill: /translate
+    return `---
+name: Translate
+description: Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
+---
+
+# Skill: /translate
 
 Translate a chapter or passage into the target language.
 
@@ -425,7 +445,12 @@ When the user confirms a new or corrected term translation, call \`add_translati
 
 function skillStatus(ctx: TemplateContext): string {
     const { notesFolder, arcFolder, memoriesFolder } = ctx;
-    return `# Skill: /status
+    return `---
+name: Status
+description: Give a book progress snapshot — chapters done, in progress, and coming up. Use for /status, "what's the book status", or "where are we".
+---
+
+# Skill: /status
 
 Snapshot of the book's progress: what's done, in progress, and coming up.
 
@@ -452,7 +477,12 @@ Keep it scannable — bold headers, short lines. This is a working tool, not a n
 
 function skillContinuity(ctx: TemplateContext): string {
     const { memoriesFolder } = ctx;
-    return `# Skill: /continuity
+    return `---
+name: Continuity
+description: Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
+---
+
+# Skill: /continuity
 
 Cross-check a chapter for consistency errors.
 
@@ -495,7 +525,12 @@ End with a one-line overall assessment. If no issues found, say so clearly.
 
 function skillReadAloud(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
-    return `# Skill: /read-aloud
+    return `---
+name: Read Aloud
+description: Test how a chapter or passage sounds when read aloud — flags long sentences, staccato rhythm, complex vocabulary, and said-bookisms. Use for /read-aloud, "reading test", or "how does this sound".
+---
+
+# Skill: /read-aloud
 
 Test how a chapter sounds when read aloud to ${audienceStr}.
 
