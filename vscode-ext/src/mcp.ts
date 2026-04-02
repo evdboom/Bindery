@@ -24,6 +24,11 @@ interface FormatInput     { filePath?: string; dryRun?: boolean; noRecurse?: boo
 interface GetReviewTextInput { language?: string; contextLines?: number; autoStage?: boolean }
 interface GitSnapshotInput   { message?: string }
 interface AddTranslationInput { langKey: string; from: string; to: string }
+interface GetTranslationInput { language: string; word?: string }
+interface InitWorkspaceInput  { bookTitle?: string; author?: string; storyFolder?: string; genre?: string; description?: string; targetAudience?: string }
+interface SetupAiFilesInput   { targets?: string[]; skills?: string[]; overwrite?: boolean }
+interface MemoryAppendInput   { file: string; title: string; content: string }
+interface MemoryCompactInput  { file: string; compacted_content: string }
 
 interface McpTools {
     toolHealth:           (root: string) => string;
@@ -39,6 +44,12 @@ interface McpTools {
     toolGetReviewText:    (root: string, args: GetReviewTextInput) => string;
     toolGitSnapshot:      (root: string, args: GitSnapshotInput) => string;
     toolAddTranslation:   (root: string, args: AddTranslationInput) => string;
+    toolGetTranslation:   (root: string, args: GetTranslationInput) => string;
+    toolInitWorkspace:    (root: string, args: InitWorkspaceInput) => string;
+    toolSetupAiFiles:     (root: string, args: SetupAiFilesInput) => string;
+    toolMemoryList:       (root: string) => string;
+    toolMemoryAppend:     (root: string, args: MemoryAppendInput) => string;
+    toolMemoryCompact:    (root: string, args: MemoryCompactInput) => string;
 }
 
 /**
@@ -123,6 +134,30 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<AddTranslationInput>('bindery_add_translation', {
             invoke: async (opts, _token) => ok(t.toolAddTranslation(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<GetTranslationInput>('bindery_get_translation', {
+            invoke: async (opts, _token) => ok(t.toolGetTranslation(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<InitWorkspaceInput>('bindery_init_workspace', {
+            invoke: async (opts, _token) => ok(t.toolInitWorkspace(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<SetupAiFilesInput>('bindery_setup_ai_files', {
+            invoke: async (opts, _token) => ok(t.toolSetupAiFiles(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool('bindery_memory_list', {
+            invoke: async (_opts, _token) => ok(t.toolMemoryList(requireRoot())),
+        }),
+
+        vscode.lm.registerTool<MemoryAppendInput>('bindery_memory_append', {
+            invoke: async (opts, _token) => ok(t.toolMemoryAppend(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<MemoryCompactInput>('bindery_memory_compact', {
+            invoke: async (opts, _token) => ok(t.toolMemoryCompact(requireRoot(), opts.input)),
         }),
     );
 }

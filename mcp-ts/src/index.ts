@@ -27,7 +27,13 @@ import {
     toolFormat,
     toolGetReviewText,
     toolGitSnapshot,
+    toolGetTranslation,
     toolAddTranslation,
+    toolInitWorkspace,
+    toolSetupAiFiles,
+    toolMemoryList,
+    toolMemoryAppend,
+    toolMemoryCompact,
 } from './tools.js';
 import { resolveBook, listBooks, findBookByPath } from './registry.js';
 
@@ -249,6 +255,22 @@ server.registerTool('git_snapshot', {
     try { return ok(toolGitSnapshot(resolveBook(book).root, { message })); } catch (e) { return err(e); }
 });
 
+server.registerTool('get_translation', {
+    title: 'Get Translation',
+    description:
+        'Look up translation/substitution rules in .bindery/translations.json. ' +
+        'Without a word, lists all rules for the language. ' +
+        'With a word, does a forgiving case-insensitive lookup including plural and inflected forms.',
+    inputSchema: {
+        book:     bookSchema,
+        language: z.string().describe('Language key, label, or code (e.g. "nl", "en-gb", "British English")'),
+        word:     z.string().optional().describe('Word or term to look up (optional — omit to list all rules)'),
+    },
+    annotations: { readOnlyHint: true },
+}, async ({ book, language, word }) => {
+    try { return ok(toolGetTranslation(resolveBook(book).root, { language, word })); } catch (e) { return err(e); }
+});
+
 server.registerTool('add_translation', {
     title: 'Add Translation',
     description:
@@ -264,6 +286,86 @@ server.registerTool('add_translation', {
     annotations: { destructiveHint: true },
 }, async ({ book, langKey, from, to }) => {
     try { return ok(toolAddTranslation(resolveBook(book).root, { langKey, from, to })); } catch (e) { return err(e); }
+});
+
+server.registerTool('init_workspace', {
+    title: 'Init Workspace',
+    description:
+        'Create or update .bindery/settings.json and .bindery/translations.json. ' +
+        'All arguments are optional — smart defaults are used for any omitted values. ' +
+        'Safe to run on an existing workspace: existing settings are preserved unless explicitly overridden. ' +
+        'Detects language folders in the story directory automatically.',
+    inputSchema: {
+        book:            bookSchema,
+        bookTitle:       z.string().optional().describe('Book title (defaults to folder name)'),
+        author:          z.string().optional().describe('Author name'),
+        storyFolder:     z.string().optional().describe('Story folder name relative to root (default: Story)'),
+        genre:           z.string().optional().describe('Genre, e.g. sci-fi/fantasy'),
+        description:     z.string().optional().describe('One-line description used in AI instruction files'),
+        targetAudience:  z.string().optional().describe('Target audience, e.g. 12+ or adults'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, bookTitle, author, storyFolder, genre, description, targetAudience }) => {
+    try { return ok(toolInitWorkspace(resolveBook(book).root, { bookTitle, author, storyFolder, genre, description, targetAudience })); } catch (e) { return err(e); }
+});
+
+server.registerTool('setup_ai_files', {
+    title: 'Setup AI Files',
+    description:
+        'Generate AI assistant instruction files (CLAUDE.md, .github/copilot-instructions.md, ' +
+        '.cursor/rules, AGENTS.md) and Claude skill templates from .bindery/settings.json. ' +
+        'Run init_workspace first. Safe to run multiple times — skips existing files unless overwrite is true.',
+    inputSchema: {
+        book:      bookSchema,
+        targets:   z.array(z.string()).optional().describe('Which files to generate: claude, copilot, cursor, agents. Default: all.'),
+        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, status, continuity, read_aloud. Default: all.'),
+        overwrite: z.boolean().optional().describe('Overwrite existing files? Default false (skip existing).'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, targets, skills, overwrite }) => {
+    try { return ok(toolSetupAiFiles(resolveBook(book).root, { targets, skills, overwrite })); } catch (e) { return err(e); }
+});
+
+server.registerTool('memory_list', {
+    title: 'Memory List',
+    description: 'List all session memory files in .bindery/memories/. Returns each filename and its line count.',
+    inputSchema: { book: bookSchema },
+    annotations: { readOnlyHint: true },
+}, async ({ book }) => {
+    try { return ok(toolMemoryList(resolveBook(book).root)); } catch (e) { return err(e); }
+});
+
+server.registerTool('memory_append', {
+    title: 'Memory Append',
+    description:
+        'Append a dated session entry to a memory file in .bindery/memories/. ' +
+        'Creates the file if it does not exist. ' +
+        'The tool stamps the current date; supply a short title and the content to record.',
+    inputSchema: {
+        book:    bookSchema,
+        file:    z.string().describe('Filename within .bindery/memories/, e.g. global.md or ch10.md'),
+        title:   z.string().describe('Short session title describing the topic'),
+        content: z.string().describe('Text to record under this session entry'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, file, title, content }) => {
+    try { return ok(toolMemoryAppend(resolveBook(book).root, { file, title, content })); } catch (e) { return err(e); }
+});
+
+server.registerTool('memory_compact', {
+    title: 'Memory Compact',
+    description:
+        'Overwrite a memory file with a compacted version supplied by the model. ' +
+        'The original is backed up to .bindery/memories/archive/ before overwriting. ' +
+        'Use this when a memory file has grown too large and needs to be summarised.',
+    inputSchema: {
+        book:              bookSchema,
+        file:              z.string().describe('Filename within .bindery/memories/, e.g. global.md'),
+        compacted_content: z.string().describe('Full replacement content (model-supplied summary)'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, file, compacted_content }) => {
+    try { return ok(toolMemoryCompact(resolveBook(book).root, { file, compacted_content })); } catch (e) { return err(e); }
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────

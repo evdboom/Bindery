@@ -28,7 +28,7 @@ import {
     type WorkspaceSettings, type TranslationsFile,
 } from './workspace';
 import {
-    setupAiFiles, ALL_SKILLS,
+    setupAiFiles, ALL_SKILLS, AI_SETUP_VERSION, readAiSetupVersion,
     type AiTarget, type SkillTemplate,
 } from './ai-setup';
 import { registerLmTools, registerMcpCommand } from './mcp';
@@ -986,6 +986,23 @@ export function activate(context: vscode.ExtensionContext) {
 
     // LM tools (Copilot Chat)
     registerLmTools(context);
+
+    // AI setup version check — prompt if generated files are out of date
+    const root = getWorkspaceRoot();
+    if (root && fs.existsSync(getSettingsPath(root))) {
+        const installedVersion = readAiSetupVersion(root);
+        if (installedVersion < AI_SETUP_VERSION) {
+            vscode.window.showInformationMessage(
+                'Bindery: AI assistant files may be out of date (skill templates were updated).',
+                'Update now',
+                'Dismiss'
+            ).then(action => {
+                if (action === 'Update now') {
+                    vscode.commands.executeCommand('bindery.setupAI');
+                }
+            });
+        }
+    }
 
     // Status bar — shown when a markdown file is active
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);

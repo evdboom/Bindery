@@ -15,6 +15,7 @@ import {
     buildIndex, loadIndex, indexPath, search, rerank,
     type SearchResult,
 } from './search.js';
+import { setupAiFiles, ALL_SKILLS, type AiTarget, type SkillTemplate } from './aisetup.js';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -45,7 +46,17 @@ export function toolHealth(root: string): string {
     const lines: string[] = [`root: ${root}`];
 
     const settingsPath = path.join(root, '.bindery', 'settings.json');
-    lines.push(`settings.json: ${fs.existsSync(settingsPath) ? 'present' : 'missing'}`);
+    if (fs.existsSync(settingsPath)) {
+        lines.push('settings.json: present');
+    } else {
+        lines.push('settings.json: missing — run init_workspace to set up this book');
+    }
+
+    const memDir   = path.join(root, '.bindery', 'memories');
+    const memFiles = fs.existsSync(memDir)
+        ? fs.readdirSync(memDir).filter(f => f.endsWith('.md')).length
+        : -1;
+    lines.push(`memories: ${memFiles >= 0 ? `present (${memFiles} file${memFiles === 1 ? '' : 's'})` : 'not created yet'}`);
 
     const idxPath = indexPath(root);
     if (fs.existsSync(idxPath)) {
@@ -531,6 +542,72 @@ export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
     return `Snapshot saved: "${msg}" (${fileCount} file${fileCount === 1 ? '' : 's'})`;
 }
 
+// ─── get_translation ─────────────────────────────────────────────────────────
+
+export interface GetTranslationArgs {
+    language: string;
+    word?:    string;
+}
+
+export function toolGetTranslation(root: string, args: GetTranslationArgs): string {
+    const filePath = path.join(root, '.bindery', 'translations.json');
+    if (!fs.existsSync(filePath)) {
+        return 'No translations.json found. Run "Bindery: Initialise Workspace" or "Bindery: Add Translation" first.';
+    }
+
+    let translations: TranslationsFile;
+    try { translations = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as TranslationsFile; }
+    catch { return 'Error: failed to parse .bindery/translations.json'; }
+
+    // Resolve the requested language key — case-insensitive, accept code or label
+    const langLower = args.language.toLowerCase();
+    const matchedKey = Object.keys(translations).find(
+        k => k.toLowerCase() === langLower ||
+             translations[k].label?.toLowerCase() === langLower ||
+             translations[k].sourceLanguage?.toLowerCase() === langLower
+    );
+
+    if (!matchedKey) {
+        const available = Object.entries(translations)
+            .map(([k, e]) => `${k}${e.label ? ` (${e.label})` : ''}`)
+            .join(', ');
+        return `No translation entry found for "${args.language}". Available: ${available || 'none'}`;
+    }
+
+    const entry = translations[matchedKey];
+    const rules = entry.rules ?? [];
+
+    if (!args.word) {
+        // Dump all rules for this language
+        if (rules.length === 0) { return `No rules defined for "${matchedKey}" yet.`; }
+        const header = `${matchedKey}${entry.label ? ` — ${entry.label}` : ''} (${entry.type}, ${rules.length} rules):`;
+        return [header, ...rules.map(r => `  ${r.from}  →  ${r.to}`)].join('\n');
+    }
+
+    // Word lookup — forgiving: case-insensitive + stem variants
+    const stems = wordStems(args.word.toLowerCase());
+    const matches = rules.filter(r => stems.some(s => r.from.toLowerCase() === s));
+
+    if (matches.length === 0) {
+        return `"${args.word}" not found in ${matchedKey} translations.`;
+    }
+    return matches.map(r => `${r.from}  →  ${r.to}  [${matchedKey}]`).join('\n');
+}
+
+/** Generate stem variants for forgiving word lookup. */
+function wordStems(word: string): string[] {
+    const variants = new Set<string>([word]);
+    // strip common suffixes to reach a base form
+    if (word.endsWith('ies'))   { variants.add(word.slice(0, -3) + 'y'); }
+    if (word.endsWith('es'))    { variants.add(word.slice(0, -2)); }
+    if (word.endsWith('s'))     { variants.add(word.slice(0, -1)); }
+    if (word.endsWith('ed'))    { variants.add(word.slice(0, -2)); variants.add(word.slice(0, -1)); }
+    if (word.endsWith('ing'))   { variants.add(word.slice(0, -3)); variants.add(word.slice(0, -3) + 'e'); }
+    // also try adding -s so a bare stem matches plurals stored in the file
+    variants.add(word + 's');
+    return Array.from(variants);
+}
+
 // ─── add_translation ──────────────────────────────────────────────────────────
 
 export interface AddTranslationArgs {
@@ -654,6 +731,203 @@ function formatReviewFiles(files: DiffFile[]): string {
     }
 
     return parts.join('\n\n---\n\n');
+}
+
+// ─── init_workspace ──────────────────────────────────────────────────────────
+
+export interface InitWorkspaceArgs {
+    bookTitle?:      string;
+    author?:         string;
+    storyFolder?:    string;
+    genre?:          string;
+    description?:    string;
+    targetAudience?: string;
+}
+
+export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string {
+    const settingsPath     = path.join(root, '.bindery', 'settings.json');
+    const translationsPath = path.join(root, '.bindery', 'translations.json');
+
+    // Load existing settings to preserve any keys not being updated
+    let existing: Record<string, unknown> = {};
+    const isNew = !fs.existsSync(settingsPath);
+    if (!isNew) {
+        try { existing = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>; }
+        catch { /* corrupt — treat as new */ }
+    }
+
+    const storyFolderName = args.storyFolder ?? (existing['storyFolder'] as string | undefined) ?? 'Story';
+    const bookTitle       = args.bookTitle   ?? (existing['bookTitle']   as string | undefined) ?? path.basename(root);
+
+    // Detect language folders from the story directory
+    const storyPath = path.join(root, storyFolderName);
+    const detectedLangs: Array<{ code: string; folderName: string; chapterWord: string; actPrefix: string; prologueLabel: string; epilogueLabel: string }> = [];
+    if (fs.existsSync(storyPath)) {
+        for (const entry of fs.readdirSync(storyPath, { withFileTypes: true })) {
+            if (entry.isDirectory() && /^[A-Z]{2,3}$/i.test(entry.name)) {
+                const code = entry.name.toUpperCase();
+                detectedLangs.push({ code, folderName: entry.name, chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' });
+            }
+        }
+    }
+    const languages = detectedLangs.length > 0
+        ? detectedLangs
+        : [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' }];
+
+    const slug = bookTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/, '') || 'Book';
+    const settings: Record<string, unknown> = {
+        ...existing,
+        bookTitle,
+        ...(args.author         ? { author: args.author }                : {}),
+        ...(args.genre          ? { genre: args.genre }                  : {}),
+        ...(args.description    ? { description: args.description }      : {}),
+        ...(args.targetAudience ? { targetAudience: args.targetAudience }: {}),
+        storyFolder:     storyFolderName,
+        mergedOutputDir: (existing['mergedOutputDir'] as string | undefined)  ?? 'Merged',
+        mergeFilePrefix: (existing['mergeFilePrefix'] as string | undefined)  ?? slug,
+        formatOnSave:    (existing['formatOnSave']    as boolean | undefined) ?? false,
+        languages,
+    };
+
+    fs.mkdirSync(path.join(root, '.bindery'), { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+    const created: string[] = ['.bindery/settings.json'];
+
+    // Create translations.json only if it does not already exist
+    if (!fs.existsSync(translationsPath)) {
+        const translations = {
+            'en-gb': { label: 'British English', type: 'substitution', sourceLanguage: 'en', rules: [], ignoredWords: [] },
+        };
+        fs.writeFileSync(translationsPath, JSON.stringify(translations, null, 2) + '\n', 'utf-8');
+        created.push('.bindery/translations.json');
+    }
+
+    const action   = isNew ? 'Initialised' : 'Updated';
+    const langNote = languages.map(l => l.code).join(', ');
+    const hint     = isNew
+        ? '\n\nTip: AI instruction files (CLAUDE.md, skills, copilot-instructions.md) are not yet set up. Run setup_ai_files to generate them, or use "Bindery: Set Up AI Files" in VS Code.'
+        : '';
+    return `${action}: ${created.join(', ')}. Book: "${bookTitle}", story folder: ${storyFolderName}/, languages: ${langNote}.${hint}`;
+}
+
+// ─── setup_ai_files ──────────────────────────────────────────────────────────
+
+export interface SetupAiFilesArgs {
+    targets?:   string[];   // 'claude' | 'copilot' | 'cursor' | 'agents'
+    skills?:    string[];   // skill names; omit for all
+    overwrite?: boolean;
+}
+
+export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
+    const validTargets: AiTarget[] = ['claude', 'copilot', 'cursor', 'agents'];
+    const validSkills  = new Set(ALL_SKILLS);
+
+    const targets: AiTarget[] = (args.targets ?? validTargets)
+        .filter((t): t is AiTarget => validTargets.includes(t as AiTarget));
+
+    const skills: SkillTemplate[] = args.skills
+        ? args.skills.filter((s): s is SkillTemplate => validSkills.has(s as SkillTemplate))
+        : ALL_SKILLS;
+
+    if (targets.length === 0) {
+        return `No valid targets specified. Valid targets: ${validTargets.join(', ')}`;
+    }
+
+    let result;
+    try {
+        result = setupAiFiles({ root, targets, skills, overwrite: args.overwrite ?? false });
+    } catch (e) {
+        return `Error: ${e instanceof Error ? e.message : String(e)}`;
+    }
+
+    const lines: string[] = [];
+    if (result.created.length > 0) {
+        lines.push(`Created (${result.created.length}):\n${result.created.map(f => `  ${f}`).join('\n')}`);
+    }
+    if (result.skipped.length > 0) {
+        lines.push(`Skipped — already exist (pass overwrite: true to replace) (${result.skipped.length}):\n${result.skipped.map(f => `  ${f}`).join('\n')}`);
+    }
+    if (lines.length === 0) { return 'Nothing to do.'; }
+    return lines.join('\n\n');
+}
+
+// ─── memory_list ─────────────────────────────────────────────────────────────
+
+export function toolMemoryList(root: string): string {
+    const memDir = path.join(root, '.bindery', 'memories');
+    if (!fs.existsSync(memDir)) { return 'No memory files found yet.'; }
+
+    const files = fs.readdirSync(memDir, { withFileTypes: true })
+        .filter(e => e.isFile() && e.name.endsWith('.md'))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (files.length === 0) { return 'No memory files found yet.'; }
+
+    return files.map(e => {
+        const lineCount = fs.readFileSync(path.join(memDir, e.name), 'utf-8').split(/\r?\n/).length;
+        return `${e.name}  (${lineCount} lines)`;
+    }).join('\n');
+}
+
+// ─── memory_append ────────────────────────────────────────────────────────────
+
+export interface MemoryAppendArgs {
+    file:    string;
+    title:   string;
+    content: string;
+}
+
+export function toolMemoryAppend(root: string, args: MemoryAppendArgs): string {
+    const memDir = path.join(root, '.bindery', 'memories');
+    fs.mkdirSync(memDir, { recursive: true });
+
+    const filePath  = path.join(memDir, args.file);
+    const date      = new Date().toISOString().slice(0, 10);
+    const header    = `## Session ${date} — ${args.title}`;
+    const addition  = `\n${header}\n${args.content}`;
+
+    fs.appendFileSync(filePath, addition, 'utf-8');
+
+    const newTotal   = fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).length;
+    const addedLines = addition.split(/\r?\n/).length;
+
+    return `Appended to ${args.file}: ${addedLines} lines added, ${newTotal} total lines.`;
+}
+
+// ─── memory_compact ───────────────────────────────────────────────────────────
+
+export interface MemoryCompactArgs {
+    file:              string;
+    compacted_content: string;
+}
+
+export function toolMemoryCompact(root: string, args: MemoryCompactArgs): string {
+    const memDir   = path.join(root, '.bindery', 'memories');
+    const filePath = path.join(memDir, args.file);
+
+    const oldLineCount = fs.existsSync(filePath)
+        ? fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).length
+        : 0;
+
+    const archiveDir = path.join(memDir, 'archive');
+    fs.mkdirSync(archiveDir, { recursive: true });
+
+    const date       = new Date().toISOString().slice(0, 10);
+    const basename   = path.basename(args.file, '.md');
+    const backupName = `${basename}_${date}.md`;
+    const backupPath = path.join(archiveDir, backupName);
+
+    if (fs.existsSync(filePath)) {
+        fs.copyFileSync(filePath, backupPath);
+    }
+
+    fs.mkdirSync(memDir, { recursive: true });
+    fs.writeFileSync(filePath, args.compacted_content, 'utf-8');
+
+    const newLineCount = args.compacted_content.split(/\r?\n/).length;
+    const relBackup    = path.join('.bindery', 'memories', 'archive', backupName);
+
+    return `Compacted ${args.file}: backup → ${relBackup}, old lines: ${oldLineCount}, new lines: ${newLineCount}.`;
 }
 
 // ─── Shared formatter ─────────────────────────────────────────────────────────

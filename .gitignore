@@ -26,3 +26,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# misc
+.FluxCoreInfo/
+ai-setup-templates.ts
