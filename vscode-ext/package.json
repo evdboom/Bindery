@@ -28,6 +28,7 @@
     "dialect"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onLanguage:markdown"
   ],
   "main": "./out/extension.js",
@@ -344,6 +345,85 @@
             "to":      { "type": "string", "description": "Target word or phrase" }
           },
           "required": ["langKey", "from", "to"]
+        }
+      },
+      {        "name": "bindery_get_translation",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Get Translation",
+        "modelDescription": "Look up translation/substitution rules in .bindery/translations.json. Without a word, lists all rules for the language. With a word, does a forgiving case-insensitive lookup including plural and inflected forms.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "language": { "type": "string", "description": "Language key, label, or code (e.g. 'nl', 'en-gb', 'British English')" },
+            "word":     { "type": "string", "description": "Word or term to look up (omit to list all rules for the language)" }
+          },
+          "required": ["language"]
+        }
+      },
+      {
+        "name": "bindery_setup_ai_files",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Setup AI Files",
+        "modelDescription": "Generate AI assistant instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md) and Claude skill templates from .bindery/settings.json. Run init_workspace first. Skips existing files unless overwrite is true.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "targets":   { "type": "array", "items": { "type": "string" }, "description": "Files to generate: claude, copilot, cursor, agents. Default: all." },
+            "skills":    { "type": "array", "items": { "type": "string" }, "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read_aloud. Default: all." },
+            "overwrite": { "type": "boolean", "description": "Overwrite existing files? Default false." }
+          }
+        }
+      },
+      {
+        "name": "bindery_init_workspace",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Init Workspace",
+        "modelDescription": "Create or update .bindery/settings.json and translations.json. All arguments optional — smart defaults used for any omitted values. Detects language folders automatically. Safe to run on an existing workspace.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "bookTitle":      { "type": "string", "description": "Book title (defaults to folder name)" },
+            "author":         { "type": "string" },
+            "storyFolder":    { "type": "string", "description": "Story folder name relative to root (default: Story)" },
+            "genre":          { "type": "string" },
+            "description":    { "type": "string", "description": "One-line description for AI instruction files" },
+            "targetAudience": { "type": "string", "description": "Target audience, e.g. 12+ or adults" }
+          }
+        }
+      },
+      {        "name": "bindery_memory_list",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Memory List",
+        "modelDescription": "List all session memory files in .bindery/memories/ with their line counts.",
+        "inputSchema": { "type": "object", "properties": {} }
+      },
+      {
+        "name": "bindery_memory_append",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Memory Append",
+        "modelDescription": "Append a dated session entry to a memory file in .bindery/memories/. The tool stamps the date; supply a short title and content.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file":    { "type": "string", "description": "Filename within .bindery/memories/, e.g. global.md or ch10.md" },
+            "title":   { "type": "string", "description": "Short session title describing the topic" },
+            "content": { "type": "string", "description": "Text to record under this session entry" }
+          },
+          "required": ["file", "title", "content"]
+        }
+      },
+      {
+        "name": "bindery_memory_compact",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Memory Compact",
+        "modelDescription": "Overwrite a memory file with a compacted summary. The original is backed up to .bindery/memories/archive/ first.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file":              { "type": "string", "description": "Filename within .bindery/memories/, e.g. global.md" },
+            "compacted_content": { "type": "string", "description": "Full replacement content (model-supplied summary)" }
+          },
+          "required": ["file", "compacted_content"]
         }
       }
     ],

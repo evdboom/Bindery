@@ -76,6 +76,9 @@ jobs:
           npm ci
           npm run compile
 
+      - name: Sync templates to vscode-ext
+        run: cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+
       - name: Set version from tag and publish extension
         run: |
           VERSION="${GITHUB_REF_NAME#v}"

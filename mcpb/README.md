@@ -1,20 +1,23 @@
 # Bindery MCP — Desktop Extension (.mcpb)
 
 Book authoring tools for Claude Desktop: chapter navigation, full-text search,
-translation management, typography formatting, and version snapshots. Works with
-any Markdown book project structured with the Bindery VS Code extension.
+translation management, session memory, typography formatting, and version snapshots.
+Works with any Markdown book project structured with the Bindery VS Code extension.
 
 ## Features
 
 - **Chapter navigation** — jump to any chapter by number and language
 - **Full-text search** — BM25 ranked search across all story and notes files
 - **Context retrieval** — "where did X happen" queries with ranked passages
-- **Translation management** — add and update dialect substitution rules
+- **Translation management** — list, look up, add, and update translation and dialect substitution rules
+- **Session memory** — append, list, and compact persistent session notes in `Notes/Memories/`
 - **Typography formatting** — curly quotes, em-dashes, ellipses
 - **Version snapshots** — git-based save points after writing sessions
 - **Review diffs** — structured git diff of uncommitted changes
 
-## Installation
+## Manual Installation
+
+To install manually without using published Claude Connectors
 
 1. Download the `.mcpb` file from the latest release
 2. Open Claude Desktop → **Settings** → **Extensions**
@@ -60,6 +63,82 @@ during future exports.
 
 Claude calls `get_review_text` to show the diff, reviews it, then calls
 `git_snapshot` to commit the changes with a descriptive message.
+
+### Look up a translation rule
+
+> "How is 'flux' translated in the Dutch version?"
+
+Claude calls `get_translation` with `language: "nl"` and `word: "flux"`. The
+lookup is forgiving — it matches case-insensitively and checks plural and
+inflected forms automatically. If no rule exists yet, Claude can call
+`add_translation` to create one.
+
+### List all known substitution rules for a language
+
+> "Show me all the British English substitution rules"
+
+Claude calls `get_translation` with `language: "en-gb"` (omitting `word`) to
+dump every `from → to` rule in the `en-gb` entry of `.bindery/translations.json`.
+Useful before a translation or export session to see what's already configured.
+
+### Save session decisions to memory
+
+> "Save today's character decisions to memory"
+
+Claude calls `memory_list` to check which files already exist and their sizes,
+then calls `memory_append` with `file: "global.md"`, a short title, and the
+decisions to record. The tool stamps the current date automatically — no manual
+date formatting needed.
+
+### Compact a memory file that has grown too large
+
+> "The global memory file is getting long — please compact it"
+
+Claude reads the current content, summarises it, then calls `memory_compact`
+with the compacted text. The original is automatically backed up to
+`Notes/Memories/archive/global_YYYY-MM-DD.md` before the file is overwritten.
+
+### Spot-check a chapter translation
+
+> "Compare chapter 10 in EN and NL and flag any translation issues"
+
+Claude calls `get_chapter` twice — once for EN, once for NL — then calls
+`get_translation` with the target language to load the known term table.
+Discrepancies are presented in a side-by-side table. Any confirmed corrections
+are saved back with `add_translation`.
+
+### Check continuity across chapters
+
+> "Check chapter 8 for consistency errors — character descriptions and world rules"
+
+Claude calls `get_chapter` to read the chapter, `get_notes` to load character
+profiles and world rules, then uses `retrieve_context` and `search` to verify
+specific details against earlier chapters. Results are presented in a table with
+issue type, location, and the reference that contradicts it.
+
+## Tools reference
+
+| Tool | What it does |
+|---|---|
+| `list_books` | List all configured book names |
+| `identify_book` | Match a working directory to a book name |
+| `health` | Server status: settings, index, embedding backend |
+| `index_build` | Build or rebuild the full-text search index |
+| `index_status` | Show index chunk count and build time |
+| `get_text` | Read any file by relative path, with optional line range |
+| `get_chapter` | Full chapter content by number and language |
+| `get_overview` | Chapter structure — acts, chapters, titles |
+| `get_notes` | Notes/ and Details_*.md files, filterable by category or name |
+| `search` | BM25 full-text search with ranked snippets |
+| `retrieve_context` | Semantic passage retrieval for "where did X happen" queries |
+| `format` | Apply typography formatting to a file or folder |
+| `get_review_text` | Structured git diff with optional auto-staging |
+| `git_snapshot` | Git commit of story, notes, and arc changes |
+| `get_translation` | List all rules for a language, or look up a specific word (forgiving) |
+| `add_translation` | Add or update a rule in `.bindery/translations.json` |
+| `memory_list` | List `Notes/Memories/` files with line counts |
+| `memory_append` | Append a dated session entry to a memory file |
+| `memory_compact` | Overwrite a memory file with a summary (backs up original) |
 
 ## Privacy Policy
 
