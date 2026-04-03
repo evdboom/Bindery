@@ -624,6 +624,76 @@ interface TranslationRule  { from: string; to: string }
 interface TranslationEntry { label?: string; type: string; sourceLanguage?: string; rules?: TranslationRule[]; ignoredWords?: string[] }
 type TranslationsFile = Record<string, TranslationEntry>;
 
+// ─── Built-in en-gb substitution rules (US → British English) ────────────────
+
+const BUILTIN_EN_GB_RULES: TranslationRule[] = [
+    { from: 'analyze',        to: 'analyse' },
+    { from: 'analyzes',       to: 'analyses' },
+    { from: 'analyzed',       to: 'analysed' },
+    { from: 'analyzing',      to: 'analysing' },
+    { from: 'canceled',       to: 'cancelled' },
+    { from: 'canceling',      to: 'cancelling' },
+    { from: 'center',         to: 'centre' },
+    { from: 'centers',        to: 'centres' },
+    { from: 'centered',       to: 'centred' },
+    { from: 'centering',      to: 'centring' },
+    { from: 'color',          to: 'colour' },
+    { from: 'colors',         to: 'colours' },
+    { from: 'colored',        to: 'coloured' },
+    { from: 'coloring',       to: 'colouring' },
+    { from: 'defense',        to: 'defence' },
+    { from: 'destabilize',    to: 'destabilise' },
+    { from: 'destabilizes',   to: 'destabilises' },
+    { from: 'destabilized',   to: 'destabilised' },
+    { from: 'destabilizing',  to: 'destabilising' },
+    { from: 'equalize',       to: 'equalise' },
+    { from: 'equalizes',      to: 'equalises' },
+    { from: 'equalized',      to: 'equalised' },
+    { from: 'equalizing',     to: 'equalising' },
+    { from: 'favor',          to: 'favour' },
+    { from: 'favors',         to: 'favours' },
+    { from: 'favored',        to: 'favoured' },
+    { from: 'favoring',       to: 'favouring' },
+    { from: 'favorite',       to: 'favourite' },
+    { from: 'favorites',      to: 'favourites' },
+    { from: 'fiber',          to: 'fibre' },
+    { from: 'gray',           to: 'grey' },
+    { from: 'initialize',     to: 'initialise' },
+    { from: 'initializes',    to: 'initialises' },
+    { from: 'initialized',    to: 'initialised' },
+    { from: 'initializing',   to: 'initialising' },
+    { from: 'mesmerize',      to: 'mesmerise' },
+    { from: 'mesmerizes',     to: 'mesmerises' },
+    { from: 'mesmerized',     to: 'mesmerised' },
+    { from: 'mesmerizing',    to: 'mesmerising' },
+    { from: 'mom',            to: 'mum' },
+    { from: 'offense',        to: 'offence' },
+    { from: 'organize',       to: 'organise' },
+    { from: 'organizes',      to: 'organises' },
+    { from: 'organized',      to: 'organised' },
+    { from: 'organizing',     to: 'organising' },
+    { from: 'organization',   to: 'organisation' },
+    { from: 'realize',        to: 'realise' },
+    { from: 'realizes',       to: 'realises' },
+    { from: 'realized',       to: 'realised' },
+    { from: 'realizing',      to: 'realising' },
+    { from: 'realization',    to: 'realisation' },
+    { from: 'recognize',      to: 'recognise' },
+    { from: 'recognizes',     to: 'recognises' },
+    { from: 'recognized',     to: 'recognised' },
+    { from: 'recognizing',    to: 'recognising' },
+    { from: 'specialize',     to: 'specialise' },
+    { from: 'specializes',    to: 'specialises' },
+    { from: 'specialized',    to: 'specialised' },
+    { from: 'specializing',   to: 'specialising' },
+    { from: 'theater',        to: 'theatre' },
+    { from: 'theaters',       to: 'theatres' },
+    { from: 'traveler',       to: 'traveller' },
+    { from: 'travelers',      to: 'travellers' },
+    { from: 'traveled',       to: 'travelled' },
+    { from: 'traveling',      to: 'travelling' },
+];
+
 export function toolAddTranslation(root: string, args: AddTranslationArgs): string {
     const { targetLangCode, from, to } = args;
     if (!from.trim() || !to.trim()) { return 'Error: both "from" and "to" must be non-empty.'; }
@@ -934,9 +1004,15 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
             }
         }
     }
-    const languages = detectedLangs.length > 0
+    // Merge detected langs with existing to preserve custom properties (dialects, isDefault, labels)
+    const existingLangs = ((existing['languages'] as unknown[] | undefined) ?? []) as Array<Record<string, unknown>>;
+    const baseLangs = detectedLangs.length > 0
         ? detectedLangs
         : [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' }];
+    const languages: Array<Record<string, unknown>> = baseLangs.map(dl => {
+        const el = existingLangs.find(l => (l['code'] as string | undefined)?.toUpperCase() === dl.code);
+        return el ? { ...el, code: dl.code, folderName: dl.folderName } : (dl as unknown as Record<string, unknown>);
+    });
 
     const slug = bookTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/, '') || 'Book';
     const settings: Record<string, unknown> = {
@@ -966,12 +1042,31 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         created.push('.bindery/translations.json');
     }
 
+    // Seed en-gb rules if any language declares it as a dialect and it isn't already populated
+    type LangWithDialects = { dialects?: Array<{ code: string }> };
+    const engbDeclared = languages.some((l: unknown) =>
+        (l as LangWithDialects).dialects?.some(d => d.code?.toLowerCase() === 'en-gb')
+    );
+    let engbSeeded = false;
+    if (engbDeclared) {
+        let trans: TranslationsFile = {};
+        if (fs.existsSync(translationsPath)) {
+            try { trans = JSON.parse(fs.readFileSync(translationsPath, 'utf-8')) as TranslationsFile; } catch { /* ignore */ }
+        }
+        if (!trans['en-gb']?.rules?.length) {
+            trans['en-gb'] = { label: 'British English', type: 'substitution', sourceLanguage: 'en', rules: BUILTIN_EN_GB_RULES, ignoredWords: [] };
+            fs.writeFileSync(translationsPath, JSON.stringify(trans, null, 2) + '\n', 'utf-8');
+            engbSeeded = true;
+        }
+    }
+
     const action   = isNew ? 'Initialised' : 'Updated';
-    const langNote = languages.map(l => l.code).join(', ');
+    const langNote = languages.map(l => (l as { code: string }).code).join(', ');
     const hint     = isNew
         ? '\n\nTip: AI instruction files (CLAUDE.md, skills, copilot-instructions.md) are not yet set up. Run setup_ai_files to generate them, or use "Bindery: Set Up AI Files" in VS Code.'
         : '';
-    return `${action}: ${created.join(', ')}. Book: "${bookTitle}", story folder: ${storyFolderName}/, languages: ${langNote}.${hint}`;
+    const engbNote = engbSeeded ? ' en-gb dialect seeded (75 rules).' : '';
+    return `${action}: ${created.join(', ')}. Book: "${bookTitle}", story folder: ${storyFolderName}/, languages: ${langNote}.${engbNote}${hint}`;
 }
 
 // ─── setup_ai_files ──────────────────────────────────────────────────────────
@@ -1092,6 +1187,109 @@ export function toolMemoryCompact(root: string, args: MemoryCompactArgs): string
     const relBackup    = path.join('.bindery', 'memories', 'archive', backupName);
 
     return `Compacted ${args.file}: backup → ${relBackup}, old lines: ${oldLineCount}, new lines: ${newLineCount}.`;
+}
+
+// ─── chapter_status_get / chapter_status_update ───────────────────────────────
+
+export interface ChapterStatusEntry {
+    number:      number;
+    title:       string;
+    language:    string;
+    status:      'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review';
+    wordCount?:  number;
+    notes?:      string;
+}
+
+interface ChapterStatus {
+    schemaVersion: 1;
+    updatedAt:     string;
+    chapters:      ChapterStatusEntry[];
+}
+
+const STATUS_ORDER  = ['done', 'in-progress', 'needs-review', 'draft', 'planned'] as const;
+const STATUS_LABELS: Record<string, string> = {
+    'done':         'Done',
+    'in-progress':  'In Progress',
+    'needs-review': 'Needs Review',
+    'draft':        'Draft',
+    'planned':      'Planned',
+};
+
+export function toolChapterStatusGet(root: string): string {
+    const filePath = path.join(root, '.bindery', 'chapter-status.json');
+    if (!fs.existsSync(filePath)) {
+        return 'No chapter status on record. Use chapter_status_update to record progress.';
+    }
+    let data: ChapterStatus;
+    try { data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as ChapterStatus; }
+    catch { return 'Error: .bindery/chapter-status.json is present but cannot be parsed.'; }
+
+    const chapters = (data.chapters ?? []).slice().sort((a, b) => a.number - b.number);
+    if (chapters.length === 0) {
+        return 'No chapters recorded. Use chapter_status_update to record progress.';
+    }
+
+    const byStatus = new Map<string, ChapterStatusEntry[]>();
+    for (const ch of chapters) {
+        const list = byStatus.get(ch.status) ?? [];
+        list.push(ch);
+        byStatus.set(ch.status, list);
+    }
+
+    const lines: string[] = [`Chapter status — updated ${data.updatedAt}, ${chapters.length} chapter(s)`];
+    for (const status of STATUS_ORDER) {
+        const group = byStatus.get(status);
+        if (!group || group.length === 0) { continue; }
+        lines.push(`\n${STATUS_LABELS[status]} (${group.length})`);
+        for (const ch of group) {
+            const meta: string[] = [];
+            if (ch.language !== 'EN') { meta.push(ch.language); }
+            if (ch.wordCount)         { meta.push(`~${ch.wordCount}w`); }
+            const suffix = meta.length ? ` [${meta.join(', ')}]` : '';
+            lines.push(`  Ch ${ch.number} — ${ch.title}${suffix}`);
+            if (ch.notes) { lines.push(`    ${ch.notes}`); }
+        }
+    }
+    return lines.join('\n');
+}
+
+export interface ChapterStatusUpdateArgs {
+    chapters: ChapterStatusEntry[];
+}
+
+export function toolChapterStatusUpdate(root: string, args: ChapterStatusUpdateArgs): string {
+    if (!args.chapters || args.chapters.length === 0) {
+        return 'Error: chapters array must not be empty.';
+    }
+    const filePath = path.join(root, '.bindery', 'chapter-status.json');
+    let data: ChapterStatus = { schemaVersion: 1, updatedAt: '', chapters: [] };
+    if (fs.existsSync(filePath)) {
+        try { data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as ChapterStatus; }
+        catch { /* corrupt — start fresh */ }
+    }
+
+    const chapters = data.chapters ?? [];
+    let added = 0, updated = 0;
+    for (const incoming of args.chapters) {
+        const lang  = (incoming.language ?? 'EN').toUpperCase();
+        const entry = { ...incoming, language: lang };
+        const idx   = chapters.findIndex(c => c.number === entry.number && c.language === lang);
+        if (idx >= 0) { chapters[idx] = entry; updated++; }
+        else           { chapters.push(entry);  added++;   }
+    }
+
+    chapters.sort((a, b) => a.language.localeCompare(b.language) || a.number - b.number);
+
+    const out: ChapterStatus = {
+        schemaVersion: 1,
+        updatedAt:     new Date().toISOString().slice(0, 10),
+        chapters,
+    };
+
+    fs.mkdirSync(path.join(root, '.bindery'), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(out, null, 2) + '\n', 'utf-8');
+
+    return `Chapter status updated: ${added} added, ${updated} updated. Total: ${chapters.length} chapters.`;
 }
 
 // ─── Shared formatter ─────────────────────────────────────────────────────────

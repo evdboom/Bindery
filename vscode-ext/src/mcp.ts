@@ -32,6 +32,7 @@ interface InitWorkspaceInput  { bookTitle?: string; author?: string; storyFolder
 interface SetupAiFilesInput   { targets?: string[]; skills?: string[]; overwrite?: boolean }
 interface MemoryAppendInput   { file: string; title: string; content: string }
 interface MemoryCompactInput  { file: string; compacted_content: string }
+interface ChapterStatusUpdateInput { chapters: Array<{ number: number; title: string; language: string; status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review'; wordCount?: number; notes?: string }> }
 
 interface McpTools {
     toolHealth:           (root: string) => string;
@@ -56,15 +57,24 @@ interface McpTools {
     toolMemoryList:       (root: string) => string;
     toolMemoryAppend:     (root: string, args: MemoryAppendInput) => string;
     toolMemoryCompact:    (root: string, args: MemoryCompactInput) => string;
+    toolChapterStatusGet:    (root: string) => string;
+    toolChapterStatusUpdate: (root: string, args: ChapterStatusUpdateInput) => string;
 }
 
 /**
  * Lazily load the compiled mcp-ts tools at runtime from the extension's
  * bundled output directory. This avoids a cross-project TypeScript import.
+ *
+ * In production (VSIX), mcp-ts is bundled inside the extension at mcp-ts/out/.
+ * In development (F5), mcp-ts is a sibling of vscode-ext/, so we fall back one
+ * level up when the bundled copy isn't present.
  */
 function loadMcpTools(extensionPath: string): McpTools {
+    const bundledPath = path.join(extensionPath, 'mcp-ts', 'out', 'tools');
+    const devPath     = path.join(extensionPath, '..', 'mcp-ts', 'out', 'tools');
+    const modulePath  = fs.existsSync(bundledPath + '.js') ? bundledPath : devPath;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require(path.join(extensionPath, 'mcp-ts', 'out', 'tools')) as McpTools;
+    return require(modulePath) as McpTools;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -176,6 +186,14 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<MemoryCompactInput>('bindery_memory_compact', {
             invoke: async (opts, _token) => ok(t.toolMemoryCompact(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool('bindery_chapter_status_get', {
+            invoke: async (_opts, _token) => ok(t.toolChapterStatusGet(requireRoot())),
+        }),
+
+        vscode.lm.registerTool<ChapterStatusUpdateInput>('bindery_chapter_status_update', {
+            invoke: async (opts, _token) => ok(t.toolChapterStatusUpdate(requireRoot(), opts.input)),
         }),
     );
 }

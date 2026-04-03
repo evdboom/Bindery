@@ -205,6 +205,8 @@
         "name": "bindery_health",
         "tags": ["bindery"],
         "displayName": "Bindery: Health",
+        "toolReferenceName": "binderyHealth",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Check Bindery workspace status: settings, index, embedding backend.",
         "inputSchema": { "type": "object", "properties": {} }
       },
@@ -212,6 +214,8 @@
         "name": "bindery_index_build",
         "tags": ["bindery"],
         "displayName": "Bindery: Build Index",
+        "toolReferenceName": "binderyIndexBuild",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Build or rebuild the full-text search index for the book workspace.",
         "inputSchema": { "type": "object", "properties": {} }
       },
@@ -219,6 +223,8 @@
         "name": "bindery_index_status",
         "tags": ["bindery"],
         "displayName": "Bindery: Index Status",
+        "toolReferenceName": "binderyIndexStatus",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Show current index metadata: chunk count and build time.",
         "inputSchema": { "type": "object", "properties": {} }
       },
@@ -226,6 +232,8 @@
         "name": "bindery_get_text",
         "tags": ["bindery"],
         "displayName": "Bindery: Get Text",
+        "toolReferenceName": "binderyGetText",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Read a source file by relative path, optionally restricted to a line range.",
         "inputSchema": {
           "type": "object",
@@ -241,6 +249,8 @@
         "name": "bindery_get_chapter",
         "tags": ["bindery"],
         "displayName": "Bindery: Get Chapter",
+        "toolReferenceName": "binderyGetChapter",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Fetch the full content of a chapter by number and language code (e.g. EN or NL).",
         "inputSchema": {
           "type": "object",
@@ -255,6 +265,8 @@
         "name": "bindery_get_overview",
         "tags": ["bindery"],
         "displayName": "Bindery: Get Overview",
+        "toolReferenceName": "binderyGetOverview",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "List the chapter structure (acts, chapters, titles) for one or all languages.",
         "inputSchema": {
           "type": "object",
@@ -268,6 +280,8 @@
         "name": "bindery_get_notes",
         "tags": ["bindery"],
         "displayName": "Bindery: Get Notes",
+        "toolReferenceName": "binderyGetNotes",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Read from Notes/ and Details_*.md, optionally filtered by category or character name.",
         "inputSchema": {
           "type": "object",
@@ -281,6 +295,8 @@
         "name": "bindery_search",
         "tags": ["bindery"],
         "displayName": "Bindery: Search",
+        "toolReferenceName": "binderySearch",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Full-text BM25 search across all story and notes files. Returns ranked snippets with file path and line numbers.",
         "inputSchema": {
           "type": "object",
@@ -296,6 +312,8 @@
         "name": "bindery_retrieve_context",
         "tags": ["bindery"],
         "displayName": "Bindery: Retrieve Context",
+        "toolReferenceName": "binderyRetrieveContext",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Retrieve the most relevant passages for a query. Best for 'where did X happen' or 'what did character Y say about Z'.",
         "inputSchema": {
           "type": "object",
@@ -311,6 +329,8 @@
         "name": "bindery_format",
         "tags": ["bindery"],
         "displayName": "Bindery: Format",
+        "toolReferenceName": "binderyFormat",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder.",
         "inputSchema": {
           "type": "object",
@@ -325,6 +345,8 @@
         "name": "bindery_get_review_text",
         "tags": ["bindery"],
         "displayName": "Bindery: Review Text",
+        "toolReferenceName": "binderyGetReviewText",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Structured git diff of uncommitted changes with context lines. Filter by language (EN, NL, ALL). Set autoStage to true to stage reviewed files so the next call only shows new changes.",
         "inputSchema": {
           "type": "object",
@@ -339,6 +361,8 @@
         "name": "bindery_git_snapshot",
         "tags": ["bindery"],
         "displayName": "Bindery: Git Snapshot",
+        "toolReferenceName": "binderyGitSnapshot",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Use after writing sessions or successful reviews.",
         "inputSchema": {
           "type": "object",
@@ -351,6 +375,8 @@
         "name": "bindery_add_translation",
         "tags": ["bindery"],
         "displayName": "Bindery: Add Translation",
+        "toolReferenceName": "binderyAddTranslation",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Add or update a substitution rule in .bindery/translations.json. Used for dialect conversion (e.g. US→UK spelling).",
         "inputSchema": {
           "type": "object",
@@ -365,6 +391,8 @@
       {        "name": "bindery_get_translation",
         "tags": ["bindery"],
         "displayName": "Bindery: Get Translation",
+        "toolReferenceName": "binderyGetTranslation",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Look up translation/substitution rules in .bindery/translations.json. Without a word, lists all rules for the language. With a word, does a forgiving case-insensitive lookup including plural and inflected forms.",
         "inputSchema": {
           "type": "object",
@@ -379,6 +407,8 @@
         "name": "bindery_setup_ai_files",
         "tags": ["bindery"],
         "displayName": "Bindery: Setup AI Files",
+        "toolReferenceName": "binderySetupAiFiles",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Generate AI assistant instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md) and Claude skill templates from .bindery/settings.json. Run init_workspace first. Skips existing files unless overwrite is true.",
         "inputSchema": {
           "type": "object",
@@ -393,6 +423,8 @@
         "name": "bindery_init_workspace",
         "tags": ["bindery"],
         "displayName": "Bindery: Init Workspace",
+        "toolReferenceName": "binderyInitWorkspace",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Create or update .bindery/settings.json and translations.json. All arguments optional — smart defaults used for any omitted values. Detects language folders automatically. Safe to run on an existing workspace.",
         "inputSchema": {
           "type": "object",
@@ -409,6 +441,8 @@
       { "name": "bindery_add_dialect",
         "tags": ["bindery"],
         "displayName": "Bindery: Add Dialect Rule",
+        "toolReferenceName": "binderyAddDialect",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Add or update a dialect substitution rule in .bindery/translations.json (e.g. EN→en-gb spelling). Source is auto-detected from the active file's language folder.",
         "inputSchema": {
           "type": "object",
@@ -423,6 +457,8 @@
       { "name": "bindery_get_dialect",
         "tags": ["bindery"],
         "displayName": "Bindery: Get Dialect Rules",
+        "toolReferenceName": "binderyGetDialect",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "List or look up dialect substitution rules from .bindery/translations.json. Without a word, lists all rules for the dialect. With a word, does a forgiving case-insensitive lookup including inflected forms.",
         "inputSchema": {
           "type": "object",
@@ -436,6 +472,8 @@
       { "name": "bindery_add_language",
         "tags": ["bindery"],
         "displayName": "Bindery: Add Language",
+        "toolReferenceName": "binderyAddLanguage",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Add a new main language to settings.json and create its folder structure under Story/ with stub .md files mirroring the default language. Use for manually translated editions (e.g. French, Spanish).",
         "inputSchema": {
           "type": "object",
@@ -454,6 +492,8 @@
       { "name": "bindery_memory_list",
         "tags": ["bindery"],
         "displayName": "Bindery: Memory List",
+        "toolReferenceName": "binderyMemoryList",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "List all session memory files in .bindery/memories/ with their line counts.",
         "inputSchema": { "type": "object", "properties": {} }
       },
@@ -461,6 +501,8 @@
         "name": "bindery_memory_append",
         "tags": ["bindery"],
         "displayName": "Bindery: Memory Append",
+        "toolReferenceName": "binderyMemoryAppend",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Append a dated session entry to a memory file in .bindery/memories/. The tool stamps the date; supply a short title and content.",
         "inputSchema": {
           "type": "object",
@@ -476,6 +518,8 @@
         "name": "bindery_memory_compact",
         "tags": ["bindery"],
         "displayName": "Bindery: Memory Compact",
+        "toolReferenceName": "binderyMemoryCompact",
+        "canBeReferencedInPrompt": true,
         "modelDescription": "Overwrite a memory file with a compacted summary. The original is backed up to .bindery/memories/archive/ first.",
         "inputSchema": {
           "type": "object",
@@ -484,6 +528,44 @@
             "compacted_content": { "type": "string", "description": "Full replacement content (model-supplied summary)" }
           },
           "required": ["file", "compacted_content"]
+        }
+      },
+      {
+        "name": "bindery_chapter_status_get",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Chapter Status",
+        "toolReferenceName": "binderyChapterStatusGet",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Read the current chapter progress tracker from .bindery/chapter-status.json. Returns a grouped summary (done, in-progress, draft, planned, needs-review). Returns a clear empty-state message if no status has been recorded yet.",
+        "inputSchema": { "type": "object", "properties": {} }
+      },
+      {
+        "name": "bindery_chapter_status_update",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Chapter Status Update",
+        "toolReferenceName": "binderyChapterStatusUpdate",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Upsert chapter progress entries in .bindery/chapter-status.json. Send only the chapters that changed — existing entries are preserved. status must be one of: done, in-progress, draft, planned, needs-review.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "chapters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "number":    { "type": "number", "description": "Chapter number" },
+                  "title":     { "type": "string", "description": "Chapter title" },
+                  "language":  { "type": "string", "description": "Language code, e.g. EN or NL" },
+                  "status":    { "type": "string", "enum": ["done", "in-progress", "draft", "planned", "needs-review"] },
+                  "wordCount": { "type": "number", "description": "Approximate word count" },
+                  "notes":     { "type": "string", "description": "Short agent note about this chapter" }
+                },
+                "required": ["number", "title", "language", "status"]
+              }
+            }
+          },
+          "required": ["chapters"]
         }
       }
     ],

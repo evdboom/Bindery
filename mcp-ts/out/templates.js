@@ -1,3 +1,4 @@
+"use strict";
 /**
  * Bindery AI instruction file templates.
  *
@@ -7,26 +8,9 @@
  *
  * This file has zero imports. It exports only TemplateContext and renderTemplate.
  */
-
-// ─── Context ──────────────────────────────────────────────────────────────────
-
-export interface TemplateContext {
-    title:          string;
-    author:         string;
-    description:    string;
-    genre:          string;
-    audience:       string;
-    storyFolder:    string;
-    notesFolder:    string;
-    arcFolder:      string;
-    memoriesFolder: string;
-    languages:      Array<{ code: string; folderName: string }>;
-    langList:       string;
-    hasMultiLang:   boolean;
-}
-
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.renderTemplate = renderTemplate;
 // ─── Entry point ──────────────────────────────────────────────────────────────
-
 /**
  * Render a named template with the given context.
  *
@@ -34,156 +18,88 @@ export interface TemplateContext {
  * Skill templates: 'review', 'brainstorm', 'memory', 'translate',
  *                  'status', 'continuity', 'read_aloud'
  */
-export function renderTemplate(name: string, ctx: TemplateContext): string {
+function renderTemplate(name, ctx) {
     switch (name) {
-        case 'claude':     return claudeMd(ctx);
-        case 'copilot':    return copilotMd(ctx);
-        case 'cursor':     return cursorRules(ctx);
-        case 'agents':     return agentsMd(ctx);
-        case 'review':     return skillReview(ctx);
+        case 'claude': return claudeMd(ctx);
+        case 'copilot': return copilotMd(ctx);
+        case 'cursor': return cursorRules(ctx);
+        case 'agents': return agentsMd(ctx);
+        case 'review': return skillReview(ctx);
         case 'brainstorm': return skillBrainstorm(ctx);
-        case 'memory':     return skillMemory(ctx);
-        case 'translate':  return skillTranslate(ctx);
-        case 'status':     return skillStatus(ctx);
+        case 'memory': return skillMemory(ctx);
+        case 'translate': return skillTranslate(ctx);
+        case 'status': return skillStatus(ctx);
         case 'continuity': return skillContinuity(ctx);
         case 'read_aloud': return skillReadAloud(ctx);
-        default:           return `Unknown template: ${name}`;
+        default: return `Unknown template: ${name}`;
     }
 }
-
 // ─── Private helpers ──────────────────────────────────────────────────────────
-
-function audienceNote(ctx: TemplateContext): string {
+function audienceNote(ctx) {
     return ctx.audience ? `Target audience: ${ctx.audience}.` : '';
 }
-
-function languageSection(ctx: TemplateContext): string {
-    if (!ctx.hasMultiLang) { return ''; }
+function languageSection(ctx) {
+    if (!ctx.hasMultiLang) {
+        return '';
+    }
     return `\nLanguages: ${ctx.langList}.\n`;
 }
-
 // ─── Top-level templates ──────────────────────────────────────────────────────
-
-function claudeMd(ctx: TemplateContext): string {
+function claudeMd(ctx) {
     const { title, author, description, genre, storyFolder, notesFolder, arcFolder, memoriesFolder } = ctx;
-    const lines: string[] = [
+    const lines = [
         `# Claude — ${title}`,
         '',
         '## Project',
     ];
-    if (genre)       { lines.push(`Genre: ${genre}.`); }
-    if (description) { lines.push(description); }
-    if (ctx.audience){ lines.push(audienceNote(ctx)); }
-    if (author)      { lines.push(`Author: ${author}.`); }
+    if (genre) {
+        lines.push(`Genre: ${genre}.`);
+    }
+    if (description) {
+        lines.push(description);
+    }
+    if (ctx.audience) {
+        lines.push(audienceNote(ctx));
+    }
+    if (author) {
+        lines.push(`Author: ${author}.`);
+    }
     lines.push(languageSection(ctx));
-
-    lines.push(
-        '## Start of session',
-        `1. Read COWORK.md (if present) for current focus and context.`,
-        `2. Read ${memoriesFolder}/global.md for cross-chapter decisions.`,
-        `3. If working on a specific chapter, read ${memoriesFolder}/chXX.md if it exists.`,
-        '',
-        '## Memory system',
-        '1. When the user ask or otherwise indicates the end of a session: use /memory to save decisions.',
-        `2. When switching to another chapter read ${memoriesFolder}/chXX.md if it exists. for that chapter`,
-        '',
-        '## Repo layout',
-        '```',
-        `${arcFolder}/  ← story arc files (Overall.md, Act_I_*.md, Act_II_*.md, Act_III_*.md)`,
-        `${notesFolder}/  ← story bible (characters, world)`,
-        `${storyFolder}/`,
-        ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters (one .md per chapter)`),
-        '```',
-        '',
-        '## Writing rules',
-        '- Never rewrite paragraphs unless explicitly asked. Suggest edits only.',
-        '- HTML comments `<!-- -->` in chapter files are writer notes. Treat as context, not prose.',
-        '- Quotation marks and dashes in chapter files are managed by the Bindery extension. Do not flag these as formatting errors.',
-    );
+    lines.push('## Start of session', `1. Read COWORK.md (if present) for current focus and context.`, `2. Read ${memoriesFolder}/global.md for cross-chapter decisions.`, `3. If working on a specific chapter, read ${memoriesFolder}/chXX.md if it exists.`, '', '## Memory system', '1. When the user ask or otherwise indicates the end of a session: use /memory to save decisions.', `2. When switching to another chapter read ${memoriesFolder}/chXX.md if it exists. for that chapter`, '', '## Repo layout', '```', `${arcFolder}/  ← story arc files (Overall.md, Act_I_*.md, Act_II_*.md, Act_III_*.md)`, `${notesFolder}/  ← story bible (characters, world)`, `${storyFolder}/`, ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters (one .md per chapter)`), '```', '', '## Writing rules', '- Never rewrite paragraphs unless explicitly asked. Suggest edits only.', '- HTML comments `<!-- -->` in chapter files are writer notes. Treat as context, not prose.', '- Quotation marks and dashes in chapter files are managed by the Bindery extension. Do not flag these as formatting errors.');
     if (ctx.audience) {
         lines.push(`- Content is aimed at ${ctx.audience}. Keep language accessible and themes age-appropriate.`);
     }
-    lines.push(
-        '',
-        '## Available skills',
-        'Use these slash commands to trigger structured workflows:',
-        '| Command | Purpose |',
-        '|---|---|',
-        '| `/review` | Review a chapter for language, arc consistency, and age-appropriateness |',
-        '| `/brainstorm` | Generate plot/character/scene ideas |',
-        '| `/memory` | Update memory files and compact if needed |',
-        '| `/translate` | Assist with chapter translation |',
-        '| `/status` | Book progress snapshot |',
-        '| `/continuity` | Check a chapter for consistency errors |',
-        '| `/read-aloud` | Test how a passage reads when spoken |',
-        '',
-        '## MCP server (bindery-mcp)',
-        '',
-        'All tools require a `book` argument. Use `list_books` to discover available names.',
-        'Prefer these tools over Read/Bash when they apply.',
-        '',
-        '| Tool | What it does |',
-        '|---|---|',
-        '| `list_books` | List all configured book names |',
-        '| `identify_book` | Match a working directory to a book name |',
-        '| `health` | Server status: settings, index, embedding backend |',
-        '| `index_build` | Build or rebuild the full-text search index |',
-        '| `index_status` | Show index chunk count and build time |',
-        '| `get_text` | Read any file by relative path, with optional line range |',
-        '| `get_chapter` | Full chapter content by number and language |',
-        '| `get_overview` | Chapter structure — acts, chapters, titles |',
-        '| `get_notes` | Notes/ and Details_*.md files, filterable by category or name |',
-        '| `search` | BM25 full-text search with ranked snippets |',
-        '| `retrieve_context` | Semantic passage retrieval for "where did X happen" queries |',
-        '| `format` | Apply typography formatting to a file or folder |',
-        '| `get_review_text` | Structured git diff with optional auto-staging |',
-        '| `git_snapshot` | Git commit of story, notes, and arc changes |',
-        '| `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |',
-        '| `add_translation` | Add or update a cross-language glossary entry (agent reference, not auto-applied) |',
-        '| `get_dialect` | List dialect substitution rules, or look up a specific word |',
-        '| `add_dialect` | Add or update a dialect substitution rule (auto-applied at export, e.g. US→UK) |',
-        '| `add_language` | Add a language to settings.json and scaffold its story folder with stubs |',
-        '| `memory_list` | List `Notes/Memories/` files with line counts |',
-        '| `memory_append` | Append a dated session entry to a memory file |',
-        '| `memory_compact` | Overwrite a memory file with a summary (backs up original) |',
-    );
+    lines.push('', '## Available skills', 'Use these slash commands to trigger structured workflows:', '| Command | Purpose |', '|---|---|', '| `/review` | Review a chapter for language, arc consistency, and age-appropriateness |', '| `/brainstorm` | Generate plot/character/scene ideas |', '| `/memory` | Update memory files and compact if needed |', '| `/translate` | Assist with chapter translation |', '| `/status` | Book progress snapshot |', '| `/continuity` | Check a chapter for consistency errors |', '| `/read-aloud` | Test how a passage reads when spoken |', '', '## MCP server (bindery-mcp)', '', 'All tools require a `book` argument. Use `list_books` to discover available names.', 'Prefer these tools over Read/Bash when they apply.', '', '| Tool | What it does |', '|---|---|', '| `list_books` | List all configured book names |', '| `identify_book` | Match a working directory to a book name |', '| `health` | Server status: settings, index, embedding backend |', '| `index_build` | Build or rebuild the full-text search index |', '| `index_status` | Show index chunk count and build time |', '| `get_text` | Read any file by relative path, with optional line range |', '| `get_chapter` | Full chapter content by number and language |', '| `get_overview` | Chapter structure — acts, chapters, titles |', '| `get_notes` | Notes/ and Details_*.md files, filterable by category or name |', '| `search` | BM25 full-text search with ranked snippets |', '| `retrieve_context` | Semantic passage retrieval for "where did X happen" queries |', '| `format` | Apply typography formatting to a file or folder |', '| `get_review_text` | Structured git diff with optional auto-staging |', '| `git_snapshot` | Git commit of story, notes, and arc changes |', '| `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |', '| `add_translation` | Add or update a cross-language glossary entry (agent reference, not auto-applied) |', '| `get_dialect` | List dialect substitution rules, or look up a specific word |', '| `add_dialect` | Add or update a dialect substitution rule (auto-applied at export, e.g. US→UK) |', '| `add_language` | Add a language to settings.json and scaffold its story folder with stubs |', '| `memory_list` | List `Notes/Memories/` files with line counts |', '| `memory_append` | Append a dated session entry to a memory file |', '| `memory_compact` | Overwrite a memory file with a summary (backs up original) |');
     return lines.filter(l => l !== '\n').join('\n') + '\n';
 }
-
-function copilotMd(ctx: TemplateContext): string {
+function copilotMd(ctx) {
     const { title, author, description, genre, storyFolder, notesFolder, arcFolder } = ctx;
-    const lines: string[] = [`# GitHub Copilot — ${title}`, ''];
+    const lines = [`# GitHub Copilot — ${title}`, ''];
     if (genre || description || ctx.audience) {
         lines.push('## Project');
-        if (genre)       { lines.push(`${genre} novel.`); }
-        if (description) { lines.push(description); }
-        if (ctx.audience){ lines.push(audienceNote(ctx)); }
-        if (author)      { lines.push(`Author: ${author}.`); }
+        if (genre) {
+            lines.push(`${genre} novel.`);
+        }
+        if (description) {
+            lines.push(description);
+        }
+        if (ctx.audience) {
+            lines.push(audienceNote(ctx));
+        }
+        if (author) {
+            lines.push(`Author: ${author}.`);
+        }
         lines.push(languageSection(ctx), '');
     }
-    lines.push(
-        '## Repo layout',
-        '```',
-        `${arcFolder}/  ← story arc files`,
-        `${notesFolder}/  ← story bible, translation table, memories`,
-        `${storyFolder}/`,
-        ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters`),
-        '```',
-        '',
-        '## Writing guidelines',
-        '- HTML comments `<!-- -->` in chapter files are writer notes — treat as context only.',
-        '- Quotation marks and dashes are managed by the Bindery VS Code extension. Do not normalise them.',
-        '- Check `Notes/Details_Translation_notes.md` before using or translating world-specific terms.',
-    );
+    lines.push('## Repo layout', '```', `${arcFolder}/  ← story arc files`, `${notesFolder}/  ← story bible, translation table, memories`, `${storyFolder}/`, ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters`), '```', '', '## Writing guidelines', '- HTML comments `<!-- -->` in chapter files are writer notes — treat as context only.', '- Quotation marks and dashes are managed by the Bindery VS Code extension. Do not normalise them.', '- Check `Notes/Details_Translation_notes.md` before using or translating world-specific terms.');
     if (ctx.audience) {
         lines.push(`- Content targets ${ctx.audience}. Keep vocabulary accessible and themes appropriate.`);
     }
     return lines.join('\n') + '\n';
 }
-
-function cursorRules(ctx: TemplateContext): string {
+function cursorRules(ctx) {
     const { title, storyFolder, notesFolder, arcFolder, memoriesFolder } = ctx;
-    const lines: string[] = [
+    const lines = [
         `# Cursor rules — ${title}`,
         '',
         `Story folder: \`${storyFolder}/\``,
@@ -207,51 +123,32 @@ function cursorRules(ctx: TemplateContext): string {
     }
     return lines.join('\n') + '\n';
 }
-
-function agentsMd(ctx: TemplateContext): string {
+function agentsMd(ctx) {
     const { title, author, description, genre, storyFolder, notesFolder, arcFolder, memoriesFolder } = ctx;
-    const lines: string[] = [`# Agent Instructions — ${title}`, ''];
+    const lines = [`# Agent Instructions — ${title}`, ''];
     lines.push('## Project overview');
-    if (genre)       { lines.push(`${genre} novel.`); }
-    if (description) { lines.push(description); }
-    if (ctx.audience){ lines.push(audienceNote(ctx)); }
-    if (author)      { lines.push(`Author: ${author}.`); }
+    if (genre) {
+        lines.push(`${genre} novel.`);
+    }
+    if (description) {
+        lines.push(description);
+    }
+    if (ctx.audience) {
+        lines.push(audienceNote(ctx));
+    }
+    if (author) {
+        lines.push(`Author: ${author}.`);
+    }
     lines.push(languageSection(ctx), '');
-    lines.push(
-        '## Start of session',
-        `1. Read \`${memoriesFolder}/global.md\` for cross-chapter context.`,
-        `2. If working on a specific chapter, read \`${memoriesFolder}/chXX.md\` if it exists.`,
-        `3. Check \`${notesFolder}/Details_Translation_notes.md\` before using or translating world-specific terms.`,
-        '',
-        '## Story files',
-        `- Chapter files are \`.md\` files in \`${storyFolder}/\`, organised in act subfolders.`,
-        '- HTML comments `<!-- -->` are writer notes — treat as context only, not prose.',
-        '- Quotation marks and em-dashes are managed by the Bindery extension. Do not normalise them.',
-        '',
-        '## Writing guidelines',
-        '- Do not rewrite paragraphs unless explicitly asked. Suggest edits only.',
-    );
+    lines.push('## Start of session', `1. Read \`${memoriesFolder}/global.md\` for cross-chapter context.`, `2. If working on a specific chapter, read \`${memoriesFolder}/chXX.md\` if it exists.`, `3. Check \`${notesFolder}/Details_Translation_notes.md\` before using or translating world-specific terms.`, '', '## Story files', `- Chapter files are \`.md\` files in \`${storyFolder}/\`, organised in act subfolders.`, '- HTML comments `<!-- -->` are writer notes — treat as context only, not prose.', '- Quotation marks and em-dashes are managed by the Bindery extension. Do not normalise them.', '', '## Writing guidelines', '- Do not rewrite paragraphs unless explicitly asked. Suggest edits only.');
     if (ctx.audience) {
         lines.push(`- Audience is ${ctx.audience}. Keep vocabulary clear and themes age-appropriate.`);
     }
-    lines.push(
-        '',
-        '## Key reference files',
-        '| File | Contains |',
-        '|---|---|',
-        `| \`${arcFolder}/Overall.md\` | Full story arc |`,
-        `| \`${arcFolder}/Act_I_*.md\`, \`Act_II_*.md\`, \`Act_III_*.md\` | Per-act arc details |`,
-        `| \`${notesFolder}/Details_Characters.md\` | Character profiles |`,
-        `| \`${notesFolder}/Details_World_and_Magic.md\` | World rules |`,
-        `| \`${notesFolder}/Details_Translation_notes.md\` | EN ↔ translation term table |`,
-        `| \`${memoriesFolder}/global.md\` | Cross-session decisions |`,
-    );
+    lines.push('', '## Key reference files', '| File | Contains |', '|---|---|', `| \`${arcFolder}/Overall.md\` | Full story arc |`, `| \`${arcFolder}/Act_I_*.md\`, \`Act_II_*.md\`, \`Act_III_*.md\` | Per-act arc details |`, `| \`${notesFolder}/Details_Characters.md\` | Character profiles |`, `| \`${notesFolder}/Details_World_and_Magic.md\` | World rules |`, `| \`${notesFolder}/Details_Translation_notes.md\` | EN ↔ translation term table |`, `| \`${memoriesFolder}/global.md\` | Cross-session decisions |`);
     return lines.join('\n') + '\n';
 }
-
 // ─── Skill templates ──────────────────────────────────────────────────────────
-
-function skillReview(ctx: TemplateContext): string {
+function skillReview(ctx) {
     const { title, arcFolder, memoriesFolder } = ctx;
     const audienceStr = ctx.audience || 'the target audience';
     return `---
@@ -312,8 +209,7 @@ If the review looks good, suggest: "Want me to save a snapshot?" (calls \`git_sn
 - Do not rewrite unless asked — suggest only
 `;
 }
-
-function skillBrainstorm(ctx: TemplateContext): string {
+function skillBrainstorm(ctx) {
     const { title, arcFolder, memoriesFolder } = ctx;
     const audienceStr = ctx.audience || 'the target audience';
     return `---
@@ -360,8 +256,7 @@ End with a brief note on which options feel most aligned with the arc.
 - Keep ideas appropriate for ${audienceStr}
 `;
 }
-
-function skillMemory(ctx: TemplateContext): string {
+function skillMemory(ctx) {
     return `---
 name: Memory
 description: Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
@@ -415,8 +310,7 @@ Offer to save a snapshot with \`git_snapshot\`.
 - Compaction is always opt-in
 `;
 }
-
-function skillTranslate(ctx: TemplateContext): string {
+function skillTranslate(ctx) {
     return `---
 name: Translate
 description: Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
@@ -468,8 +362,7 @@ When the user confirms a new or corrected term translation, call \`add_translati
 - Flag uncertain terms rather than guessing
 `;
 }
-
-function skillStatus(ctx: TemplateContext): string {
+function skillStatus(ctx) {
     const { arcFolder, memoriesFolder } = ctx;
     return `---
 name: Status
@@ -503,8 +396,7 @@ Use these Bindery MCP tools:
 Keep it scannable — bold headers, short lines. This is a working tool, not a narrative summary.
 `;
 }
-
-function skillContinuity(ctx: TemplateContext): string {
+function skillContinuity(ctx) {
     const { memoriesFolder } = ctx;
     return `---
 name: Continuity
@@ -551,8 +443,7 @@ End with a one-line overall assessment. If no issues found, say so clearly.
 - Phrase uncertain items as questions, not errors
 `;
 }
-
-function skillReadAloud(ctx: TemplateContext): string {
+function skillReadAloud(ctx) {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: Read Aloud
@@ -595,3 +486,4 @@ Brief overall impression (2-3 sentences) after the table.
 - Suggestions are gentle ("consider", not "must change")
 `;
 }
+//# sourceMappingURL=templates.js.map

@@ -47,7 +47,7 @@ export interface AiSetupResult {
  * existing users should regenerate their AI files.
  * Must be kept in sync with AI_SETUP_VERSION in vscode-ext/src/ai-setup.ts.
  */
-export const AI_SETUP_VERSION = 4;
+export const AI_SETUP_VERSION = 5;
 
 // ─── Settings types ───────────────────────────────────────────────────────────
 

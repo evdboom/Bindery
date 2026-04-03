@@ -37,6 +37,8 @@ import {
     toolMemoryList,
     toolMemoryAppend,
     toolMemoryCompact,
+    toolChapterStatusGet,
+    toolChapterStatusUpdate,
 } from './tools.js';
 import { resolveBook, listBooks, findBookByPath } from './registry.js';
 
@@ -425,6 +427,42 @@ server.registerTool('memory_compact', {
     annotations: { destructiveHint: true },
 }, async ({ book, file, compacted_content }) => {
     try { return ok(toolMemoryCompact(resolveBook(book).root, { file, compacted_content })); } catch (e) { return err(e); }
+});
+
+server.registerTool('chapter_status_get', {
+    title: 'Chapter Status Get',
+    description:
+        'Read the current chapter progress tracker from .bindery/chapter-status.json. ' +
+        'Returns a formatted summary grouped by status (done, in-progress, draft, planned, needs-review). ' +
+        'Returns a clear empty-state message if no status has been recorded yet.',
+    inputSchema: { book: bookSchema },
+    annotations: { readOnlyHint: true },
+}, async ({ book }) => {
+    try { return ok(toolChapterStatusGet(resolveBook(book).root)); } catch (e) { return err(e); }
+});
+
+server.registerTool('chapter_status_update', {
+    title: 'Chapter Status Update',
+    description:
+        'Upsert chapter progress entries in .bindery/chapter-status.json. ' +
+        'Send only the chapters that changed — existing entries not in the payload are preserved. ' +
+        'Creates the file if it does not exist. ' +
+        'Each entry requires: number (int), title (string), language (e.g. EN), status (done | in-progress | draft | planned | needs-review). ' +
+        'Optional: wordCount (int), notes (string).',
+    inputSchema: {
+        book: bookSchema,
+        chapters: z.array(z.object({
+            number:    z.number().int().describe('Chapter number'),
+            title:     z.string().describe('Chapter title'),
+            language:  z.string().describe('Language code, e.g. EN or NL'),
+            status:    z.enum(['done', 'in-progress', 'draft', 'planned', 'needs-review']),
+            wordCount: z.number().int().optional().describe('Approximate word count'),
+            notes:     z.string().optional().describe('Short agent note about this chapter'),
+        })).describe('Chapter entries to upsert (existing entries not listed are preserved)'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, chapters }) => {
+    try { return ok(toolChapterStatusUpdate(resolveBook(book).root, { chapters })); } catch (e) { return err(e); }
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
