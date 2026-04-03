@@ -23,8 +23,11 @@ interface RetrieveInput   { query: string; language?: string; topK?: number }
 interface FormatInput     { filePath?: string; dryRun?: boolean; noRecurse?: boolean }
 interface GetReviewTextInput { language?: string; contextLines?: number; autoStage?: boolean }
 interface GitSnapshotInput   { message?: string }
-interface AddTranslationInput { langKey: string; from: string; to: string }
-interface GetTranslationInput { language: string; word?: string }
+interface AddTranslationInput { from: string; to: string; targetLangCode: string }
+interface GetTranslationInput { language: string; word?: string; type?: 'glossary' | 'substitution' }
+interface AddDialectInput     { dialectCode: string; from: string; to: string }
+interface GetDialectInput     { dialectCode: string; word?: string }
+interface AddLanguageInput    { code: string; folderName?: string; chapterWord?: string; actPrefix?: string; prologueLabel?: string; epilogueLabel?: string; createStubs?: boolean }
 interface InitWorkspaceInput  { bookTitle?: string; author?: string; storyFolder?: string; genre?: string; description?: string; targetAudience?: string }
 interface SetupAiFilesInput   { targets?: string[]; skills?: string[]; overwrite?: boolean }
 interface MemoryAppendInput   { file: string; title: string; content: string }
@@ -45,6 +48,9 @@ interface McpTools {
     toolGitSnapshot:      (root: string, args: GitSnapshotInput) => string;
     toolAddTranslation:   (root: string, args: AddTranslationInput) => string;
     toolGetTranslation:   (root: string, args: GetTranslationInput) => string;
+    toolAddDialect:       (root: string, args: AddDialectInput) => string;
+    toolGetDialect:       (root: string, args: GetDialectInput) => string;
+    toolAddLanguage:      (root: string, args: AddLanguageInput) => string;
     toolInitWorkspace:    (root: string, args: InitWorkspaceInput) => string;
     toolSetupAiFiles:     (root: string, args: SetupAiFilesInput) => string;
     toolMemoryList:       (root: string) => string;
@@ -138,6 +144,18 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<GetTranslationInput>('bindery_get_translation', {
             invoke: async (opts, _token) => ok(t.toolGetTranslation(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<AddDialectInput>('bindery_add_dialect', {
+            invoke: async (opts, _token) => ok(t.toolAddDialect(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<GetDialectInput>('bindery_get_dialect', {
+            invoke: async (opts, _token) => ok(t.toolGetDialect(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<AddLanguageInput>('bindery_add_language', {
+            invoke: async (opts, _token) => ok(t.toolAddLanguage(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<InitWorkspaceInput>('bindery_init_workspace', {

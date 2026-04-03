@@ -87,8 +87,11 @@ All tools take a `book` argument (string name from `--book` config). The VS Code
 | `format` | destructive | Apply typography formatting to file/folder |
 | `get_review_text` | destructive | Git diff with optional autoStage |
 | `git_snapshot` | destructive | Git commit of story/notes/arc changes |
-| `get_translation` | readOnly | List all rules for a language, or look up a specific word (forgiving) |
-| `add_translation` | destructive | Add/update .bindery/translations.json rule |
+| `get_translation` | readOnly | List glossary entries for a language, or look up a specific term (forgiving) |
+| `add_translation` | destructive | Add/update a cross-language glossary entry (agent reference, not auto-applied at export) |
+| `get_dialect` | readOnly | List dialect substitution rules, or look up a specific word |
+| `add_dialect` | destructive | Add/update a dialect substitution rule (auto-applied at export, e.g. US→UK) |
+| `add_language` | destructive | Add language to settings.json and scaffold story folder with stubs |
 | `memory_list` | readOnly | List Notes/Memories/ files with line counts |
 | `memory_append` | destructive | Append dated session entry to a memory file |
 | `memory_compact` | destructive | Overwrite memory file with summary (backs up original) |
@@ -114,7 +117,10 @@ All tools take a `book` argument (string name from `--book` config). The VS Code
 | `bindery.formatDocument` / `bindery.formatFolder` | Typography formatting |
 | `bindery.mergeMarkdown/Docx/Epub/Pdf/All` | Merge chapters → output format |
 | `bindery.findProbableUsToUkWords` | Surface probable US spellings in EN source |
-| `bindery.addUkReplacement` | Add a substitution rule |
+| `bindery.addDialect` | Add a dialect substitution rule (auto-applied at export) |
+| `bindery.addTranslation` | Add a cross-language glossary entry |
+| `bindery.addLanguage` | Add a new language and scaffold its story folder |
+| `bindery.addUkReplacement` | Alias for `addDialect` (backward compat) |
 | `bindery.openTranslations` | Open translations.json |
 | `bindery.registerMcp` | Write .vscode/mcp.json for Claude/Codex MCP discovery |
 

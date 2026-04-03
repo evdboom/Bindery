@@ -58,8 +58,11 @@
     { "name": "format",           "description": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder." },
     { "name": "get_review_text",  "description": "Structured git diff of uncommitted changes. Filter by language (EN, NL, ALL). Set autoStage to stage reviewed files." },
     { "name": "git_snapshot",     "description": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Use after writing sessions or reviews." },
-    { "name": "add_translation",  "description": "Add or update a substitution rule in .bindery/translations.json for translation or dialect conversion (e.g. US→UK spelling)." },
-    { "name": "get_translation",  "description": "Look up translation/substitution rules from .bindery/translations.json. List all rules for a language or do a forgiving word lookup (case-insensitive, handles plurals and inflected forms)." },
+    { "name": "add_translation",  "description": "Add or update a cross-language glossary entry in .bindery/translations.json for agent reference (source → target term). For dialect substitution rules use add_dialect." },
+    { "name": "get_translation",  "description": "Look up cross-language glossary entries from .bindery/translations.json. List all entries for a language or do a forgiving word lookup. For dialect substitution rules use get_dialect." },
+    { "name": "add_dialect",      "description": "Add or update a dialect substitution rule in .bindery/translations.json (e.g. US→UK spelling: color→colour). Applied automatically during export." },
+    { "name": "get_dialect",      "description": "Look up dialect substitution rules from .bindery/translations.json. List all rules for a dialect or look up a specific word." },
+    { "name": "add_language",     "description": "Add a new language to .bindery/settings.json and scaffold its story folder with stub files mirroring the default language structure." },
     { "name": "memory_list",      "description": "List all session memory files in .bindery/memories/ with their line counts." },
     { "name": "memory_append",    "description": "Append a dated session entry to a memory file in .bindery/memories/. Supply a short title and content; the tool stamps the date." },
     { "name": "memory_compact",   "description": "Overwrite a memory file with a compacted summary. The original is backed up to .bindery/memories/archive/ first." }

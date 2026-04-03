@@ -37,7 +37,10 @@ src/
 | `formatDocument` / `formatFolder` | Apply typography formatting |
 | `mergeMarkdown/Docx/Epub/Pdf/All` | Merge chapters and export |
 | `findProbableUsToUkWords` | Scan EN source and surface US spellings |
-| `addUkReplacement` | Add a substitution rule (project or general) |
+| `addDialect` | Add a dialect substitution rule (auto-applied at export, e.g. US→UK) |
+| `addTranslation` | Add a cross-language glossary entry (agent reference, not auto-applied) |
+| `addLanguage` | Add a new language to settings.json and scaffold its story folder |
+| `addUkReplacement` | Alias for `addDialect` (backward compat) |
 
 ## When suggesting changes
 - Prefer editing the smallest surface area possible.
