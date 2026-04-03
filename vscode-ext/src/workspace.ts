@@ -10,7 +10,7 @@
 
 import * as fs   from 'fs';
 import * as path from 'path';
-import type { LanguageConfig, UkReplacement } from './merge';
+import type { LanguageConfig, DialectConfig, UkReplacement } from './merge';
 
 export const BINDERY_FOLDER       = '.bindery';
 export const SETTINGS_FILENAME    = 'settings.json';
@@ -34,12 +34,15 @@ export interface WorkspaceSettings {
     genre?:          string;
     /** Target audience, e.g. "12+" or "adults" or "8-10". Used to calibrate AI review feedback. */
     targetAudience?: string;
-    storyFolder?:    string;
-    mergedOutputDir?: string;
+    storyFolder?:     string;
+    mergedOutputDir?:  string;
     mergeFilePrefix?: string;
     formatOnSave?:   boolean;
     languages?:      LanguageConfig[];
 }
+
+// Re-export DialectConfig so callers don't need to import from merge.ts directly
+export type { DialectConfig };
 
 /** Type of a translation entry — determines how the extension uses its rules. */
 export type TranslationType = 'substitution' | 'glossary';
@@ -129,6 +132,30 @@ export function getBookTitleForLang(
     return settings.bookTitle[code]
         ?? settings.bookTitle['en']
         ?? undefined;
+}
+
+/**
+ * Return the language marked isDefault, or the first language in the list.
+ */
+export function getDefaultLanguage(
+    settings: WorkspaceSettings | null
+): LanguageConfig | undefined {
+    const langs = settings?.languages;
+    if (!langs || langs.length === 0) { return undefined; }
+    return langs.find(l => l.isDefault) ?? langs[0];
+}
+
+/**
+ * Return dialects[] for the language matching langCode, or [].
+ */
+export function getDialectsForLanguage(
+    settings: WorkspaceSettings | null,
+    langCode: string
+): DialectConfig[] {
+    const lang = settings?.languages?.find(
+        l => l.code.toUpperCase() === langCode.toUpperCase()
+    );
+    return lang?.dialects ?? [];
 }
 
 /**
@@ -232,6 +259,55 @@ export function addIgnoredWords(
     entry.ignoredWords = Array.from(existing).sort();
     writeTranslations(root, translations);
     return added;
+}
+
+/**
+ * Add or update a glossary rule in .bindery/translations.json.
+ * Glossary entries are for cross-language reference (e.g. EN→NL world terms).
+ * They are not auto-applied at export; agents use them for consistency checking.
+ * Creates the file and entry if they do not yet exist.
+ */
+export function upsertGlossaryRule(
+    root:       string,
+    langKey:    string,
+    langLabel:  string,
+    sourceLang: string,
+    rule:       TranslationRule
+): void {
+    const translations = readTranslations(root) ?? {};
+    if (!translations[langKey]) {
+        translations[langKey] = {
+            label:          langLabel,
+            type:           'glossary',
+            sourceLanguage: sourceLang,
+            rules:          [],
+        };
+    }
+    const entry = translations[langKey];
+    // If entry exists but was previously substitution, keep it — don't downgrade
+    const rules = entry.rules ?? [];
+    const idx = rules.findIndex(r => r.from.toLowerCase() === rule.from.toLowerCase());
+    if (idx >= 0) {
+        rules[idx] = rule;
+    } else {
+        rules.push(rule);
+        rules.sort((a, b) => a.from.localeCompare(b.from));
+    }
+    entry.rules = rules;
+    writeTranslations(root, translations);
+}
+
+/**
+ * Get glossary rules for a language key (type === 'glossary' entries).
+ */
+export function getGlossaryRules(
+    translations: TranslationsFile | null,
+    langKey:      string
+): TranslationRule[] {
+    if (!translations) { return []; }
+    const entry = resolveEntry(translations, langKey);
+    if (!entry) { return []; }
+    return (entry.rules ?? []).filter(r => r.from?.trim() && r.to?.trim());
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

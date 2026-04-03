@@ -49,13 +49,13 @@ all acts and chapters with titles.
 Claude calls `retrieve_context` with the query and returns the most relevant
 passages with file paths and line numbers, letting you jump straight to the scene.
 
-### Add a translation rule
+### Add a dialect substitution rule
 
 > "Add a substitution: 'color' should become 'colour' in en-gb"
 
-Claude calls `add_translation` with `langKey: "en-gb"`, `from: "color"`,
+Claude calls `add_dialect` with `dialectCode: "en-gb"`, `from: "color"`,
 `to: "colour"`. The rule is saved to `.bindery/translations.json` and applied
-during future exports.
+automatically during future exports.
 
 ### Review and snapshot your changes
 
@@ -64,22 +64,22 @@ during future exports.
 Claude calls `get_review_text` to show the diff, reviews it, then calls
 `git_snapshot` to commit the changes with a descriptive message.
 
-### Look up a translation rule
+### Look up a glossary term
 
 > "How is 'flux' translated in the Dutch version?"
 
 Claude calls `get_translation` with `language: "nl"` and `word: "flux"`. The
 lookup is forgiving — it matches case-insensitively and checks plural and
-inflected forms automatically. If no rule exists yet, Claude can call
-`add_translation` to create one.
+inflected forms automatically. If no glossary entry exists yet, Claude can call
+`add_translation` with `targetLangCode: "nl"` to create one.
 
-### List all known substitution rules for a language
+### List all dialect substitution rules
 
 > "Show me all the British English substitution rules"
 
-Claude calls `get_translation` with `language: "en-gb"` (omitting `word`) to
+Claude calls `get_dialect` with `dialectCode: "en-gb"` (omitting `word`) to
 dump every `from → to` rule in the `en-gb` entry of `.bindery/translations.json`.
-Useful before a translation or export session to see what's already configured.
+Useful before an export session to see what spelling substitutions are configured.
 
 ### Save session decisions to memory
 
@@ -105,7 +105,7 @@ with the compacted text. The original is automatically backed up to
 Claude calls `get_chapter` twice — once for EN, once for NL — then calls
 `get_translation` with the target language to load the known term table.
 Discrepancies are presented in a side-by-side table. Any confirmed corrections
-are saved back with `add_translation`.
+are saved back with `add_translation` (glossary) or `add_dialect` (dialect substitutions).
 
 ### Check continuity across chapters
 
@@ -134,8 +134,11 @@ issue type, location, and the reference that contradicts it.
 | `format` | Apply typography formatting to a file or folder |
 | `get_review_text` | Structured git diff with optional auto-staging |
 | `git_snapshot` | Git commit of story, notes, and arc changes |
-| `get_translation` | List all rules for a language, or look up a specific word (forgiving) |
-| `add_translation` | Add or update a rule in project translations |
+| `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |
+| `add_translation` | Add or update a cross-language glossary entry (agent reference) |
+| `get_dialect` | List dialect substitution rules, or look up a specific word |
+| `add_dialect` | Add or update a dialect substitution rule (auto-applied at export) |
+| `add_language` | Add a language to settings.json and scaffold the story folder with stubs |
 | `memory_list` | List memory files with line counts |
 | `memory_append` | Append a dated session entry to a memory file |
 | `memory_compact` | Overwrite a memory file with a summary (backs up original) |

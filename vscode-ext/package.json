@@ -170,8 +170,23 @@
         "category": "Bindery"
       },
       {
+        "command": "bindery.addDialect",
+        "title": "Add Dialect Rule",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.addTranslation",
+        "title": "Add Translation (Glossary)",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.addLanguage",
+        "title": "Add Language",
+        "category": "Bindery"
+      },
+      {
         "command": "bindery.addUkReplacement",
-        "title": "Add Translation Rule",
+        "title": "Add Dialect Rule (UK alias)",
         "category": "Bindery"
       },
       {
@@ -391,7 +406,52 @@
           }
         }
       },
-      {        "name": "bindery_memory_list",
+      { "name": "bindery_add_dialect",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Add Dialect Rule",
+        "modelDescription": "Add or update a dialect substitution rule in .bindery/translations.json (e.g. EN→en-gb spelling). Source is auto-detected from the active file's language folder.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dialectCode": { "type": "string", "description": "Dialect key in translations.json, e.g. 'en-gb'" },
+            "from":        { "type": "string", "description": "Source word (e.g. 'airplane')" },
+            "to":          { "type": "string", "description": "Dialect form (e.g. 'aeroplane')" }
+          },
+          "required": ["dialectCode", "from", "to"]
+        }
+      },
+      { "name": "bindery_get_dialect",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Get Dialect Rules",
+        "modelDescription": "List or look up dialect substitution rules from .bindery/translations.json. Without a word, lists all rules for the dialect. With a word, does a forgiving case-insensitive lookup including inflected forms.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dialectCode": { "type": "string", "description": "Dialect key, e.g. 'en-gb'" },
+            "word":        { "type": "string", "description": "Word to look up (optional)" }
+          },
+          "required": ["dialectCode"]
+        }
+      },
+      { "name": "bindery_add_language",
+        "tags": ["bindery"],
+        "displayName": "Bindery: Add Language",
+        "modelDescription": "Add a new main language to settings.json and create its folder structure under Story/ with stub .md files mirroring the default language. Use for manually translated editions (e.g. French, Spanish).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "code":          { "type": "string", "description": "Language code (e.g. FR, DE, NL)" },
+            "folderName":    { "type": "string", "description": "Folder name under Story/ (default: same as code)" },
+            "chapterWord":   { "type": "string", "description": "Word for 'Chapter' in target language" },
+            "actPrefix":    { "type": "string", "description": "Word for 'Act' in target language" },
+            "prologueLabel": { "type": "string", "description": "Word for 'Prologue'" },
+            "epilogueLabel": { "type": "string", "description": "Word for 'Epilogue'" },
+            "createStubs":   { "type": "boolean", "description": "Create stub .md files mirroring source (default true)" }
+          },
+          "required": ["code"]
+        }
+      },
+      { "name": "bindery_memory_list",
         "tags": ["bindery"],
         "displayName": "Bindery: Memory List",
         "modelDescription": "List all session memory files in .bindery/memories/ with their line counts.",
@@ -453,7 +513,8 @@
         { "command": "bindery.formatDocument",          "when": "resourceLangId == markdown", "group": "1_format@1"  },
         { "command": "bindery.formatFolder",            "when": "explorerResourceIsFolder",   "group": "1_format@2"  },
         { "command": "bindery.findProbableUsToUkWords", "when": "resourceLangId == markdown", "group": "2_dialect@1" },
-        { "command": "bindery.addUkReplacement",        "when": "resourceLangId == markdown", "group": "2_dialect@2" },
+        { "command": "bindery.addDialect",              "when": "resourceLangId == markdown", "group": "2_dialect@2" },
+        { "command": "bindery.addTranslation",          "when": "resourceLangId == markdown", "group": "2_dialect@3" },
         { "command": "bindery.mergeMarkdown",           "group": "3_export@1"                                        },
         { "command": "bindery.mergeDocx",               "group": "3_export@2"                                        },
         { "command": "bindery.mergeEpub",               "group": "3_export@3"                                        },

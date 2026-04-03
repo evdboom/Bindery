@@ -29,6 +29,9 @@ import {
     toolGitSnapshot,
     toolGetTranslation,
     toolAddTranslation,
+    toolAddDialect,
+    toolGetDialect,
+    toolAddLanguage,
     toolInitWorkspace,
     toolSetupAiFiles,
     toolMemoryList,
@@ -258,34 +261,90 @@ server.registerTool('git_snapshot', {
 server.registerTool('get_translation', {
     title: 'Get Translation',
     description:
-        'Look up translation/substitution rules in .bindery/translations.json. ' +
-        'Without a word, lists all rules for the language. ' +
-        'With a word, does a forgiving case-insensitive lookup including plural and inflected forms.',
+        'Look up glossary entries in .bindery/translations.json. ' +
+        'Without a word, lists all entries for the language. ' +
+        'With a word, does a forgiving case-insensitive lookup including plural and inflected forms. ' +
+        'For dialect substitution rules, use get_dialect instead.',
     inputSchema: {
         book:     bookSchema,
-        language: z.string().describe('Language key, label, or code (e.g. "nl", "en-gb", "British English")'),
-        word:     z.string().optional().describe('Word or term to look up (optional — omit to list all rules)'),
+        language: z.string().describe('Language code or label (e.g. "nl", "fr", "Dutch")'),
+        word:     z.string().optional().describe('Word or term to look up (optional — omit to list all)'),
+        type:     z.enum(['glossary', 'substitution']).optional().describe('Entry type filter — defaults to "glossary"'),
     },
     annotations: { readOnlyHint: true },
-}, async ({ book, language, word }) => {
-    try { return ok(toolGetTranslation(resolveBook(book).root, { language, word })); } catch (e) { return err(e); }
+}, async ({ book, language, word, type }) => {
+    try { return ok(toolGetTranslation(resolveBook(book).root, { language, word, type })); } catch (e) { return err(e); }
 });
 
 server.registerTool('add_translation', {
     title: 'Add Translation',
     description:
-        'Add or update a substitution rule in .bindery/translations.json. ' +
-        'Creates the entry if it does not exist. ' +
-        'Rules are used during chapter export to convert dialect-specific words (e.g. US→UK spelling).',
+        'Add or update a glossary entry in .bindery/translations.json for agent reference. ' +
+        'Glossaries are cross-language term pairs (source → target language) used by agents for consistency, ' +
+        'not auto-applied during export. For dialect substitution rules (e.g. US→UK spelling), use add_dialect.',
     inputSchema: {
-        book:    bookSchema,
-        langKey: z.string().describe('Language key in translations.json, e.g. "en-gb" or "nl"'),
-        from:    z.string().describe('Source word or phrase (e.g. "airplane")'),
-        to:      z.string().describe('Target word or phrase (e.g. "aeroplane")'),
+        book:           bookSchema,
+        targetLangCode: z.string().describe('Target language code (e.g. "nl", "fr")'),
+        from:           z.string().describe('Source term (e.g. "FluxCore")'),
+        to:             z.string().describe('Target term (e.g. "FluxKern")'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, langKey, from, to }) => {
-    try { return ok(toolAddTranslation(resolveBook(book).root, { langKey, from, to })); } catch (e) { return err(e); }
+}, async ({ book, targetLangCode, from, to }) => {
+    try { return ok(toolAddTranslation(resolveBook(book).root, { targetLangCode, from, to })); } catch (e) { return err(e); }
+});
+
+server.registerTool('add_dialect', {
+    title: 'Add Dialect Rule',
+    description:
+        'Add or update a dialect substitution rule in .bindery/translations.json. ' +
+        'Substitution rules are auto-applied during export (e.g. US→UK spelling: color→colour). ' +
+        'For cross-language glossary entries, use add_translation.',
+    inputSchema: {
+        book:        bookSchema,
+        dialectCode: z.string().describe('Dialect code used as key, e.g. "en-gb"'),
+        from:        z.string().describe('Source word (e.g. "color")'),
+        to:          z.string().describe('Target word (e.g. "colour")'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, dialectCode, from, to }) => {
+    try { return ok(toolAddDialect(resolveBook(book).root, { dialectCode, from, to })); } catch (e) { return err(e); }
+});
+
+server.registerTool('get_dialect', {
+    title: 'Get Dialect Rules',
+    description:
+        'Look up dialect substitution rules in .bindery/translations.json. ' +
+        'Without a word, lists all rules for the dialect. ' +
+        'With a word, does a forgiving case-insensitive lookup. ' +
+        'For cross-language glossary entries, use get_translation.',
+    inputSchema: {
+        book:        bookSchema,
+        dialectCode: z.string().describe('Dialect code, e.g. "en-gb"'),
+        word:        z.string().optional().describe('Word to look up (optional — omit to list all rules)'),
+    },
+    annotations: { readOnlyHint: true },
+}, async ({ book, dialectCode, word }) => {
+    try { return ok(toolGetDialect(resolveBook(book).root, { dialectCode, word })); } catch (e) { return err(e); }
+});
+
+server.registerTool('add_language', {
+    title: 'Add Language',
+    description:
+        'Add a new language to .bindery/settings.json and optionally scaffold ' +
+        'its story folder with stub files mirroring the default language structure.',
+    inputSchema: {
+        book:          bookSchema,
+        code:          z.string().describe('Language code, e.g. "NL", "FR", "DE"'),
+        folderName:    z.string().optional().describe('Story subfolder name (defaults to code)'),
+        chapterWord:   z.string().optional().describe('Word for "Chapter" in this language'),
+        actPrefix:     z.string().optional().describe('Word for "Act" prefix in this language'),
+        prologueLabel: z.string().optional().describe('Word for "Prologue" in this language'),
+        epilogueLabel: z.string().optional().describe('Word for "Epilogue" in this language'),
+        createStubs:   z.boolean().optional().describe('Mirror source language folder with stub files (default true)'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, code, folderName, chapterWord, actPrefix, prologueLabel, epilogueLabel, createStubs }) => {
+    try { return ok(toolAddLanguage(resolveBook(book).root, { code, folderName, chapterWord, actPrefix, prologueLabel, epilogueLabel, createStubs })); } catch (e) { return err(e); }
 });
 
 server.registerTool('init_workspace', {

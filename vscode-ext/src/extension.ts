@@ -18,14 +18,15 @@ import { execSync } from 'child_process';
 import { updateTypography }                    from './format';
 import {
     mergeBook, checkPandoc, getBuiltInUkReplacements,
-    type LanguageConfig, type OutputType, type MergeOptions, type UkReplacement,
+    type LanguageConfig, type DialectConfig, type OutputType, type MergeOptions, type UkReplacement,
 } from './merge';
 import {
-    readWorkspaceSettings, readTranslations,
+    readWorkspaceSettings, readTranslations, writeTranslations,
     getBinderyFolder, getSettingsPath, getTranslationsPath,
     getBookTitleForLang, getSubstitutionRules, getIgnoredWords,
-    upsertSubstitutionRule, addIgnoredWords,
-    type WorkspaceSettings, type TranslationsFile,
+    upsertSubstitutionRule, upsertGlossaryRule, addIgnoredWords,
+    getDefaultLanguage, getDialectsForLanguage, getGlossaryRules,
+    type WorkspaceSettings, type TranslationsFile, type TranslationEntry,
 } from './workspace';
 import {
     setupAiFiles, ALL_SKILLS, AI_SETUP_VERSION, readAiSetupVersion,
@@ -36,12 +37,15 @@ import { registerLmTools, registerMcpCommand } from './mcp';
 // ─── Known language presets ───────────────────────────────────────────────────
 
 const KNOWN_LANGUAGES: Record<string, LanguageConfig> = {
-    EN: { code: 'EN', folderName: 'EN', chapterWord: 'Chapter',   actPrefix: 'Act',  prologueLabel: 'Prologue', epilogueLabel: 'Epilogue'  },
+    EN: { code: 'EN', folderName: 'EN', chapterWord: 'Chapter',   actPrefix: 'Act',  prologueLabel: 'Prologue', epilogueLabel: 'Epilogue', isDefault: true, dialects: [{ code: 'en-gb', label: 'British English' }] },
     NL: { code: 'NL', folderName: 'NL', chapterWord: 'Hoofdstuk', actPrefix: 'Deel', prologueLabel: 'Proloog',  epilogueLabel: 'Epiloog'   },
-    UK: { code: 'UK', folderName: 'UK', chapterWord: 'Chapter',   actPrefix: 'Act',  prologueLabel: 'Prologue', epilogueLabel: 'Epilogue'  },
     FR: { code: 'FR', folderName: 'FR', chapterWord: 'Chapitre',  actPrefix: 'Acte', prologueLabel: 'Prologue', epilogueLabel: 'Épilogue'  },
     DE: { code: 'DE', folderName: 'DE', chapterWord: 'Kapitel',   actPrefix: 'Teil', prologueLabel: 'Prolog',   epilogueLabel: 'Epilog'    },
     ES: { code: 'ES', folderName: 'ES', chapterWord: 'Capítulo',  actPrefix: 'Acto', prologueLabel: 'Prólogo',  epilogueLabel: 'Epílogo'   },
+    IT: { code: 'IT', folderName: 'IT', chapterWord: 'Capitolo',  actPrefix: 'Atto', prologueLabel: 'Prologo',  epilogueLabel: 'Epilogo'   },
+    PT: { code: 'PT', folderName: 'PT', chapterWord: 'Capítulo',  actPrefix: 'Ato',  prologueLabel: 'Prólogo',  epilogueLabel: 'Epílogo'   },
+    // UK retained for backward compatibility only — new projects use EN.dialects instead
+    UK: { code: 'UK', folderName: 'UK', chapterWord: 'Chapter',   actPrefix: 'Act',  prologueLabel: 'Prologue', epilogueLabel: 'Epilogue'  },
 };
 
 const DEFAULT_LANGUAGE: LanguageConfig = KNOWN_LANGUAGES.EN;
@@ -106,8 +110,10 @@ function isUkLanguage(lang: LanguageConfig): boolean {
     return c === 'UK' || c === 'EN-GB';
 }
 
+/** True if the language has a story folder that exists on disk. */
 function languageCanExport(root: string, storyFolder: string, lang: LanguageConfig): boolean {
     if (isUkLanguage(lang)) {
+        // Legacy UK LanguageConfig reads from EN folder
         return fs.existsSync(path.join(root, storyFolder, 'EN'));
     }
     return fs.existsSync(path.join(root, storyFolder, lang.folderName));
@@ -117,9 +123,7 @@ function languageCanExport(root: string, storyFolder: string, lang: LanguageConf
 //
 //  Tier 1 (built-in)  — UK_REPLACEMENTS array inside merge.ts, always applied first.
 //  Tier 2 (general)   — bindery.generalSubstitutions in VS Code *user* settings.
-//                        Words you want across every project (e.g. recognize→recognise).
-//  Tier 3 (project)   — .bindery/translations.json → en-gb entry.
-//                        Terms specific to this book/world.
+//  Tier 3 (project)   — .bindery/translations.json → dialect entry (e.g. 'en-gb').
 //
 //  Later tiers win on conflict.
 
@@ -131,12 +135,12 @@ function getGeneralSubstitutions(): UkReplacement[] {
 }
 
 /**
- * Build the combined substitution list passed to merge.ts.
- * merge.ts applies tier 1 (built-ins) internally; this function merges tiers 2 + 3.
+ * Build the combined substitution list for a dialect export.
+ * merge.ts applies tier 1 (built-ins) internally; this merges tiers 2 + 3.
  */
-function buildCombinedSubstitutions(translations: TranslationsFile | null): UkReplacement[] {
+function buildCombinedSubstitutions(translations: TranslationsFile | null, dialectCode: string): UkReplacement[] {
     const general = getGeneralSubstitutions();
-    const project = getSubstitutionRules(translations, 'en-gb');
+    const project = getSubstitutionRules(translations, dialectCode);
     const map = new Map<string, string>();
     for (const r of general) { map.set(r.us, r.uk); }
     for (const r of project) { map.set(r.us, r.uk); }   // project overrides general
@@ -144,8 +148,8 @@ function buildCombinedSubstitutions(translations: TranslationsFile | null): UkRe
 }
 
 /**
- * Combined ignored-words from translations.json (primary) and legacy
- * bindery.ukIgnoredWords VS Code setting (fallback / migration path).
+ * Combined ignored-words from translations.json and legacy ukIgnoredWords setting.
+ * dialectCode defaults to 'en-gb' here because findProbableUsToUkWords is UK-specific.
  */
 function getAllIgnoredWords(translations: TranslationsFile | null): Set<string> {
     const result = getIgnoredWords(translations, 'en-gb');
@@ -407,79 +411,61 @@ async function openTranslationsCommand() {
     vscode.window.showTextDocument(await vscode.workspace.openTextDocument(translationsPath));
 }
 
-// ─── Command: Add substitution rule ──────────────────────────────────────────
+// ─── Command: Add dialect rule ────────────────────────────────────────────────
 
-async function addTranslationCommand() {
-    const root = getWorkspaceRoot();
-
-    // Pre-fill "from" with editor selection (if any)
-    const editor   = vscode.window.activeTextEditor;
+async function addDialectCommand() {
+    const root   = getWorkspaceRoot();
+    const editor = vscode.window.activeTextEditor;
     const selected = editor && !editor.selection.isEmpty
         ? editor.document.getText(editor.selection).trim()
         : '';
 
-    // Determine which substitution entry to target from translations.json
-    let langKey   = 'en-gb';
-    let fromLabel = 'source';
-    let toLabel   = 'target';
+    if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
 
-    if (root) {
-        const translations = readTranslations(root);
-        const substitutionEntries = Object.entries(translations ?? {})
-            .filter(([, entry]) => entry.type === 'substitution');
+    const wsSettings = readWorkspaceSettings(root);
 
-        if (substitutionEntries.length === 1) {
-            langKey   = substitutionEntries[0][0];
-            const e   = substitutionEntries[0][1];
-            fromLabel = e.sourceLanguage ?? 'source';
-            toLabel   = e.label ?? langKey;
-        } else if (substitutionEntries.length > 1) {
-            // Try to auto-detect from active file path
-            let autoKey: string | undefined;
-            if (editor) {
-                const wsSettings = readWorkspaceSettings(root);
-                const sf = wsSettings?.storyFolder ?? 'Story';
-                const filePath = editor.document.uri.fsPath.replace(/\\/g, '/');
-                const storyBase = path.join(root, sf).replace(/\\/g, '/');
-                if (filePath.startsWith(storyBase)) {
-                    const rel = filePath.slice(storyBase.length + 1);
-                    const folderName = rel.split('/')[0];
-                    // Match folder to a substitution entry's sourceLanguage
-                    for (const [key, entry] of substitutionEntries) {
-                        if (entry.sourceLanguage?.toUpperCase() === folderName?.toUpperCase()) {
-                            autoKey = key;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (autoKey) {
-                langKey = autoKey;
-                const e = substitutionEntries.find(([k]) => k === autoKey)![1];
-                fromLabel = e.sourceLanguage ?? 'source';
-                toLabel   = e.label ?? langKey;
-            } else {
-                const picked = await vscode.window.showQuickPick(
-                    substitutionEntries.map(([key, entry]) => ({
-                        label:       entry.label ?? key,
-                        description: `key: ${key}`,
-                        key,
-                        entry,
-                    })),
-                    { placeHolder: 'Which substitution language?' }
-                );
-                if (!picked) { return; }
-                langKey   = picked.key;
-                fromLabel = picked.entry.sourceLanguage ?? 'source';
-                toLabel   = picked.entry.label ?? langKey;
-            }
+    // Auto-detect source language from active file path
+    let sourceLang: LanguageConfig | undefined;
+    if (editor) {
+        const sf   = wsSettings?.storyFolder ?? 'Story';
+        const file = editor.document.uri.fsPath.replace(/\\/g, '/');
+        const base = path.join(root, sf).replace(/\\/g, '/');
+        if (file.startsWith(base + '/')) {
+            const folderName = file.slice(base.length + 1).split('/')[0];
+            sourceLang = wsSettings?.languages?.find(
+                l => l.folderName.toUpperCase() === folderName?.toUpperCase()
+            );
         }
+    }
+    sourceLang ??= getDefaultLanguage(wsSettings);
+
+    if (!sourceLang) { vscode.window.showErrorMessage('No language configured. Run Bindery: Initialise Workspace first.'); return; }
+
+    const dialects = getDialectsForLanguage(wsSettings, sourceLang.code);
+    if (dialects.length === 0) {
+        vscode.window.showErrorMessage(
+            `Language ${sourceLang.code} has no dialects configured in settings.json. ` +
+            `Add dialects[] to this language entry.`
+        );
+        return;
+    }
+
+    // Pick dialect (auto-select if only one)
+    let dialect: DialectConfig;
+    if (dialects.length === 1) {
+        dialect = dialects[0];
+    } else {
+        const picked = await vscode.window.showQuickPick(
+            dialects.map(d => ({ label: d.label ?? d.code, description: `key: ${d.code}`, dialect: d })),
+            { placeHolder: `Dialect for ${sourceLang.code}` }
+        );
+        if (!picked) { return; }
+        dialect = picked.dialect;
     }
 
     const fromWord = await vscode.window.showInputBox({
-        title:       'Add Substitution Rule — source word',
-        prompt:      `${fromLabel} word`,
+        title:       `Add Dialect Rule (${sourceLang.code} → ${dialect.label ?? dialect.code})`,
+        prompt:      `${sourceLang.code} word`,
         value:       selected,
         placeHolder: 'e.g. airplane',
     });
@@ -487,8 +473,8 @@ async function addTranslationCommand() {
 
     const suggested = suggestUkSpelling(fromWord) ?? '';
     const toWord = await vscode.window.showInputBox({
-        title:       'Add Substitution Rule — target word',
-        prompt:      `${toLabel} word`,
+        title:       `Add Dialect Rule — ${dialect.label ?? dialect.code} form`,
+        prompt:      `${dialect.label ?? dialect.code} word`,
         value:       suggested,
         placeHolder: 'e.g. aeroplane',
     });
@@ -496,21 +482,196 @@ async function addTranslationCommand() {
 
     const scope = await vscode.window.showQuickPick(
         [
-            { label: 'This project only', description: 'Saved to .bindery/translations.json',        value: 'project' as const },
-            { label: 'All projects',      description: 'Saved to your VS Code user settings',        value: 'general' as const },
+            { label: 'This project only', description: 'Saved to .bindery/translations.json', value: 'project' as const },
+            { label: 'All projects',      description: 'Saved to your VS Code user settings', value: 'general' as const },
         ],
         { placeHolder: 'Where should this rule be saved?' }
     );
     if (!scope) { return; }
 
     if (scope.value === 'project') {
-        if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
-        upsertSubstitutionRule(root, langKey, { from: fromWord.toLowerCase(), to: toWord });
-        vscode.window.showInformationMessage(`Saved to .bindery/translations.json: ${fromWord.toLowerCase()} → ${toWord}`);
+        upsertSubstitutionRule(root, dialect.code, { from: fromWord.toLowerCase(), to: toWord });
+        vscode.window.showInformationMessage(`Dialect rule saved: ${fromWord.toLowerCase()} → ${toWord} [${dialect.code}]`);
     } else {
         await upsertGeneralSubstitution({ from: fromWord.toLowerCase(), to: toWord });
-        vscode.window.showInformationMessage(`Saved to general user settings: ${fromWord.toLowerCase()} → ${toWord}`);
+        vscode.window.showInformationMessage(`Dialect rule saved to user settings: ${fromWord.toLowerCase()} → ${toWord}`);
     }
+}
+
+// ─── Command: Add translation (glossary) ─────────────────────────────────────
+
+async function addTranslationCommand() {
+    const root = getWorkspaceRoot();
+    if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
+
+    const editor   = vscode.window.activeTextEditor;
+    const selected = editor && !editor.selection.isEmpty
+        ? editor.document.getText(editor.selection).trim()
+        : '';
+
+    const wsSettings  = readWorkspaceSettings(root);
+    const sourceLang  = getDefaultLanguage(wsSettings);
+    const targetLangs = (wsSettings?.languages ?? []).filter(
+        l => !l.isDefault && (l.code !== sourceLang?.code)
+    );
+
+    if (!sourceLang) { vscode.window.showErrorMessage('No default language configured. Run Bindery: Initialise Workspace first.'); return; }
+    if (targetLangs.length === 0) {
+        vscode.window.showErrorMessage('No target languages configured. Use Bindery: Add Language to add one.');
+        return;
+    }
+
+    // Pick target language
+    let targetLang: LanguageConfig;
+    if (targetLangs.length === 1) {
+        targetLang = targetLangs[0];
+    } else {
+        const picked = await vscode.window.showQuickPick(
+            targetLangs.map(l => ({ label: l.code, description: l.folderName, lang: l })),
+            { placeHolder: `Translate from ${sourceLang.code} to…` }
+        );
+        if (!picked) { return; }
+        targetLang = picked.lang;
+    }
+
+    const fromWord = await vscode.window.showInputBox({
+        title:       `Add Glossary Entry (${sourceLang.code} → ${targetLang.code})`,
+        prompt:      `${sourceLang.code} word or term`,
+        value:       selected,
+        placeHolder: 'e.g. the Flux',
+    });
+    if (!fromWord) { return; }
+
+    const toWord = await vscode.window.showInputBox({
+        title:       `Add Glossary Entry — ${targetLang.code} form`,
+        prompt:      `${targetLang.code} equivalent`,
+        placeHolder: 'e.g. de Flux',
+    });
+    if (!toWord) { return; }
+
+    const langKey   = targetLang.code.toLowerCase();
+    const langLabel = targetLang.folderName;
+    upsertGlossaryRule(root, langKey, langLabel, sourceLang.code, { from: fromWord, to: toWord });
+    vscode.window.showInformationMessage(`Glossary entry saved: ${fromWord} → ${toWord} [${langKey}]`);
+}
+
+// ─── Command: Add language ────────────────────────────────────────────────────
+
+async function addLanguageCommand() {
+    const root = getWorkspaceRoot();
+    if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
+
+    const wsSettings  = readWorkspaceSettings(root);
+    const sourceLang  = getDefaultLanguage(wsSettings) ?? { folderName: 'EN', code: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' };
+    const storyFolder = wsSettings?.storyFolder ?? 'Story';
+
+    const code = await vscode.window.showInputBox({
+        title:       'Bindery: Add Language (1/6) — Language code',
+        prompt:      'Short code (2–3 uppercase letters)',
+        placeHolder: 'FR  NL  DE  ES  IT  PT  …',
+        validateInput: v => /^[A-Za-z]{2,3}$/.test(v.trim()) ? undefined : 'Enter 2–3 letters',
+    });
+    if (!code?.trim()) { return; }
+    const upper = code.trim().toUpperCase();
+
+    const preset = KNOWN_LANGUAGES[upper];
+
+    const folderName = await vscode.window.showInputBox({
+        title:       'Bindery: Add Language (2/6) — Folder name',
+        prompt:      'Subfolder under Story/ for this language',
+        value:       preset?.folderName ?? upper,
+    });
+    if (!folderName?.trim()) { return; }
+
+    const chapterWord = await vscode.window.showInputBox({
+        title:       'Bindery: Add Language (3/6) — Chapter word',
+        prompt:      'Word used for "Chapter" in this language',
+        value:       preset?.chapterWord ?? 'Chapter',
+    });
+    if (!chapterWord?.trim()) { return; }
+
+    const actPrefix = await vscode.window.showInputBox({
+        title:       'Bindery: Add Language (4/6) — Act prefix',
+        prompt:      'Word used for "Act" in this language',
+        value:       preset?.actPrefix ?? 'Act',
+    });
+    if (!actPrefix?.trim()) { return; }
+
+    const prologueLabel = await vscode.window.showInputBox({
+        title:       'Bindery: Add Language (5/6) — Prologue label',
+        value:       preset?.prologueLabel ?? 'Prologue',
+    });
+    if (!prologueLabel?.trim()) { return; }
+
+    const epilogueLabel = await vscode.window.showInputBox({
+        title:       'Bindery: Add Language (6/6) — Epilogue label',
+        value:       preset?.epilogueLabel ?? 'Epilogue',
+    });
+    if (!epilogueLabel?.trim()) { return; }
+
+    const newLang: LanguageConfig = {
+        code:          upper,
+        folderName:    folderName.trim(),
+        chapterWord:   chapterWord.trim(),
+        actPrefix:     actPrefix.trim(),
+        prologueLabel: prologueLabel.trim(),
+        epilogueLabel: epilogueLabel.trim(),
+    };
+
+    // Update settings.json
+    const existing  = readWorkspaceSettings(root);
+    const languages = [...(existing?.languages ?? [sourceLang])];
+    const dupIdx = languages.findIndex(l => l.code.toUpperCase() === upper);
+    if (dupIdx >= 0) {
+        const overwrite = await vscode.window.showQuickPick(
+            [{ label: 'Update existing', value: true as const }, { label: 'Cancel', value: false as const }],
+            { placeHolder: `Language ${upper} already exists in settings.json` }
+        );
+        if (!overwrite?.value) { return; }
+        languages[dupIdx] = newLang;
+    } else {
+        languages.push(newLang);
+    }
+
+    const settingsPath = getSettingsPath(root);
+    let rawSettings: Record<string, unknown> = {};
+    try { rawSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>; } catch { /* new */ }
+    rawSettings['languages'] = languages;
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify(rawSettings, null, 2) + '\n', 'utf-8');
+
+    // Mirror folder structure from source language with stub files
+    const sourceDir = path.join(root, storyFolder, sourceLang.folderName);
+    const targetDir = path.join(root, storyFolder, newLang.folderName);
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    let stubCount = 0;
+    if (fs.existsSync(sourceDir)) {
+        const createStubs = (srcDir: string, dstDir: string) => {
+            fs.mkdirSync(dstDir, { recursive: true });
+            for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+                const srcPath = path.join(srcDir, entry.name);
+                const dstPath = path.join(dstDir, entry.name);
+                if (entry.isDirectory()) {
+                    createStubs(srcPath, dstPath);
+                } else if (entry.isFile() && entry.name.endsWith('.md')) {
+                    if (!fs.existsSync(dstPath)) {
+                        // Read source H1 for stub header
+                        const src = fs.readFileSync(srcPath, 'utf-8');
+                        const h1  = /^#\s+(.+)/m.exec(src);
+                        const title = h1 ? h1[1].trim() : path.basename(entry.name, '.md');
+                        fs.writeFileSync(dstPath, `# [Untranslated] ${title}\n`, 'utf-8');
+                        stubCount++;
+                    }
+                }
+            }
+        };
+        createStubs(sourceDir, targetDir);
+    }
+
+    vscode.window.showInformationMessage(
+        `Added language ${upper} to settings.json. Created ${stubCount} stub file(s) in Story/${newLang.folderName}/.`
+    );
 }
 
 // ─── Command: Find probable US→UK words ──────────────────────────────────────
@@ -614,12 +775,10 @@ function buildMergeOptions(
     outputTypes:  OutputType[],
     wsSettings:   WorkspaceSettings | null,
     translations: TranslationsFile | null,
+    dialectCode?: string,
 ): MergeOptions {
     const cfg = getEffectiveConfig(wsSettings);
-
-    // Language-specific title from workspace file, falling back to the global title
     const bookTitle = getBookTitleForLang(wsSettings, lang.code) ?? cfg.bookTitle;
-
     return {
         root,
         storyFolder:     cfg.storyFolder,
@@ -633,7 +792,8 @@ function buildMergeOptions(
         filePrefix:      cfg.mergeFilePrefix,
         pandocPath:      cfg.pandocPath,
         libreOfficePath: cfg.libreOfficePath,
-        ukReplacements:  buildCombinedSubstitutions(translations),
+        ukReplacements:  dialectCode ? buildCombinedSubstitutions(translations, dialectCode) : undefined,
+        dialectCode,
     };
 }
 
@@ -903,6 +1063,7 @@ async function doMerge(outputTypes: OutputType[]) {
             for (let i = 0; i < selectedLangs.length; i++) {
                 const lang = selectedLangs[i];
                 progress.report({ message: `${lang.code} (${i + 1}/${selectedLangs.length})…` });
+                // Base language export
                 try {
                     const options = buildMergeOptions(root, lang, outputTypes, wsSettings, translations);
                     const r       = await mergeBook(options);
@@ -910,6 +1071,18 @@ async function doMerge(outputTypes: OutputType[]) {
                     allWarnings.push(...r.warnings.map(w => `${lang.code}: ${w}`));
                 } catch (err: any) {
                     vscode.window.showErrorMessage(`Merge failed for ${lang.code}: ${err.message}`);
+                }
+                // Dialect exports — always run alongside parent language
+                for (const dialect of lang.dialects ?? []) {
+                    progress.report({ message: `${lang.code} → ${dialect.code}…` });
+                    try {
+                        const dOptions = buildMergeOptions(root, lang, outputTypes, wsSettings, translations, dialect.code);
+                        const dr       = await mergeBook(dOptions);
+                        allOutputs.push(...dr.outputs);
+                        allWarnings.push(...dr.warnings.map(w => `${dialect.code}: ${w}`));
+                    } catch (err: any) {
+                        vscode.window.showErrorMessage(`Merge failed for dialect ${dialect.code}: ${err.message}`);
+                    }
                 }
             }
             return { outputs: allOutputs, warnings: allWarnings };
@@ -979,7 +1152,10 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bindery.mergePdf',                () => mergeCommand(['pdf'])),
         vscode.commands.registerCommand('bindery.mergeAll',                () => mergeCommand(['md', 'docx', 'epub', 'pdf'])),
         vscode.commands.registerCommand('bindery.findProbableUsToUkWords', findProbableUsToUkWordsCommand),
-        vscode.commands.registerCommand('bindery.addUkReplacement',        addTranslationCommand),
+        vscode.commands.registerCommand('bindery.addDialect',              addDialectCommand),
+        vscode.commands.registerCommand('bindery.addTranslation',          addTranslationCommand),
+        vscode.commands.registerCommand('bindery.addLanguage',             addLanguageCommand),
+        vscode.commands.registerCommand('bindery.addUkReplacement',        addDialectCommand), // backward compat alias
         vscode.commands.registerCommand('bindery.openTranslations',        openTranslationsCommand),
         vscode.commands.registerCommand('bindery.registerMcp',             () => registerMcpCommand(context)),
     );

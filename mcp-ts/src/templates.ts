@@ -138,8 +138,11 @@ function claudeMd(ctx: TemplateContext): string {
         '| `format` | Apply typography formatting to a file or folder |',
         '| `get_review_text` | Structured git diff with optional auto-staging |',
         '| `git_snapshot` | Git commit of story, notes, and arc changes |',
-        '| `get_translation` | List all rules for a language, or look up a specific word (forgiving) |',
-        '| `add_translation` | Add or update a rule in `.bindery/translations.json` |',
+        '| `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |',
+        '| `add_translation` | Add or update a cross-language glossary entry (agent reference, not auto-applied) |',
+        '| `get_dialect` | List dialect substitution rules, or look up a specific word |',
+        '| `add_dialect` | Add or update a dialect substitution rule (auto-applied at export, e.g. US→UK) |',
+        '| `add_language` | Add a language to settings.json and scaffold its story folder with stubs |',
         '| `memory_list` | List `Notes/Memories/` files with line counts |',
         '| `memory_append` | Append a dated session entry to a memory file |',
         '| `memory_compact` | Overwrite a memory file with a summary (backs up original) |',
@@ -433,15 +436,17 @@ User says \`/translate\`, "translate chapter X", or "help me with the translatio
 ## Tools
 Use these Bindery MCP tools:
 - \`get_chapter(chapterNumber, language)\` — read a chapter in any language (source or existing translation)
-- \`get_translation(language)\` — list all rules for a language key (e.g. \`"nl"\` or \`"en-gb"\`)
+- \`get_translation(language)\` — list glossary entries for a target language (e.g. \`"nl"\`)
 - \`get_translation(language, word)\` — look up a specific term; forgiving: case-insensitive, handles plurals and inflected forms
+- \`get_dialect(dialectCode)\` — list dialect substitution rules (e.g. \`"en-gb"\`)
 - \`search(query, language)\` — verify how a term was rendered in other translated chapters
-- \`add_translation(langKey, from, to)\` — save a new term pair to \`.bindery/translations.json\` when the user confirms a translation choice
+- \`add_translation(targetLangCode, from, to)\` — save a new glossary term pair when the user confirms a translation choice
+- \`add_dialect(dialectCode, from, to)\` — save a spelling substitution rule (e.g. US→UK) applied automatically at export
 
 ## Steps
 
 ### 1. Load the translation table
-Call \`get_translation(language)\` to load all known term mappings for the target language before translating anything.
+Call \`get_translation(language)\` to load all known glossary term mappings for the target language before translating anything.
 
 ### 2. Load the chapter
 Use \`get_chapter(chapterNumber, sourceLanguage)\` to read the source chapter.
@@ -456,7 +461,7 @@ For spot-check mode, also call \`get_chapter(chapterNumber, targetLanguage)\` to
 |---|---|---|---|---|
 
 ### 4. Save confirmed terms
-When the user confirms a new or corrected term translation, call \`add_translation\` to persist it so future exports apply it automatically.
+When the user confirms a new or corrected term translation, call \`add_translation\` to persist it as a glossary entry. For spelling variant rules (dialect substitutions applied at export), use \`add_dialect\` instead.
 
 ## Rules
 - Always load the translation table first — never invent translations for world-specific terms

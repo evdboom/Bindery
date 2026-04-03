@@ -18,6 +18,18 @@ export interface LanguageConfig {
     actPrefix: string;
     prologueLabel: string;
     epilogueLabel: string;
+    /** True for the primary language the book is written in. */
+    isDefault?: boolean;
+    /** Dialect exports derived from this language (e.g. en-gb from EN). No story folder of their own. */
+    dialects?: DialectConfig[];
+}
+
+/** A dialect derived from a parent language — same story folder, word substitutions applied at export. */
+export interface DialectConfig {
+    /** Dialect code, used as the key in translations.json (e.g. 'en-gb'). */
+    code: string;
+    /** Human-readable label, e.g. 'British English'. */
+    label?: string;
 }
 
 export type OutputType = 'md' | 'docx' | 'epub' | 'pdf';
@@ -49,6 +61,13 @@ export interface MergeOptions {
     libreOfficePath?: string;
     /** Custom US→UK replacements from workspace settings */
     ukReplacements?: UkReplacement[];
+    /**
+     * Dialect code to apply substitution rules for (e.g. 'en-gb').
+     * When set, mergeBook generates output in a temp folder with rules applied,
+     * then writes the result with a dialect-suffixed filename.
+     * Replaces the old hardcoded UK/en-gb special-case.
+     */
+    dialectCode?: string;
 }
 
 export interface MergeResult {
@@ -282,39 +301,44 @@ function convertUsToUkDirectory(dirPath: string, customReplacements: UkReplaceme
     return changed;
 }
 
-function isUkLanguage(lang: LanguageConfig): boolean {
+/**
+ * True for the legacy UK LanguageConfig (code='UK', folderName='UK').
+ * Kept for backward compatibility — new projects use dialects[] instead.
+ */
+function isLegacyUkLanguage(lang: LanguageConfig): boolean {
     return lang.code.trim().toUpperCase() === 'UK' || lang.folderName.trim().toUpperCase() === 'UK';
 }
 
-function prepareUkFromEn(root: string, storyFolder: string, lang: LanguageConfig, customReplacements: UkReplacement[] = []): void {
-    if (!isUkLanguage(lang)) {
-        return;
+/**
+ * Prepare a temporary dialect folder by copying the source language folder
+ * and applying word substitutions. Used for dialect exports (e.g. en-gb from EN)
+ * and legacy UK exports.
+ */
+function prepareDialectFolder(
+    root:         string,
+    storyFolder:  string,
+    sourceFolderName: string,
+    dialectFolderName: string,
+    customReplacements: UkReplacement[] = []
+): void {
+    const storyRoot   = path.join(root, storyFolder);
+    const sourcePath  = path.join(storyRoot, sourceFolderName);
+    const dialectPath = path.join(storyRoot, dialectFolderName);
+
+    if (!fs.existsSync(sourcePath)) {
+        throw new Error(`Source folder not found for dialect generation: ${sourcePath}`);
     }
-
-    const storyRoot = path.join(root, storyFolder);
-    const enPath = path.join(storyRoot, 'EN');
-    const ukPath = path.join(storyRoot, lang.folderName);
-
-    if (!fs.existsSync(enPath)) {
-        throw new Error(`EN source folder not found for UK generation: ${enPath}`);
+    if (fs.existsSync(dialectPath)) {
+        fs.rmSync(dialectPath, { recursive: true, force: true });
     }
-
-    if (fs.existsSync(ukPath)) {
-        fs.rmSync(ukPath, { recursive: true, force: true });
-    }
-
-    fs.cpSync(enPath, ukPath, { recursive: true });
-    convertUsToUkDirectory(ukPath, customReplacements);
+    fs.cpSync(sourcePath, dialectPath, { recursive: true });
+    convertUsToUkDirectory(dialectPath, customReplacements);
 }
 
-function cleanupUkTempFolder(root: string, storyFolder: string, lang: LanguageConfig): void {
-    if (!isUkLanguage(lang)) {
-        return;
-    }
-
-    const ukPath = path.join(root, storyFolder, lang.folderName);
-    if (fs.existsSync(ukPath)) {
-        fs.rmSync(ukPath, { recursive: true, force: true });
+function cleanupDialectTempFolder(root: string, storyFolder: string, folderName: string): void {
+    const p = path.join(root, storyFolder, folderName);
+    if (fs.existsSync(p)) {
+        fs.rmSync(p, { recursive: true, force: true });
     }
 }
 
@@ -794,10 +818,30 @@ function formatDirectory(dirPath: string): number {
  * Main merge entry point.
  */
 export async function mergeBook(options: MergeOptions): Promise<MergeResult> {
-    prepareUkFromEn(options.root, options.storyFolder, options.language, options.ukReplacements ?? []);
+    // Legacy: old UK LanguageConfig acts like a dialect of EN
+    const isLegacyUk = isLegacyUkLanguage(options.language);
+    const dialectFolder = isLegacyUk ? 'UK' : undefined;
+
+    if (isLegacyUk) {
+        prepareDialectFolder(options.root, options.storyFolder, 'EN', 'UK', options.ukReplacements ?? []);
+    } else if (options.dialectCode) {
+        // Dialect export: copy source folder to a temp name, apply substitutions
+        prepareDialectFolder(
+            options.root, options.storyFolder,
+            options.language.folderName,
+            `_dialect_${options.dialectCode}`,
+            options.ukReplacements ?? []
+        );
+    }
+
+    const effectiveFolderName = isLegacyUk
+        ? 'UK'
+        : options.dialectCode
+            ? `_dialect_${options.dialectCode}`
+            : options.language.folderName;
 
     try {
-        const langPath = path.join(options.root, options.storyFolder, options.language.folderName);
+        const langPath = path.join(options.root, options.storyFolder, effectiveFolderName);
 
         if (!fs.existsSync(langPath)) {
             throw new Error(`Language folder not found: ${langPath}`);
@@ -816,7 +860,11 @@ export async function mergeBook(options: MergeOptions): Promise<MergeResult> {
         const outputDir = path.join(options.root, options.outputDir);
         fs.mkdirSync(outputDir, { recursive: true });
 
-        const baseName = `${options.filePrefix}_${options.language.folderName}_Merged`;
+        // Dialect exports get a distinct suffix in the filename (e.g. Book_EN-GB_Merged)
+        const folderSuffix = options.dialectCode
+            ? options.dialectCode.toUpperCase()
+            : options.language.folderName;
+        const baseName = `${options.filePrefix}_${folderSuffix}_Merged`;
         const outputs: string[] = [];
         const warnings: string[] = [];
 
@@ -867,6 +915,10 @@ export async function mergeBook(options: MergeOptions): Promise<MergeResult> {
 
         return { outputs, filesMerged: files.length, warnings };
     } finally {
-        cleanupUkTempFolder(options.root, options.storyFolder, options.language);
+        if (isLegacyUk) {
+            cleanupDialectTempFolder(options.root, options.storyFolder, 'UK');
+        } else if (options.dialectCode) {
+            cleanupDialectTempFolder(options.root, options.storyFolder, `_dialect_${options.dialectCode}`);
+        }
     }
 }
