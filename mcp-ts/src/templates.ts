@@ -85,7 +85,7 @@ function claudeMd(ctx: TemplateContext): string {
         '',
         '## Memory system',
         '1. When the user ask or otherwise indicates the end of a session: use /memory to save decisions.',
-        '2. When switching to another chapter read .bindery/memories/chXX.md if it exists. for that chapter',
+        `2. When switching to another chapter read ${memoriesFolder}/chXX.md if it exists. for that chapter`,
         '',
         '## Repo layout',
         '```',
