@@ -135,8 +135,8 @@ issue type, location, and the reference that contradicts it.
 | `get_review_text` | Structured git diff with optional auto-staging |
 | `git_snapshot` | Git commit of story, notes, and arc changes |
 | `get_translation` | List all rules for a language, or look up a specific word (forgiving) |
-| `add_translation` | Add or update a rule in `.bindery/translations.json` |
-| `memory_list` | List `Notes/Memories/` files with line counts |
+| `add_translation` | Add or update a rule in project translations |
+| `memory_list` | List memory files with line counts |
 | `memory_append` | Append a dated session entry to a memory file |
 | `memory_compact` | Overwrite a memory file with a summary (backs up original) |
 
