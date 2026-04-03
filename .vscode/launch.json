@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/vscode-ext",
+                "--disable-extension=option-a.bindery"
+            ],
+            "outFiles": ["${workspaceFolder}/vscode-ext/out/**/*.js"],
+            "preLaunchTask": "compile-vscode-ext"
+        }
+    ]
+}

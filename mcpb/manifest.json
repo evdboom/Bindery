@@ -63,8 +63,10 @@
     { "name": "add_dialect",      "description": "Add or update a dialect substitution rule in .bindery/translations.json (e.g. US→UK spelling: color→colour). Applied automatically during export." },
     { "name": "get_dialect",      "description": "Look up dialect substitution rules from .bindery/translations.json. List all rules for a dialect or look up a specific word." },
     { "name": "add_language",     "description": "Add a new language to .bindery/settings.json and scaffold its story folder with stub files mirroring the default language structure." },
-    { "name": "memory_list",      "description": "List all session memory files in .bindery/memories/ with their line counts." },
-    { "name": "memory_append",    "description": "Append a dated session entry to a memory file in .bindery/memories/. Supply a short title and content; the tool stamps the date." },
-    { "name": "memory_compact",   "description": "Overwrite a memory file with a compacted summary. The original is backed up to .bindery/memories/archive/ first." }
+    { "name": "memory_list",             "description": "List all session memory files in .bindery/memories/ with their line counts." },
+    { "name": "memory_append",           "description": "Append a dated session entry to a memory file in .bindery/memories/. Supply a short title and content; the tool stamps the date." },
+    { "name": "memory_compact",          "description": "Overwrite a memory file with a compacted summary. The original is backed up to .bindery/memories/archive/ first." },
+    { "name": "chapter_status_get",      "description": "Read the current chapter progress tracker from .bindery/chapter-status.json. Returns a grouped summary by status (done, in-progress, draft, planned, needs-review). Returns a clear empty-state message if nothing has been recorded yet." },
+    { "name": "chapter_status_update",   "description": "Upsert chapter progress entries in .bindery/chapter-status.json. Send only the chapters that changed — existing entries not in the payload are preserved. Creates the file if it does not exist." }
   ]
 }

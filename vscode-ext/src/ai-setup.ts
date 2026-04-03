@@ -58,7 +58,7 @@ export const ALL_SKILLS: SkillTemplate[] = [
  * significantly enough that existing users should regenerate their AI files.
  * Written to .bindery/ai-version.json after each successful setupAiFiles() run.
  */
-export const AI_SETUP_VERSION = 4;
+export const AI_SETUP_VERSION = 5;
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
