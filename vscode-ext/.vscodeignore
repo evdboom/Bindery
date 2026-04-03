@@ -1,5 +1,5 @@
 src/
-node_modules/
+/node_modules/
 .vscode-test/
 *.map
 tsconfig.json
