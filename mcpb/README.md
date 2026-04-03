@@ -136,7 +136,7 @@ issue type, location, and the reference that contradicts it.
 | `git_snapshot` | Git commit of story, notes, and arc changes |
 | `get_translation` | List all rules for a language, or look up a specific word (forgiving) |
 | `add_translation` | Add or update a rule in `.bindery/translations.json` |
-| `memory_list` | List `Notes/Memories/` files with line counts |
+| `memory_list` | List `.bindery/Memories/` files with line counts |
 | `memory_append` | Append a dated session entry to a memory file |
 | `memory_compact` | Overwrite a memory file with a summary (backs up original) |
 
