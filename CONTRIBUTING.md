@@ -74,19 +74,22 @@ Tests cover:
 
 ---
 
-## CI pipeline (`.github/workflows/test.yml`)
+## CI pipeline (`.github/workflows/ci.yml`)
 
-The workflow runs on every push to `main` and on all pull requests targeting `main`.
+The workflow runs on every push and pull request on all branches.
 
-Jobs:
+A single `test` job runs the steps sequentially (the template-sync step must
+occur between the mcp-ts and vscode-ext builds):
 
-| Job | What it does |
+| Step | What it does |
 |---|---|
-| `test-mcp` | Install → build → `npm run test:ci` in `mcp-ts/` |
-| `test-vscode-ext` | Install → compile → `npm run test:ci` in `vscode-ext/` |
-| `status-check` | Aggregates both results; fails if either package fails |
+| Install + compile mcp-ts | `npm ci` → `npm run compile` |
+| Run mcp-ts tests | `npm run test:ci` → uploads `test-results.json` artifact |
+| Sync templates | Copies `mcp-ts/src/templates.ts` → `vscode-ext/src/ai-setup-templates.ts` |
+| Install + compile vscode-ext | `npm ci` → `npm run compile` |
+| Run vscode-ext tests | `npm run test:ci` → uploads `test-results.json` artifact |
 
-PRs **cannot be merged** unless both `test-mcp` and `test-vscode-ext` pass.
+PRs **cannot be merged** unless the `test` job passes.
 
 ---
 
