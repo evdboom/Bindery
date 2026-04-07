@@ -10,7 +10,7 @@ Works with any Markdown book project structured with the Bindery VS Code extensi
 - **Full-text search** — BM25 ranked search across all story and notes files
 - **Context retrieval** — "where did X happen" queries with ranked passages
 - **Translation management** — list, look up, add, and update translation and dialect substitution rules
-- **Session memory** — append, list, and compact persistent cross session notes in `.bindery/Memories/`
+- **Session memory** — append, list, and compact persistent cross-session notes in `.bindery/memories/`
 - **Workspace setup** — create or update `.bindery/settings.json` and scaffold AI instruction files
 - **Chapter status tracking** — record and query per-chapter progress (draft, in-progress, done, needs-review)
 - **Typography formatting** — curly quotes, em-dashes, ellipses
