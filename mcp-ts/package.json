@@ -11,7 +11,8 @@
     "watch": "tsc -watch -p ./",
     "build": "npm run compile",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json"
   },
   "keywords": ["mcp", "markdown", "book", "writing", "bindery"],
   "author": "Erik van der Boom",

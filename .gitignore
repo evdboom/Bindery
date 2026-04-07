@@ -10,6 +10,9 @@ mcp-rust/target/
 *.vsix
 *.mcpb
 
+# Test artifacts
+test-results.json
+
 # Environment (contains personal paths)
 .env
 
