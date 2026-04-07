@@ -10,7 +10,9 @@ Works with any Markdown book project structured with the Bindery VS Code extensi
 - **Full-text search** — BM25 ranked search across all story and notes files
 - **Context retrieval** — "where did X happen" queries with ranked passages
 - **Translation management** — list, look up, add, and update translation and dialect substitution rules
-- **Session memory** — append, list, and compact persistent session notes in `Notes/Memories/`
+- **Session memory** — append, list, and compact persistent cross-session notes in `.bindery/memories/`
+- **Workspace setup** — create or update `.bindery/settings.json` and scaffold AI instruction files
+- **Chapter status tracking** — record and query per-chapter progress (draft, in-progress, done, needs-review)
 - **Typography formatting** — curly quotes, em-dashes, ellipses
 - **Version snapshots** — git-based save points after writing sessions
 - **Review diffs** — structured git diff of uncommitted changes
@@ -29,7 +31,7 @@ To install manually without using published Claude Connectors
 | Setting | Required | Description |
 |---------|----------|-------------|
 | Books | Yes | Semicolon-separated `Name=path` pairs pointing to book projects |
-| Ollama URL | No | URL for local Ollama instance (enables semantic reranking) |
+| Ollama URL | No | URL for Ollama instance (enables semantic reranking, see [https://docs.ollama.com/quickstart](https://docs.ollama.com/quickstart)) |
 
 **Books** example: `MyBook=C:\Users\Me\MyBook;MyNovel=D:\Writing\MyNovel`
 
@@ -94,9 +96,9 @@ date formatting needed.
 
 > "The global memory file is getting long — please compact it"
 
-Claude reads the current content, summarises it, then calls `memory_compact`
+Claude reads the current content, summarizes it, then calls `memory_compact`
 with the compacted text. The original is automatically backed up to
-`Notes/Memories/archive/global_YYYY-MM-DD.md` before the file is overwritten.
+`.bindery/memories/archive/global_YYYY-MM-DD.md` before the file is overwritten.
 
 ### Spot-check a chapter translation
 
@@ -123,6 +125,8 @@ issue type, location, and the reference that contradicts it.
 | `list_books` | List all configured book names |
 | `identify_book` | Match a working directory to a book name |
 | `health` | Server status: settings, index, embedding backend |
+| `init_workspace` | Create or update `.bindery/settings.json` and `translations.json` with smart defaults |
+| `setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md) and Claude skill templates |
 | `index_build` | Build or rebuild the full-text search index |
 | `index_status` | Show index chunk count and build time |
 | `get_text` | Read any file by relative path, with optional line range |
@@ -142,6 +146,8 @@ issue type, location, and the reference that contradicts it.
 | `memory_list` | List memory files with line counts |
 | `memory_append` | Append a dated session entry to a memory file |
 | `memory_compact` | Overwrite a memory file with a summary (backs up original) |
+| `chapter_status_get` | Read the chapter progress tracker — returns entries grouped by status (done, in-progress, draft, planned, needs-review) |
+| `chapter_status_update` | Upsert chapter progress entries — send only changed chapters; unmentioned entries are preserved |
 
 ## Privacy Policy
 

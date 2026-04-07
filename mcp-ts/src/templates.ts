@@ -32,7 +32,7 @@ export interface TemplateContext {
  *
  * Top-level file templates: 'claude', 'copilot', 'cursor', 'agents'
  * Skill templates: 'review', 'brainstorm', 'memory', 'translate',
- *                  'status', 'continuity', 'read_aloud'
+ *                  'status', 'continuity', 'read_aloud', 'read_in'
  */
 export function renderTemplate(name: string, ctx: TemplateContext): string {
     switch (name) {
@@ -47,6 +47,7 @@ export function renderTemplate(name: string, ctx: TemplateContext): string {
         case 'status':     return skillStatus(ctx);
         case 'continuity': return skillContinuity(ctx);
         case 'read_aloud': return skillReadAloud(ctx);
+        case 'read_in':    return skillReadIn(ctx);
         default:           return `Unknown template: ${name}`;
     }
 }
@@ -79,18 +80,17 @@ function claudeMd(ctx: TemplateContext): string {
 
     lines.push(
         '## Start of session',
-        `1. Read COWORK.md (if present) for current focus and context.`,
-        `2. Read ${memoriesFolder}/global.md for cross-chapter decisions.`,
-        `3. If working on a specific chapter, read ${memoriesFolder}/chXX.md if it exists.`,
+        '1. Use /read-in at the start of a session to load context and get your bearings.',
+        '2. If the skill is not available, read at least COWORK.md (if present) for current focus and context.',
         '',
         '## Memory system',
-        '1. When the user ask or otherwise indicates the end of a session: use /memory to save decisions.',
-        `2. When switching to another chapter read ${memoriesFolder}/chXX.md if it exists. for that chapter`,
+        '1. When concluding a discussion, or after you give a meaningful, preservation-worthy response: use /memory to store it.',
+        '2. Also when the user asks or otherwise indicates the end of a session: use /memory to save decisions.',
         '',
         '## Repo layout',
         '```',
-        `${arcFolder}/  ← story arc files (Overall.md, Act_I_*.md, Act_II_*.md, Act_III_*.md)`,
-        `${notesFolder}/  ← story bible (characters, world)`,
+        `${arcFolder}/  ← story arc files`,
+        `${notesFolder}/  ← story notes (characters, world)`,
         `${storyFolder}/`,
         ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters (one .md per chapter)`),
         '```',
@@ -116,6 +116,7 @@ function claudeMd(ctx: TemplateContext): string {
         '| `/status` | Book progress snapshot |',
         '| `/continuity` | Check a chapter for consistency errors |',
         '| `/read-aloud` | Test how a passage reads when spoken |',
+        '| `/read-in` | Load context and get your bearings at the start of a session |',
         '',
         '## MCP server (bindery-mcp)',
         '',
@@ -127,6 +128,8 @@ function claudeMd(ctx: TemplateContext): string {
         '| `list_books` | List all configured book names |',
         '| `identify_book` | Match a working directory to a book name |',
         '| `health` | Server status: settings, index, embedding backend |',
+        '| `init_workspace` | Create or update `.bindery/settings.json` and `translations.json` |',
+        '| `setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, AGENTS.md) and skill templates |',
         '| `index_build` | Build or rebuild the full-text search index |',
         '| `index_status` | Show index chunk count and build time |',
         '| `get_text` | Read any file by relative path, with optional line range |',
@@ -143,9 +146,11 @@ function claudeMd(ctx: TemplateContext): string {
         '| `get_dialect` | List dialect substitution rules, or look up a specific word |',
         '| `add_dialect` | Add or update a dialect substitution rule (auto-applied at export, e.g. US→UK) |',
         '| `add_language` | Add a language to settings.json and scaffold its story folder with stubs |',
-        '| `memory_list` | List `Notes/Memories/` files with line counts |',
-        '| `memory_append` | Append a dated session entry to a memory file |',
-        '| `memory_compact` | Overwrite a memory file with a summary (backs up original) |',
+        '| `memory_list` | List `.bindery/memories/` files with line counts |',
+        '| `memory_append` | Append a dated session entry to a file in `.bindery/memories/` |',
+        '| `memory_compact` | Overwrite a file in `.bindery/memories/` with a summary (backs up original to `.bindery/memories/archive/`) |',
+        '| `chapter_status_get` | Read the chapter progress tracker — entries grouped by status |',
+        '| `chapter_status_update` | Upsert chapter progress entries (send only changed chapters) |',
     );
     return lines.filter(l => l !== '\n').join('\n') + '\n';
 }
@@ -172,7 +177,7 @@ function copilotMd(ctx: TemplateContext): string {
         '',
         '## Writing guidelines',
         '- HTML comments `<!-- -->` in chapter files are writer notes — treat as context only.',
-        '- Quotation marks and dashes are managed by the Bindery VS Code extension. Do not normalise them.',
+        '- Quotation marks and dashes are managed by the Bindery VS Code extension. Do not normalize them.',
         '- Check `Notes/Details_Translation_notes.md` before using or translating world-specific terms.',
     );
     if (ctx.audience) {
@@ -199,7 +204,7 @@ function cursorRules(ctx: TemplateContext): string {
         '',
         '## Rules',
         '- HTML comments `<!-- -->` in chapter files are writer notes. Treat as context, not story content.',
-        '- Do not normalise quotation marks or dashes — these are managed by the Bindery extension.',
+        '- Do not normalize quotation marks or dashes — these are managed by the Bindery extension.',
         '- Do not rewrite prose unless explicitly asked. Suggest edits only.',
     ];
     if (ctx.audience) {
@@ -224,9 +229,9 @@ function agentsMd(ctx: TemplateContext): string {
         `3. Check \`${notesFolder}/Details_Translation_notes.md\` before using or translating world-specific terms.`,
         '',
         '## Story files',
-        `- Chapter files are \`.md\` files in \`${storyFolder}/\`, organised in act subfolders.`,
+        `- Chapter files are \`.md\` files in \`${storyFolder}/\`, organized in act subfolders.`,
         '- HTML comments `<!-- -->` are writer notes — treat as context only, not prose.',
-        '- Quotation marks and em-dashes are managed by the Bindery extension. Do not normalise them.',
+        '- Quotation marks and em-dashes are managed by the Bindery extension. Do not normalize them.',
         '',
         '## Writing guidelines',
         '- Do not rewrite paragraphs unless explicitly asked. Suggest edits only.',
@@ -396,14 +401,14 @@ Use \`memory_append\` to write to the right file:
 
 Arguments:
 - \`file\`: just the filename, e.g. \`global.md\` or \`ch10.md\`
-- \`title\`: short topic label, e.g. \`"Daeven introduction — character decisions"\`
+- \`title\`: short topic label, e.g. \`"Elder introduction — character decisions"\`
 - \`content\`: the decisions to record, one per line
 
 The tool stamps the current date. Do not add a date to the content.
 
 ### 4. Compact if needed
 If \`memory_list\` shows a file exceeding ~150 lines, offer to compact it:
-- Summarise the existing content into a concise replacement
+- Summarize the existing content into a concise replacement
 - Call \`memory_compact(file, compacted_content)\` — original is backed up automatically
 
 ### 5. Snapshot
@@ -593,5 +598,60 @@ Brief overall impression (2-3 sentences) after the table.
 ## Rules
 - Focus on how it sounds when spoken — not a content review
 - Suggestions are gentle ("consider", not "must change")
+`;
+}
+
+function skillReadIn(ctx: TemplateContext): string {
+    const { memoriesFolder } = ctx;
+    return `---
+name: Read-in
+description: Load project context at the start of a session — memory, progress tracker, and chapter notes. Use for /read-in, "get your bearings", "what were we doing", or at the start of any working session.
+---
+
+# Skill: /read-in
+
+Load context and get your bearings before starting work.
+
+## Trigger
+User says \`/read-in\`, "get your bearings", "what were we working on", or at the start of a session.
+
+## Tools
+Use these Bindery MCP tools:
+- \`memory_list\` — discover which memory files exist (\`global.md\`, \`chXX.md\` files)
+- \`get_text(identifier)\` — read COWORK.md and memory files
+- \`chapter_status_get(book)\` — read the structured progress tracker
+- \`get_overview(language)\` — list all acts and chapters (only if tracker is empty or sparse)
+
+## Steps
+
+### 1. Check for current focus
+Use \`get_text("COWORK.md")\` to read the current focus file (ignore if missing).
+
+### 2. Load global memory
+Use \`memory_list\` to discover available memory files, then \`get_text("${memoriesFolder}/global.md")\` to load cross-chapter decisions.
+
+### 3. Read the progress tracker
+Use \`chapter_status_get\` to read current chapter progress. If it is empty or has fewer than 3 entries, also call \`get_overview\` for the full chapter listing.
+
+### 4. Determine working chapter
+If COWORK.md names a chapter, use that.
+Otherwise if the tracker has a single \`in-progress\` chapter, use that.
+Otherwise — **ask the user**: "Which chapter do you want to work on?"
+
+### 5. Load chapter memory
+Once the chapter is known (e.g. chapter 10), check \`memory_list\` output for a matching file (\`ch10.md\`). If it exists, read it with \`get_text("${memoriesFolder}/ch10.md")\`.
+
+### 6. Summarize
+Output a short orientation (3-6 lines):
+- Which chapter / scene we're in
+- Status from the tracker (draft / in-progress / needs-review)
+- Key open decisions from global memory relevant to this chapter
+- Any chapter-specific notes from the chapter memory file
+- End with a phrase like: "Ready — what would you like to work on?"
+
+## Rules
+- Do not load *all* chapter memories — only the one being worked on
+- Keep the summary brief; this is orientation, not a full status report
+- Do not suggest work or ask multiple questions — one question at most (which chapter?)
 `;
 }

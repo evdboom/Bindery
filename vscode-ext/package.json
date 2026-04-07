@@ -63,7 +63,7 @@
         "bindery.storyFolder": {
           "type": "string",
           "default": "Story",
-          "description": "Fallback story folder name if .bindery/settings.json is not present. Run 'Bindery: Initialise Workspace' to create the settings file."
+          "description": "Fallback story folder name if .bindery/settings.json is not present. Run 'Bindery: Initialize Workspace' to create the settings file."
         },
         "bindery.mergedOutputDir": {
           "type": "string",
@@ -121,7 +121,7 @@
     "commands": [
       {
         "command": "bindery.init",
-        "title": "Initialise Workspace",
+        "title": "Initialize Workspace",
         "category": "Bindery"
       },
       {
@@ -414,7 +414,7 @@
           "type": "object",
           "properties": {
             "targets":   { "type": "array", "items": { "type": "string" }, "description": "Files to generate: claude, copilot, cursor, agents. Default: all." },
-            "skills":    { "type": "array", "items": { "type": "string" }, "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read_aloud. Default: all." },
+            "skills":    { "type": "array", "items": { "type": "string" }, "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read_aloud, read_in. Default: all." },
             "overwrite": { "type": "boolean", "description": "Overwrite existing files? Default false." }
           }
         }
