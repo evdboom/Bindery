@@ -111,7 +111,7 @@ see `mcp-ts/src/index.ts` for implementation details and input schemas and `mcpb
 | `cursor` | `.cursor/rules` |
 | `agents` | `AGENTS.md` |
 
-Skills: `review`, `brainstorm`, `memory`, `translate`, `status`, `continuity`, `read_aloud`, `read-in`.
+Skills: `review`, `brainstorm`, `memory`, `translate`, `status`, `continuity`, `read_aloud`, `read_in`.
 
 The **memory skill** uses `memory_list` → `memory_append` → `memory_compact`. Do not fall back to `get_text` + Edit tool for memory writes.
 

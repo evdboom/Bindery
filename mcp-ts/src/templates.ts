@@ -32,7 +32,7 @@ export interface TemplateContext {
  *
  * Top-level file templates: 'claude', 'copilot', 'cursor', 'agents'
  * Skill templates: 'review', 'brainstorm', 'memory', 'translate',
- *                  'status', 'continuity', 'read_aloud'
+ *                  'status', 'continuity', 'read_aloud', 'read_in'
  */
 export function renderTemplate(name: string, ctx: TemplateContext): string {
     switch (name) {
