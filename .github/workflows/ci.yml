@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test & template-sync check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── MCP server ────────────────────────────────────────────────────────────
+      - name: Install mcp-ts dependencies
+        run: cd mcp-ts && npm ci
+
+      - name: Compile mcp-ts
+        run: cd mcp-ts && npm run compile
+
+      - name: Run mcp-ts tests
+        run: cd mcp-ts && npm test
+
+      # ── Template sync ─────────────────────────────────────────────────────────
+      # ai-setup-templates.ts is .gitignored — always generated fresh here.
+      # The copy-parity test in mcp-ts/test/templates-parity.test.ts then confirms
+      # the synced file is byte-for-byte identical to the source.
+      - name: Sync templates to vscode-ext
+        run: |
+          cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+          echo "Template copy synced."
+
+      # ── VS Code extension ─────────────────────────────────────────────────────
+      - name: Install vscode-ext dependencies
+        run: cd vscode-ext && npm ci
+
+      - name: Compile vscode-ext
+        run: cd vscode-ext && npm run compile
+
+      - name: Run vscode-ext tests
+        run: cd vscode-ext && npm test
