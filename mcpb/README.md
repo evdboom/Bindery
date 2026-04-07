@@ -98,7 +98,7 @@ date formatting needed.
 
 Claude reads the current content, summarizes it, then calls `memory_compact`
 with the compacted text. The original is automatically backed up to
-`Notes/Memories/archive/global_YYYY-MM-DD.md` before the file is overwritten.
+`.bindery/memories/archive/global_YYYY-MM-DD.md` before the file is overwritten.
 
 ### Spot-check a chapter translation
 
