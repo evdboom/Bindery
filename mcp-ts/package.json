@@ -9,7 +9,9 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "build": "npm run compile"
+    "build": "npm run compile",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": ["mcp", "markdown", "book", "writing", "bindery"],
   "author": "Erik van der Boom",
@@ -21,7 +23,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=18.0.0"
