@@ -68,7 +68,7 @@ When adding a tool, touch **all four** of these: missing any breaks one surface.
 
 ## MCP tools reference
 
-see `mcp-ts/src/index.ts` for implementation details and input schemas and `mcpb/readme.md` for user-facing descriptions.
+see `mcp-ts/src/index.ts` for implementation details and input schemas and `mcpb/README.md` for user-facing descriptions.
 
 ---
 
