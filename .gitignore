@@ -3,6 +3,7 @@ node_modules/
 
 # Build outputs
 vscode-ext/out/
+mcp-ts/out/
 mcp-rust/target/
 
 # Packaged extensions
