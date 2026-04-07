@@ -146,9 +146,9 @@ function claudeMd(ctx: TemplateContext): string {
         '| `get_dialect` | List dialect substitution rules, or look up a specific word |',
         '| `add_dialect` | Add or update a dialect substitution rule (auto-applied at export, e.g. US→UK) |',
         '| `add_language` | Add a language to settings.json and scaffold its story folder with stubs |',
-        '| `memory_list` | List `Notes/Memories/` files with line counts |',
-        '| `memory_append` | Append a dated session entry to a memory file |',
-        '| `memory_compact` | Overwrite a memory file with a summary (backs up original) |',
+        '| `memory_list` | List `.bindery/memories/` files with line counts |',
+        '| `memory_append` | Append a dated session entry to a file in `.bindery/memories/` |',
+        '| `memory_compact` | Overwrite a file in `.bindery/memories/` with a summary (backs up original to `.bindery/memories/archive/`) |',
         '| `chapter_status_get` | Read the chapter progress tracker — entries grouped by status |',
         '| `chapter_status_update` | Upsert chapter progress entries (send only changed chapters) |',
     );
