@@ -8,7 +8,7 @@
 
 import * as fs   from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { updateTypography }                 from './format.js';
 import { chunkFile, discoverFiles, type Language } from './docstore.js';
 import {
@@ -102,14 +102,18 @@ export interface GetTextArgs {
 }
 
 export function toolGetText(root: string, args: GetTextArgs): string {
+    const resolvedRoot = path.resolve(root);
+
     // Try as relative path first, then search in story folder
     const candidates = [
-        path.join(root, args.identifier),
-        path.join(root, storyFolder(root), args.identifier),
+        path.resolve(root, args.identifier),
+        path.resolve(root, storyFolder(root), args.identifier),
     ];
 
     let filePath: string | null = null;
     for (const c of candidates) {
+        const rel = path.relative(resolvedRoot, c);
+        if (rel.startsWith('..') || path.isAbsolute(rel)) { continue; }
         if (fs.existsSync(c) && fs.statSync(c).isFile()) { filePath = c; break; }
     }
 
@@ -459,10 +463,12 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
 
     let raw: string;
     try {
-        raw = execSync(
-            `git diff --ignore-cr-at-eol -U${contextLines}`,
+        const result = spawnSync(
+            'git', ['diff', '--ignore-cr-at-eol', `-U${contextLines}`],
             { cwd: root, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
         );
+        if (result.error) { throw result.error; }
+        raw = result.stdout;
     } catch {
         return 'Failed to run git diff. Is this a git repository?';
     }
@@ -490,7 +496,8 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     if (args.autoStage) {
         const contentDirs = contentFolders(root);
         try {
-            execSync(`git add ${contentDirs.map(d => `"${d}"`).join(' ')}`, { cwd: root, encoding: 'utf-8' });
+            const result = spawnSync('git', ['add', ...contentDirs], { cwd: root, encoding: 'utf-8' });
+            if (result.error) { throw result.error; }
         } catch { /* best effort — staging failure shouldn't break the review */ }
     }
 
@@ -515,7 +522,8 @@ export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
 
     // Stage content folders
     try {
-        execSync(`git add ${dirs.map(d => `"${d}"`).join(' ')}`, { cwd: root, encoding: 'utf-8' });
+        const result = spawnSync('git', ['add', ...dirs], { cwd: root, encoding: 'utf-8' });
+        if (result.error) { throw result.error; }
     } catch {
         return 'Failed to stage files. Is this a git repository?';
     }
@@ -523,7 +531,9 @@ export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
     // Check if there is anything staged
     let staged: string;
     try {
-        staged = execSync('git diff --cached --name-only', { cwd: root, encoding: 'utf-8' });
+        const result = spawnSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf-8' });
+        if (result.error) { throw result.error; }
+        staged = result.stdout;
     } catch {
         return 'Failed to check staged files.';
     }
@@ -534,7 +544,9 @@ export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
     const msg       = args.message ?? `Snapshot ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
 
     try {
-        execSync(`git commit -m "${msg.replace(/"/g, '\\"')}"`, { cwd: root, encoding: 'utf-8' });
+        const result = spawnSync('git', ['commit', '-m', msg], { cwd: root, encoding: 'utf-8' });
+        if (result.error) { throw result.error; }
+        if (result.status !== 0) { throw new Error(result.stderr || 'git commit failed'); }
     } catch (e) {
         return `Failed to commit: ${e instanceof Error ? e.message : String(e)}`;
     }
