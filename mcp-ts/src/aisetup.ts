@@ -24,10 +24,11 @@ export type SkillTemplate =
     | 'translate'
     | 'status'
     | 'continuity'
-    | 'read_aloud';
+    | 'read_aloud'
+    | 'read_in';
 
 export const ALL_SKILLS: SkillTemplate[] = [
-    'review', 'brainstorm', 'memory', 'translate', 'status', 'continuity', 'read_aloud',
+    'review', 'brainstorm', 'memory', 'translate', 'status', 'continuity', 'read_aloud', 'read_in',
 ];
 
 export interface AiSetupOptions {
@@ -47,7 +48,7 @@ export interface AiSetupResult {
  * existing users should regenerate their AI files.
  * Must be kept in sync with AI_SETUP_VERSION in vscode-ext/src/ai-setup.ts.
  */
-export const AI_SETUP_VERSION = 5;
+export const AI_SETUP_VERSION = 6;
 
 // ─── Settings types ───────────────────────────────────────────────────────────
 

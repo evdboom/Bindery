@@ -45,4 +45,4 @@ src/
 ## When suggesting changes
 - Prefer editing the smallest surface area possible.
 - Check that all command IDs match the `bindery.*` namespace throughout `package.json` AND `extension.ts`.
-- Test mentally: does the new behaviour respect the config priority order?
+- Test mentally: does the new behavior respect the config priority order?

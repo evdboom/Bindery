@@ -379,7 +379,7 @@ server.registerTool('setup_ai_files', {
     inputSchema: {
         book:      bookSchema,
         targets:   z.array(z.string()).optional().describe('Which files to generate: claude, copilot, cursor, agents. Default: all.'),
-        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, status, continuity, read_aloud. Default: all.'),
+        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, status, continuity, read_aloud, read_in. Default: all.'),
         overwrite: z.boolean().optional().describe('Overwrite existing files? Default false (skip existing).'),
     },
     annotations: { destructiveHint: true },
@@ -418,7 +418,7 @@ server.registerTool('memory_compact', {
     description:
         'Overwrite a memory file with a compacted version supplied by the model. ' +
         'The original is backed up to .bindery/memories/archive/ before overwriting. ' +
-        'Use this when a memory file has grown too large and needs to be summarised.',
+        'Use this when a memory file has grown too large and needs to be summarized.',
     inputSchema: {
         book:              bookSchema,
         file:              z.string().describe('Filename within .bindery/memories/, e.g. global.md'),

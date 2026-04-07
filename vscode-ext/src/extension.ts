@@ -98,7 +98,7 @@ function getEffectiveConfig(wsSettings: WorkspaceSettings | null): EffectiveConf
 
 /** True if filePath is inside <root>/<storyFolder>/. */
 function isInsideStoryFolder(filePath: string, root: string, storyFolder: string): boolean {
-    // Normalise separators so Windows paths compare correctly
+    // Normalize separators so Windows paths compare correctly
     const norm  = (p: string) => p.replace(/\\/g, '/');
     const story = norm(path.join(root, storyFolder));
     const file  = norm(filePath);
@@ -231,7 +231,7 @@ async function initWorkspaceCommand() {
     if (fs.existsSync(settingsPath)) {
         const choice = await vscode.window.showQuickPick(
             [
-                { label: 'Re-initialise', description: 'Overwrites settings.json (translations.json is kept)', value: true  as const },
+                { label: 'Re-initialize', description: 'Overwrites settings.json (translations.json is kept)', value: true  as const },
                 { label: 'Cancel',                                                                               value: false as const },
             ],
             { placeHolder: '.bindery/settings.json already exists' }
@@ -240,28 +240,28 @@ async function initWorkspaceCommand() {
     }
 
     const title = await vscode.window.showInputBox({
-        title:       'Bindery: Initialise (1/4)',
+        title:       'Bindery: Initialize (1/4)',
         prompt:      'Book title',
         placeHolder: 'e.g. The Hollow Road',
     });
     if (title === undefined) { return; }
 
     const author = await vscode.window.showInputBox({
-        title:       'Bindery: Initialise (2/4)',
+        title:       'Bindery: Initialize (2/4)',
         prompt:      'Author name',
         placeHolder: 'e.g. Jane Smith',
     });
     if (author === undefined) { return; }
 
     const storyFolder = await vscode.window.showInputBox({
-        title:  'Bindery: Initialise (3/4)',
+        title:  'Bindery: Initialize (3/4)',
         prompt: 'Story folder name (relative to workspace root)',
         value:  'Story',
     });
     if (!storyFolder) { return; }
 
     const audience = await vscode.window.showInputBox({
-        title:       'Bindery: Initialise (4/5)',
+        title:       'Bindery: Initialize (4/5)',
         prompt:      'Target audience (used for AI review feedback)',
         placeHolder: 'e.g. 12+, adults, 8-10',
     });
@@ -272,7 +272,7 @@ async function initWorkspaceCommand() {
             { label: 'No',  value: false as const },
             { label: 'Yes', value: true  as const },
         ],
-        { title: 'Bindery: Initialise (5/5)', placeHolder: 'Auto-apply typography on save (Story folder only)?' }
+        { title: 'Bindery: Initialize (5/5)', placeHolder: 'Auto-apply typography on save (Story folder only)?' }
     );
     if (!formatOption) { return; }
 
@@ -334,7 +334,7 @@ async function initWorkspaceCommand() {
 
             execSync('git add .bindery/ .gitignore', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
             execSync('git commit -m "Bindery: initial setup"', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
-            gitNote = ' Git repository initialised.';
+            gitNote = ' Git repository initialized.';
         } catch {
             vscode.window.showWarningMessage(
                 'Git is recommended for version tracking and review features. ' +
@@ -347,7 +347,7 @@ async function initWorkspaceCommand() {
         ? ` Detected: ${detectedLangs.map(l => l.code).join(', ')}.`
         : '';
     const action = await vscode.window.showInformationMessage(
-        `Bindery workspace initialised.${langNote}${gitNote}`,
+        `Bindery workspace initialized.${langNote}${gitNote}`,
         'Open settings.json',
         'Open translations.json'
     );
@@ -439,7 +439,7 @@ async function addDialectCommand() {
     }
     sourceLang ??= getDefaultLanguage(wsSettings);
 
-    if (!sourceLang) { vscode.window.showErrorMessage('No language configured. Run Bindery: Initialise Workspace first.'); return; }
+    if (!sourceLang) { vscode.window.showErrorMessage('No language configured. Run Bindery: Initialize Workspace first.'); return; }
 
     const dialects = getDialectsForLanguage(wsSettings, sourceLang.code);
     if (dialects.length === 0) {
@@ -515,7 +515,7 @@ async function addTranslationCommand() {
         l => !l.isDefault && (l.code !== sourceLang?.code)
     );
 
-    if (!sourceLang) { vscode.window.showErrorMessage('No default language configured. Run Bindery: Initialise Workspace first.'); return; }
+    if (!sourceLang) { vscode.window.showErrorMessage('No default language configured. Run Bindery: Initialize Workspace first.'); return; }
     if (targetLangs.length === 0) {
         vscode.window.showErrorMessage('No target languages configured. Use Bindery: Add Language to add one.');
         return;
@@ -807,13 +807,14 @@ const AI_TARGET_ITEMS: Array<{ label: string; detail: string; value: AiTarget }>
 ];
 
 const SKILL_ITEMS: Array<{ label: string; description: string; value: SkillTemplate }> = [
-    { label: '/review',     description: 'Chapter review — language, arc, age-appropriateness',   value: 'review'     },
-    { label: '/brainstorm', description: 'Generate plot / character / scene ideas',               value: 'brainstorm' },
-    { label: '/memory',     description: 'Update memory files and compact if needed',             value: 'memory'     },
-    { label: '/translate',  description: 'Assisted chapter translation',                          value: 'translate'  },
-    { label: '/status',     description: 'Book progress snapshot',                               value: 'status'     },
-    { label: '/continuity', description: 'Cross-check chapter for consistency errors',           value: 'continuity' },
-    { label: '/read-aloud', description: 'Reading-aloud test for a chapter or passage',          value: 'read_aloud' },
+    { label: '/review',     description: 'Chapter review — language, arc, age-appropriateness',          value: 'review'     },
+    { label: '/brainstorm', description: 'Generate plot / character / scene ideas',                      value: 'brainstorm' },
+    { label: '/memory',     description: 'Update memory files and compact if needed',                    value: 'memory'     },
+    { label: '/translate',  description: 'Assisted chapter translation',                                 value: 'translate'  },
+    { label: '/status',     description: 'Book progress snapshot',                                       value: 'status'     },
+    { label: '/continuity', description: 'Cross-check chapter for consistency errors',                   value: 'continuity' },
+    { label: '/read-aloud', description: 'Reading-aloud test for a chapter or passage',                  value: 'read_aloud' },
+    { label: '/read-in',    description: 'Load context and get your bearings at the start of a session', value: 'read_in'    },
 ];
 
 async function setupAiCommand() {
@@ -823,8 +824,8 @@ async function setupAiCommand() {
     const wsSettings = readWorkspaceSettings(root);
     if (!wsSettings) {
         const init = await vscode.window.showWarningMessage(
-            'No .bindery/settings.json found. Run "Bindery: Initialise Workspace" first.',
-            'Initialise now'
+            'No .bindery/settings.json found. Run "Bindery: Initialize Workspace" first.',
+            'Initialize now'
         );
         if (init) { await initWorkspaceCommand(); }
         return;

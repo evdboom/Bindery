@@ -44,7 +44,7 @@ annotations: { destructiveHint: true } // writes, creates, or modifies files
 ```
 No annotation = mcpb submission rejection. Both annotations on one tool = also wrong.
 
-| Tool behaviour | Annotation |
+| Tool behavior | Annotation |
 |---|---|
 | list, get, read, search, status checks | `readOnlyHint: true` |
 | write, append, overwrite, format, commit, create | `destructiveHint: true` |
@@ -68,33 +68,7 @@ When adding a tool, touch **all four** of these: missing any breaks one surface.
 
 ## MCP tools reference
 
-All tools take a `book` argument (string name from `--book` config). The VS Code surface has no `book` arg — it uses the open workspace root.
-
-| Tool | Annotation | Description |
-|---|---|---|
-| `list_books` | readOnly | List configured books |
-| `identify_book` | readOnly | Match a working directory to a book |
-| `health` | readOnly | Server/index/embedding status |
-| `init_workspace` | destructive | Create or update .bindery/settings.json + translations.json |
-| `index_build` | destructive | Build/rebuild BM25 search index |
-| `index_status` | readOnly | Index chunk count and build time |
-| `get_text` | readOnly | Read file by relative path, optional line range |
-| `get_chapter` | readOnly | Full chapter by number + language |
-| `get_overview` | readOnly | Chapter structure (acts, chapters, titles) |
-| `get_notes` | readOnly | Notes/ and Details_*.md, filterable |
-| `search` | readOnly | BM25 full-text search with ranked snippets |
-| `retrieve_context` | readOnly | Semantic passage retrieval |
-| `format` | destructive | Apply typography formatting to file/folder |
-| `get_review_text` | destructive | Git diff with optional autoStage |
-| `git_snapshot` | destructive | Git commit of story/notes/arc changes |
-| `get_translation` | readOnly | List glossary entries for a language, or look up a specific term (forgiving) |
-| `add_translation` | destructive | Add/update a cross-language glossary entry (agent reference, not auto-applied at export) |
-| `get_dialect` | readOnly | List dialect substitution rules, or look up a specific word |
-| `add_dialect` | destructive | Add/update a dialect substitution rule (auto-applied at export, e.g. US→UK) |
-| `add_language` | destructive | Add language to settings.json and scaffold story folder with stubs |
-| `memory_list` | readOnly | List Notes/Memories/ files with line counts |
-| `memory_append` | destructive | Append dated session entry to a memory file |
-| `memory_compact` | destructive | Overwrite memory file with summary (backs up original) |
+see `mcp-ts/src/index.ts` for implementation details and input schemas and `mcpb/readme.md` for user-facing descriptions.
 
 ---
 
@@ -137,7 +111,7 @@ All tools take a `book` argument (string name from `--book` config). The VS Code
 | `cursor` | `.cursor/rules` |
 | `agents` | `AGENTS.md` |
 
-Skills: `review`, `brainstorm`, `memory`, `translate`, `status`, `continuity`, `read_aloud`.
+Skills: `review`, `brainstorm`, `memory`, `translate`, `status`, `continuity`, `read_aloud`, `read-in`.
 
 The **memory skill** uses `memory_list` → `memory_append` → `memory_compact`. Do not fall back to `get_text` + Edit tool for memory writes.
 
