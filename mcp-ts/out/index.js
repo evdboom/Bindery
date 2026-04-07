@@ -173,7 +173,7 @@ server.registerTool('get_notes', {
 });
 server.registerTool('search', {
     title: 'Search',
-    description: 'Full-text BM25 search across all story and notes files. Returns ranked snippets.',
+    description: 'Full-text BM25 search across all story and notes files. Returns ranked snippets. If BINDERY_OLLAMA_URL is configured, the search query and matching book passages are sent to that Ollama instance for semantic reranking.',
     inputSchema: {
         book: bookSchema,
         query: zod_1.z.string().describe('Search query'),
@@ -191,7 +191,7 @@ server.registerTool('search', {
 });
 server.registerTool('retrieve_context', {
     title: 'Retrieve Context',
-    description: 'Retrieve the most relevant passages for a query. Best for "where did X happen" or "what did character Y say about Z".',
+    description: 'Retrieve the most relevant passages for a query. Best for "where did X happen" or "what did character Y say about Z". If BINDERY_OLLAMA_URL is configured, the query and matching book passages are sent to that Ollama instance for semantic reranking.',
     inputSchema: {
         book: bookSchema,
         query: zod_1.z.string().describe('Natural language query'),

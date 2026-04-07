@@ -137,13 +137,18 @@ function toolIndexStatus(root) {
     ].join('\n');
 }
 function toolGetText(root, args) {
+    const resolvedRoot = path.resolve(root);
     // Try as relative path first, then search in story folder
     const candidates = [
-        path.join(root, args.identifier),
-        path.join(root, storyFolder(root), args.identifier),
+        path.resolve(root, args.identifier),
+        path.resolve(root, storyFolder(root), args.identifier),
     ];
     let filePath = null;
     for (const c of candidates) {
+        const rel = path.relative(resolvedRoot, c);
+        if (rel.startsWith('..') || path.isAbsolute(rel)) {
+            continue;
+        }
         if (fs.existsSync(c) && fs.statSync(c).isFile()) {
             filePath = c;
             break;
@@ -412,7 +417,11 @@ function toolGetReviewText(root, args) {
     const language = (args.language ?? 'ALL').toUpperCase();
     let raw;
     try {
-        raw = (0, child_process_1.execSync)(`git diff --ignore-cr-at-eol -U${contextLines}`, { cwd: root, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+        const result = (0, child_process_1.spawnSync)('git', ['diff', '--ignore-cr-at-eol', `-U${contextLines}`], { cwd: root, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+        if (result.error) {
+            throw result.error;
+        }
+        raw = result.stdout;
     }
     catch {
         return 'Failed to run git diff. Is this a git repository?';
@@ -437,7 +446,10 @@ function toolGetReviewText(root, args) {
     if (args.autoStage) {
         const contentDirs = contentFolders(root);
         try {
-            (0, child_process_1.execSync)(`git add ${contentDirs.map(d => `"${d}"`).join(' ')}`, { cwd: root, encoding: 'utf-8' });
+            const result = (0, child_process_1.spawnSync)('git', ['add', ...contentDirs], { cwd: root, encoding: 'utf-8' });
+            if (result.error) {
+                throw result.error;
+            }
         }
         catch { /* best effort — staging failure shouldn't break the review */ }
     }
@@ -455,7 +467,10 @@ function toolGitSnapshot(root, args) {
     }
     // Stage content folders
     try {
-        (0, child_process_1.execSync)(`git add ${dirs.map(d => `"${d}"`).join(' ')}`, { cwd: root, encoding: 'utf-8' });
+        const result = (0, child_process_1.spawnSync)('git', ['add', ...dirs], { cwd: root, encoding: 'utf-8' });
+        if (result.error) {
+            throw result.error;
+        }
     }
     catch {
         return 'Failed to stage files. Is this a git repository?';
@@ -463,7 +478,11 @@ function toolGitSnapshot(root, args) {
     // Check if there is anything staged
     let staged;
     try {
-        staged = (0, child_process_1.execSync)('git diff --cached --name-only', { cwd: root, encoding: 'utf-8' });
+        const result = (0, child_process_1.spawnSync)('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf-8' });
+        if (result.error) {
+            throw result.error;
+        }
+        staged = result.stdout;
     }
     catch {
         return 'Failed to check staged files.';
@@ -474,7 +493,13 @@ function toolGitSnapshot(root, args) {
     const fileCount = staged.trim().split('\n').length;
     const msg = args.message ?? `Snapshot ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
     try {
-        (0, child_process_1.execSync)(`git commit -m "${msg.replace(/"/g, '\\"')}"`, { cwd: root, encoding: 'utf-8' });
+        const result = (0, child_process_1.spawnSync)('git', ['commit', '-m', msg], { cwd: root, encoding: 'utf-8' });
+        if (result.error) {
+            throw result.error;
+        }
+        if (result.status !== 0) {
+            throw new Error(result.stderr || 'git commit failed');
+        }
     }
     catch (e) {
         return `Failed to commit: ${e instanceof Error ? e.message : String(e)}`;
