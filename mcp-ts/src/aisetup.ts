@@ -11,9 +11,8 @@
 
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
-import * as os   from 'node:os';
-import { spawnSync } from 'node:child_process';
-import { renderTemplate, type TemplateContext } from './templates.js';
+import { zipSync, strToU8 } from 'fflate';
+import { renderTemplate, FILE_VERSION_INFO, type TemplateContext } from './templates.js';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -52,13 +51,6 @@ export interface AiSetupResult {
     versionStamp: AiVersionFile;
 }
 
-/**
- * Bump this integer whenever templates change significantly enough that
- * existing users should regenerate their AI files.
- * Must be kept in sync with AI_SETUP_VERSION in vscode-ext/src/ai-setup.ts.
- */
-export const AI_SETUP_VERSION = 7;
-
 interface AiVersionEntry {
     version: number;
     label: string;
@@ -68,21 +60,6 @@ interface AiVersionEntry {
 export interface AiVersionFile {
     versions: Record<string, AiVersionEntry>;
 }
-
-const FILE_VERSION_INFO: Record<string, { version: number; label: string; zip: string | null }> = {
-    'CLAUDE.md': { version: 7, label: 'project instructions', zip: null },
-    '.github/copilot-instructions.md': { version: 7, label: 'copilot instructions', zip: null },
-    '.cursor/rules': { version: 7, label: 'cursor rules', zip: null },
-    'AGENTS.md': { version: 7, label: 'agents instructions', zip: null },
-    '.claude/skills/review/SKILL.md': { version: 7, label: 'review skill', zip: '.claude/skills/review.zip' },
-    '.claude/skills/brainstorm/SKILL.md': { version: 7, label: 'brainstorm skill', zip: '.claude/skills/brainstorm.zip' },
-    '.claude/skills/memory/SKILL.md': { version: 7, label: 'memory skill', zip: '.claude/skills/memory.zip' },
-    '.claude/skills/translate/SKILL.md': { version: 7, label: 'translate skill', zip: '.claude/skills/translate.zip' },
-    '.claude/skills/status/SKILL.md': { version: 7, label: 'status skill', zip: '.claude/skills/status.zip' },
-    '.claude/skills/continuity/SKILL.md': { version: 7, label: 'continuity skill', zip: '.claude/skills/continuity.zip' },
-    '.claude/skills/read_aloud/SKILL.md': { version: 7, label: 'read-aloud skill', zip: '.claude/skills/read_aloud.zip' },
-    '.claude/skills/read_in/SKILL.md': { version: 7, label: 'read-in skill', zip: '.claude/skills/read_in.zip' },
-};
 
 // ─── Settings types ───────────────────────────────────────────────────────────
 
@@ -162,7 +139,7 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
         }
     }
 
-    stampAiVersion(root, versionFile);
+    stampAiVersionFile(root, versionFile);
     result.versionStamp = versionFile;
     return result;
 }
@@ -232,7 +209,7 @@ function stampVersionEntry(versionFile: AiVersionFile, relPath: string): void {
     };
 }
 
-function stampAiVersion(root: string, versionFile: AiVersionFile): void {
+function stampAiVersionFile(root: string, versionFile: AiVersionFile): void {
     const dir = path.join(root, '.bindery');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
@@ -278,43 +255,24 @@ function toKey(relPath: string): string {
 }
 
 function zipSkillFolder(root: string, skill: SkillTemplate, zipAbs: string): boolean {
-    const skillsBase = path.join(root, '.claude', 'skills');
-    fs.mkdirSync(skillsBase, { recursive: true });
+    const skillMd = path.join(root, '.claude', 'skills', skill, 'SKILL.md');
+    if (!fs.existsSync(skillMd)) { return false; }
 
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-skillzip-'));
-    const tmpZip = path.join(tmpDir, `${skill}.zip`);
-    const zipFrom = skillsBase;
+    try {
+        const skillContent = fs.readFileSync(skillMd, 'utf-8');
+        const zipBytes = zipSync({
+            [`${skill}/SKILL.md`]: strToU8(skillContent),
+        });
 
-    let ok = false;
-
-    // zip -r review.zip review
-    let zipped = spawnSync('zip', ['-r', tmpZip, skill], { cwd: zipFrom, encoding: 'utf-8' });
-    if (!zipped.error && zipped.status === 0) {
-        ok = true;
-    } else {
-        // powershell Compress-Archive -LiteralPath review -DestinationPath review.zip -Force
-        zipped = spawnSync(
-            'powershell',
-            ['-NoProfile', '-Command', `Compress-Archive -LiteralPath '${skill}' -DestinationPath '${tmpZip}' -Force`],
-            { cwd: zipFrom, encoding: 'utf-8' }
-        );
-        if (!zipped.error && zipped.status === 0) {
-            ok = true;
+        fs.mkdirSync(path.dirname(zipAbs), { recursive: true });
+        const copyPath = zipAbs + '.tmp';
+        fs.writeFileSync(copyPath, Buffer.from(zipBytes));
+        if (fs.existsSync(zipAbs)) {
+            fs.unlinkSync(zipAbs);
         }
-    }
-
-    if (!ok || !fs.existsSync(tmpZip)) {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.renameSync(copyPath, zipAbs);
+        return true;
+    } catch {
         return false;
     }
-
-    fs.mkdirSync(path.dirname(zipAbs), { recursive: true });
-    const copyPath = zipAbs + '.tmp';
-    fs.copyFileSync(tmpZip, copyPath);
-    if (fs.existsSync(zipAbs)) {
-        fs.unlinkSync(zipAbs);
-    }
-    fs.renameSync(copyPath, zipAbs);
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-    return true;
 }

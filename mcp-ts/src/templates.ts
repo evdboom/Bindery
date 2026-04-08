@@ -5,7 +5,7 @@
  * The copy at vscode-ext/src/ai-setup-templates.ts is generated automatically:
  *   cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
  *
- * This file has zero imports. It exports only TemplateContext and renderTemplate.
+ * This file has zero imports. It exports TemplateContext, renderTemplate, and FILE_VERSION_INFO.
  */
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -24,6 +24,25 @@ export interface TemplateContext {
     langList:       string;
     hasMultiLang:   boolean;
 }
+
+// ─── File version metadata ────────────────────────────────────────────────────
+// Bump per-file version when template content changes significantly.
+// Bump FILE_VERSION_INFO[key].version so users with outdated content are prompted.
+
+export const FILE_VERSION_INFO: Record<string, { version: number; label: string; zip: string | null }> = {
+    'CLAUDE.md':                            { version: 8,   label: 'project instructions',    zip: null },
+    '.github/copilot-instructions.md':      { version: 7,   label: 'copilot instructions',    zip: null },
+    '.cursor/rules':                        { version: 7,   label: 'cursor rules',            zip: null },
+    'AGENTS.md':                            { version: 7,   label: 'agents instructions',     zip: null },
+    '.claude/skills/review/SKILL.md':       { version: 8,   label: 'review skill',            zip: '.claude/skills/review.zip' },
+    '.claude/skills/brainstorm/SKILL.md':   { version: 8,   label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
+    '.claude/skills/memory/SKILL.md':       { version: 8,   label: 'memory skill',            zip: '.claude/skills/memory.zip' },
+    '.claude/skills/translate/SKILL.md':    { version: 8,   label: 'translate skill',         zip: '.claude/skills/translate.zip' },
+    '.claude/skills/status/SKILL.md':       { version: 8,   label: 'status skill',            zip: '.claude/skills/status.zip' },
+    '.claude/skills/continuity/SKILL.md':   { version: 8,   label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
+    '.claude/skills/read_aloud/SKILL.md':   { version: 8,   label: 'read-aloud skill',        zip: '.claude/skills/read_aloud.zip' },
+    '.claude/skills/read_in/SKILL.md':      { version: 8,   label: 'read-in skill',           zip: '.claude/skills/read_in.zip' },
+};
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
@@ -81,9 +100,9 @@ function claudeMd(ctx: TemplateContext): string {
     lines.push(
         '## Start of session',
         '1. Use /read-in at the start of a session to load context and get your bearings.',
-        '2. Run `health` and check `ai_versions_outdated`.',
+        '2. Run `health` from the Bindery MCP and check `ai_versions_outdated`.',
         '3. If `ai_versions_outdated` has entries, run `setup_ai_files` and present the returned `skill_zips.reupload_required` list to the user for Claude Desktop.',
-        '4. If the skill is not available, read at least COWORK.md (if present) for current focus and context.',
+        '4. If the skill or MCP server is not available, read at least COWORK.md (if present) for current focus and context.',
         '',
         '## Memory system',
         '1. When concluding a discussion, or after you give a meaningful, preservation-worthy response: use /memory to store it.',
@@ -257,24 +276,28 @@ function agentsMd(ctx: TemplateContext): string {
 }
 
 // ─── Skill templates ──────────────────────────────────────────────────────────
+// Skills are Bindery workspaces designed for specific writing tasks, triggered by slash commands. They include step-by-step instructions and recommended MCP tools to use.
+// For new skills: make sure to add the prerequisites section, and update FILE_VERSION_INFO with a new version and label.
 
 function skillReview(ctx: TemplateContext): string {
     const { title, arcFolder, memoriesFolder } = ctx;
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: Review
-description: Review a chapter of "${title}" for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
+description: Bindery workspace: Review a chapter of "${title}" for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
 ---
-
 # Skill: /review
 
 Review a chapter of "${title}" and give structured feedback.
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
 
 ## Trigger
 User says \`/review\`, "review chapter X", "quick review", or "review my changes".
 
 ## Clarify first
-- Which chapter number?
+- Changes, chapter, translation, or overall feedback?
 - Type: **Full** (language + arc + age-appropriateness) or **Quick** (language and typos only)?
 
 ## Tools
@@ -288,7 +311,9 @@ Use these Bindery MCP tools to gather context:
 ## Steps
 
 ### 1. Load context
+Load the right context, pick any or all as needed:
 - Read \`${memoriesFolder}/global.md\`
+- Read \`${memoriesFolder}/chXX.md\` if it exists for chapter-specific context
 - Use \`get_chapter\` to load the chapter
 - For a Full review, read the relevant arc file: \`${arcFolder}/Act_I_[X].md\`, \`Act_II_[X].md\`, or \`Act_III_[X].md\`
 - For "review my changes", use \`get_review_text\` to get the diff
@@ -325,12 +350,14 @@ function skillBrainstorm(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: Brainstorm
-description: Brainstorm story ideas, plot beats, character moments, or scene concepts for "${title}". Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
+description: Bindery workspace: Brainstorm story ideas, plot beats, character moments, or scene concepts for "${title}". Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
 ---
-
 # Skill: /brainstorm
 
 Brainstorm story ideas, character moments, or plot solutions for "${title}".
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
 
 ## Trigger
 User says \`/brainstorm\`, "I'm stuck", "help me think of ideas", or "Am I stuck?".
@@ -345,13 +372,15 @@ Use these Bindery MCP tools to gather context:
 - \`retrieve_context(query, language)\` — find thematic parallels and related moments across the book
 - \`get_notes(category, name)\` — look up character profiles, world rules, or equipment details
 - \`get_chapter(chapterNumber, language)\` — read a specific chapter for reference
+- \`search(query, language)\` — search for specific terms or phrases across the book
 
 ## Steps
 
 1. Read \`${memoriesFolder}/global.md\` and the relevant arc file from \`${arcFolder}/\`.
-2. If character-focused, use \`get_notes(category: "Characters")\` for character profiles.
-3. Use \`retrieve_context\` to find related moments or themes already in the book.
-4. Generate 3-5 concrete ideas that fit the arc and feel true to the characters.
+2. If chapter specific, read \`${memoriesFolder}/chXX.md\` if it exists.
+3. If character-focused, use \`get_notes(category: "Characters")\` for character profiles.
+4. Use \`retrieve_context\` to find related moments or themes already in the book.
+5. Generate 3-5 concrete ideas that fit the arc and feel true to the characters.
 
 ## Output format
 
@@ -371,15 +400,17 @@ End with a brief note on which options feel most aligned with the arc.
 function skillMemory(ctx: TemplateContext): string {
     return `---
 name: Memory
-description: Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
+description: Bindery workspace: Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
 ---
-
 # Skill: /memory
 
 Update project memory files with decisions from the current session.
 
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
+
 ## Trigger
-User says \`/memory\`, "save this to memory", "update memories", or at session end.
+User says \`/memory\`, "save this to memory", "update memories", at meaningful points, or at session end.
 
 ## Tools
 Use these Bindery MCP tools:
@@ -426,29 +457,29 @@ Offer to save a snapshot with \`git_snapshot\`.
 function skillTranslate(ctx: TemplateContext): string {
     return `---
 name: Translate
-description: Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
+description: Bindery workspace: Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
 ---
-
 # Skill: /translate
 
 Translate a chapter or passage into the target language.
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
 
 ## Trigger
 User says \`/translate\`, "translate chapter X", or "help me with the translation".
 
 ## Clarify first
 - Which chapter number and target language?
-- Full translation or spot-check an existing translation?
+- Full translation or spot-check an existing translation? Default to spot-check if a chapter file already exists for the target language.
 
 ## Tools
 Use these Bindery MCP tools:
 - \`get_chapter(chapterNumber, language)\` — read a chapter in any language (source or existing translation)
 - \`get_translation(language)\` — list glossary entries for a target language (e.g. \`"nl"\`)
 - \`get_translation(language, word)\` — look up a specific term; forgiving: case-insensitive, handles plurals and inflected forms
-- \`get_dialect(dialectCode)\` — list dialect substitution rules (e.g. \`"en-gb"\`)
 - \`search(query, language)\` — verify how a term was rendered in other translated chapters
 - \`add_translation(targetLangCode, from, to)\` — save a new glossary term pair when the user confirms a translation choice
-- \`add_dialect(dialectCode, from, to)\` — save a spelling substitution rule (e.g. US→UK) applied automatically at export
 
 ## Steps
 
@@ -480,12 +511,14 @@ function skillStatus(ctx: TemplateContext): string {
     const { arcFolder, memoriesFolder } = ctx;
     return `---
 name: Status
-description: Give a book progress snapshot — chapters done, in progress, and coming up. Use for /status, "what's the book status", or "where are we".
+description: Bindery workspace: Give a book progress snapshot — chapters done, in progress, and coming up. Use for /status, "what's the book status", or "where are we".
 ---
-
 # Skill: /status
 
 Snapshot of the book's progress: what's done, in progress, and coming up.
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
 
 ## Trigger
 User says \`/status\`, "what's the book status", or "where are we".
@@ -500,11 +533,12 @@ Use these Bindery MCP tools:
 
 ## Steps
 
-1. Use \`chapter_status_get\` to read the current tracker. Use \`memory_list\` to check available memory files. Use \`get_text\` to read COWORK.md (current focus) and \`${memoriesFolder}/global.md\`.
-2. Use \`get_overview\` for the full chapter listing if the tracker is empty or incomplete.
-3. Check \`${arcFolder}/\` for what's planned vs written (Overall.md + the relevant act file).
-4. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
-5. If the tracker is out of date or missing entries, update it with \`chapter_status_update\` (upsert only the changed chapters).
+1. Use \`chapter_status_get\` to read the current tracker. Use \`memory_list\` to check available memory files. 
+2. Use \`get_text\` to read COWORK.md (current focus), \`${memoriesFolder}/global.md\` and for in-progress chapters \`${memoriesFolder}/chXX.md\`.
+3. Use \`get_overview\` for the full chapter listing if the tracker is empty or incomplete.
+4. Check \`${arcFolder}/\` for what's planned vs written (Overall.md + the relevant act file).
+5. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
+6. If the tracker is out of date or missing entries, update it with \`chapter_status_update\` (upsert only the changed chapters).
 
 ## Output
 Keep it scannable — bold headers, short lines. This is a working tool, not a narrative summary.
@@ -515,12 +549,14 @@ function skillContinuity(ctx: TemplateContext): string {
     const { memoriesFolder } = ctx;
     return `---
 name: Continuity
-description: Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
+description: Bindery workspace: Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
 ---
-
 # Skill: /continuity
 
 Cross-check a chapter for consistency errors.
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
 
 ## Trigger
 User says \`/continuity\`, "check continuity", or "check chapter X for errors".
@@ -533,7 +569,7 @@ User says \`/continuity\`, "check continuity", or "check chapter X for errors".
 Use these Bindery MCP tools:
 - \`get_chapter(chapterNumber, language)\` — read the chapter (and previous chapter for timeline checks)
 - \`get_notes(category, name)\` — look up character profiles or world rules
-- \`retrieve_context(query, language)\` — find earlier mentions of a character detail or event
+- \`retrieve_context(query, language)\` or \`search(query, language)\` — find earlier mentions of a character detail or event
 - \`search(query, language)\` — exact-match search for names, places, or specific terms
 - \`memory_list\` — check whether a chapter-specific memory file exists (\`chXX.md\`)
 
@@ -563,12 +599,14 @@ function skillReadAloud(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: Read Aloud
-description: Test how a chapter or passage sounds when read aloud — flags long sentences, staccato rhythm, complex vocabulary, and said-bookisms. Use for /read-aloud, "reading test", or "how does this sound".
+description: Bindery workspace: Test how a chapter or passage sounds when read aloud — flags long sentences, staccato rhythm, complex vocabulary, and said-bookisms. Use for /read-aloud, "reading test", or "how does this sound".
 ---
-
 # Skill: /read-aloud
 
 Test how a chapter sounds when read aloud to ${audienceStr}.
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
 
 ## Trigger
 User says \`/read-aloud\`, "reading test", or "how does this sound".
@@ -607,12 +645,14 @@ function skillReadIn(ctx: TemplateContext): string {
     const { memoriesFolder } = ctx;
     return `---
 name: Read-in
-description: Load project context at the start of a session — memory, progress tracker, and chapter notes. Use for /read-in, "get your bearings", "what were we doing", or at the start of any working session.
+description: Bindery workspace: Load project context at the start of a session — memory, progress tracker, and chapter notes. Use for /read-in, "get your bearings", "what were we doing", or at the start of any working session.
 ---
-
 # Skill: /read-in
 
 Load context and get your bearings before starting work.
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
 
 ## Trigger
 User says \`/read-in\`, "get your bearings", "what were we working on", or at the start of a session.

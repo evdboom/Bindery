@@ -14,11 +14,18 @@
     "test:watch": "vitest",
     "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json"
   },
-  "keywords": ["mcp", "markdown", "book", "writing", "bindery"],
+  "keywords": [
+    "mcp",
+    "markdown",
+    "book",
+    "writing",
+    "bindery"
+  ],
   "author": "Erik van der Boom",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "fflate": "^0.8.2",
     "minisearch": "^7.1.0",
     "zod": "^4.3.6"
   },
