@@ -1142,14 +1142,13 @@ export interface SetupAiFilesArgs {
 }
 
 export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
-    const validTargets: AiTarget[] = ['claude', 'copilot', 'cursor', 'agents'];
     const validSkills  = new Set(ALL_SKILLS);
 
     const setupSettings = readSettings(root);
     // Explicit arg → saved setting → all
-    const rawTargets = args.targets ?? setupSettings?.aiTargets ?? validTargets;
+    const rawTargets = args.targets ?? setupSettings?.aiTargets ?? ALL_AI_TARGETS;
     const targets: AiTarget[] = rawTargets
-        .filter((t): t is AiTarget => validTargets.includes(t as AiTarget));
+        .filter((t): t is AiTarget => ALL_AI_TARGETS.includes(t as AiTarget));
 
     // Explicit arg → saved setting (only meaningful for claude) → all
     const rawSkills = args.skills ?? (targets.includes('claude') ? setupSettings?.aiSkills ?? null : null);
@@ -1158,7 +1157,7 @@ export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
         : ALL_SKILLS;
 
     if (targets.length === 0) {
-        return `No valid targets specified. Valid targets: ${validTargets.join(', ')}`;
+        return `No valid targets specified. Valid targets: ${ALL_AI_TARGETS.join(', ')}`;
     }
 
     let result;
