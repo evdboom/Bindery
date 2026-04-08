@@ -192,17 +192,25 @@ describe('renderTemplate — review skill', () => {
     expect(result).toContain('name: Review');
     expect(result).toContain('# Skill: /review');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Steps');
-    expect(result).toContain('## Tools');
+    expect(result).toContain('## Detect Bindery workspace');
+    expect(result).toContain('## General workflow');
+    expect(result).toContain('## Bindery workflow');
     expect(result).toContain('## Rules');
   });
 
-  it('includes the book title in description', () => {
+  it('general workflow does not contain book-specific title', () => {
+    const result = renderTemplate('review', makeCtx());
+    // The YAML description line should not include the book title
+    const descLine = result.split('\n').find(l => l.startsWith('description:')) ?? '';
+    expect(descLine).not.toContain('"Test Book"');
+  });
+
+  it('includes the book title only in the Bindery workflow section', () => {
     const result = renderTemplate('review', makeCtx());
     expect(result).toContain('"Test Book"');
   });
 
-  it('references the arc and memories folder', () => {
+  it('references the arc and memories folder in Bindery workflow', () => {
     const result = renderTemplate('review', makeCtx());
     expect(result).toContain('.bindery/memories');
     expect(result).toContain('Arc/');
@@ -220,18 +228,23 @@ describe('renderTemplate — review skill', () => {
 });
 
 describe('renderTemplate — brainstorm skill', () => {
-  it('contains YAML front-matter, title, trigger, and steps', () => {
+  it('contains YAML front-matter, title, trigger, general and Bindery workflows', () => {
     const result = renderTemplate('brainstorm', makeCtx());
     expect(result).toContain('name: Brainstorm');
     expect(result).toContain('# Skill: /brainstorm');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Steps');
-    expect(result).toContain('## Tools');
+    expect(result).toContain('## Detect Bindery workspace');
+    expect(result).toContain('## General workflow');
+    expect(result).toContain('## Bindery workflow');
     expect(result).toContain('## Rules');
   });
 
-  it('includes the book title', () => {
+  it('includes the book title only in Bindery workflow section', () => {
     const result = renderTemplate('brainstorm', makeCtx());
+    // YAML description line should NOT include the book title
+    const descLine = result.split('\n').find(l => l.startsWith('description:')) ?? '';
+    expect(descLine).not.toContain('"Test Book"');
+    // But it should appear in the Bindery workflow body
     expect(result).toContain('"Test Book"');
   });
 });
@@ -242,12 +255,13 @@ describe('renderTemplate — memory skill', () => {
     expect(result).toContain('name: Memory');
     expect(result).toContain('# Skill: /memory');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Tools');
-    expect(result).toContain('## Steps');
+    expect(result).toContain('## Detect Bindery workspace');
+    expect(result).toContain('## General workflow');
+    expect(result).toContain('## Bindery workflow');
     expect(result).toContain('## Rules');
   });
 
-  it('references memory_append and memory_compact tools', () => {
+  it('references memory_append and memory_compact tools in Bindery workflow', () => {
     const result = renderTemplate('memory', makeCtx());
     expect(result).toContain('memory_append');
     expect(result).toContain('memory_compact');
@@ -256,17 +270,18 @@ describe('renderTemplate — memory skill', () => {
 });
 
 describe('renderTemplate — translate skill', () => {
-  it('contains YAML front-matter, title, trigger, tools, and steps', () => {
+  it('contains YAML front-matter, title, trigger, and both workflows', () => {
     const result = renderTemplate('translate', makeCtx());
     expect(result).toContain('name: Translate');
     expect(result).toContain('# Skill: /translate');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Tools');
-    expect(result).toContain('## Steps');
+    expect(result).toContain('## Detect Bindery workspace');
+    expect(result).toContain('## General workflow');
+    expect(result).toContain('## Bindery workflow');
     expect(result).toContain('## Rules');
   });
 
-  it('references get_translation and add_translation tools', () => {
+  it('references get_translation and add_translation tools in Bindery workflow', () => {
     const result = renderTemplate('translate', makeCtx());
     expect(result).toContain('get_translation');
     expect(result).toContain('add_translation');
@@ -274,16 +289,17 @@ describe('renderTemplate — translate skill', () => {
 });
 
 describe('renderTemplate — status skill', () => {
-  it('contains YAML front-matter, title, trigger, tools, and steps', () => {
+  it('contains YAML front-matter, title, trigger, and both workflows', () => {
     const result = renderTemplate('status', makeCtx());
     expect(result).toContain('name: Status');
     expect(result).toContain('# Skill: /status');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Tools');
-    expect(result).toContain('## Steps');
+    expect(result).toContain('## Detect Bindery workspace');
+    expect(result).toContain('## General workflow');
+    expect(result).toContain('## Bindery workflow');
   });
 
-  it('references chapter_status_get and get_overview tools', () => {
+  it('references chapter_status_get and get_overview tools in Bindery workflow', () => {
     const result = renderTemplate('status', makeCtx());
     expect(result).toContain('chapter_status_get');
     expect(result).toContain('get_overview');
@@ -291,18 +307,19 @@ describe('renderTemplate — status skill', () => {
 });
 
 describe('renderTemplate — continuity skill', () => {
-  it('contains YAML front-matter, title, trigger, tools, steps, and output format', () => {
+  it('contains YAML front-matter, title, trigger, both workflows, output format, and rules', () => {
     const result = renderTemplate('continuity', makeCtx());
     expect(result).toContain('name: Continuity');
     expect(result).toContain('# Skill: /continuity');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Tools');
-    expect(result).toContain('## Steps');
+    expect(result).toContain('## Detect Bindery workspace');
+    expect(result).toContain('## General workflow');
+    expect(result).toContain('## Bindery workflow');
     expect(result).toContain('## Output format');
     expect(result).toContain('## Rules');
   });
 
-  it('references retrieve_context and get_notes tools', () => {
+  it('references retrieve_context and get_notes tools in Bindery workflow', () => {
     const result = renderTemplate('continuity', makeCtx());
     expect(result).toContain('retrieve_context');
     expect(result).toContain('get_notes');
@@ -310,12 +327,14 @@ describe('renderTemplate — continuity skill', () => {
 });
 
 describe('renderTemplate — read_aloud skill', () => {
-  it('contains YAML front-matter, title, trigger, tools, and rules', () => {
+  it('contains YAML front-matter, title, trigger, both workflows, and rules', () => {
     const result = renderTemplate('read_aloud', makeCtx());
     expect(result).toContain('name: Read Aloud');
     expect(result).toContain('# Skill: /read-aloud');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Tools');
+    expect(result).toContain('## Detect Bindery workspace');
+    expect(result).toContain('## General workflow');
+    expect(result).toContain('## Bindery workflow');
     expect(result).toContain('## Rules');
   });
 
@@ -331,24 +350,25 @@ describe('renderTemplate — read_aloud skill', () => {
 });
 
 describe('renderTemplate — read_in skill', () => {
-  it('contains YAML front-matter, title, trigger, tools, steps, and rules', () => {
+  it('contains YAML front-matter, title, trigger, both workflows, and rules', () => {
     const result = renderTemplate('read_in', makeCtx());
     expect(result).toContain('name: Read-in');
     expect(result).toContain('# Skill: /read-in');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Tools');
-    expect(result).toContain('## Steps');
+    expect(result).toContain('## Detect Bindery workspace');
+    expect(result).toContain('## General workflow');
+    expect(result).toContain('## Bindery workflow');
     expect(result).toContain('## Rules');
   });
 
-  it('references memory_list, chapter_status_get, and get_overview tools', () => {
+  it('references memory_list, chapter_status_get, and get_overview tools in Bindery workflow', () => {
     const result = renderTemplate('read_in', makeCtx());
     expect(result).toContain('memory_list');
     expect(result).toContain('chapter_status_get');
     expect(result).toContain('get_overview');
   });
 
-  it('references the memories folder', () => {
+  it('references the memories folder in Bindery workflow', () => {
     const result = renderTemplate('read_in', makeCtx());
     expect(result).toContain('.bindery/memories');
   });

@@ -263,21 +263,52 @@ function skillReview(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: Review
-description: Review a chapter of "${title}" for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
+description: Review a chapter for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
 ---
 
 # Skill: /review
 
-Review a chapter of "${title}" and give structured feedback.
+Review a chapter and give structured feedback.
 
 ## Trigger
 User says \`/review\`, "review chapter X", "quick review", or "review my changes".
 
-## Clarify first
+## Detect Bindery workspace
+Try calling \`identify_book\` to check if this is a Bindery project.
+- **Bindery workspace** (tool returns a book name): follow the **Bindery workflow** below.
+- **Not a Bindery workspace** (tool unavailable or no book found): follow the **General workflow** below.
+
+## General workflow (without Bindery)
+
+### Clarify first
+- Which chapter or passage to review?
+- Type: **Full** (language + consistency + appropriateness) or **Quick** (language and typos only)?
+
+Ask the user to paste or share the text to review if not already provided.
+
+### Perform the review
+**Quick** — language and typos only.
+
+**Full** — adds: consistency with any character/world notes the user shares, age-appropriateness for ${audienceStr}.
+
+### Output format
+| Location | Before | Suggested | Reason |
+|---|---|---|---|
+| Para X | ...original... | ...suggestion... | reason |
+
+- Bold changed words
+- Group by category for Full reviews
+- End with a 2-3 sentence overall impression
+
+## Bindery workflow (with Bindery MCP tools)
+
+Review a chapter of "${title}" and give structured feedback.
+
+### Clarify first
 - Which chapter number?
 - Type: **Full** (language + arc + age-appropriateness) or **Quick** (language and typos only)?
 
-## Tools
+### Tools
 Use these Bindery MCP tools to gather context:
 - \`get_review_text(language)\` — get the git diff of uncommitted changes (for "review my changes")
 - \`get_chapter(chapterNumber, language)\` — read the full chapter text
@@ -285,15 +316,15 @@ Use these Bindery MCP tools to gather context:
 - \`retrieve_context(query, language)\` — find related passages across the book
 - \`git_snapshot(message)\` — after a successful review, suggest saving a snapshot
 
-## Steps
+### Steps
 
-### 1. Load context
+#### 1. Load context
 - Read \`${memoriesFolder}/global.md\`
 - Use \`get_chapter\` to load the chapter
 - For a Full review, read the relevant arc file: \`${arcFolder}/Act_I_[X].md\`, \`Act_II_[X].md\`, or \`Act_III_[X].md\`
 - For "review my changes", use \`get_review_text\` to get the diff
 
-### 2. Perform the review
+#### 2. Perform the review
 
 **Quick** — language and typos only.
 
@@ -302,7 +333,7 @@ Use these Bindery MCP tools to gather context:
 - Age-appropriateness for ${audienceStr}
 - Character consistency (use \`get_notes(category: "Characters")\`)
 
-### 3. Output format
+#### 3. Output format
 
 | Location | Before | Suggested | Reason |
 |---|---|---|---|
@@ -312,7 +343,7 @@ Use these Bindery MCP tools to gather context:
 - Group by category for Full reviews
 - End with a 2-3 sentence overall impression
 
-### 4. After review
+#### 4. After review
 If the review looks good, suggest: "Want me to save a snapshot?" (calls \`git_snapshot\`).
 
 ## Rules
@@ -325,35 +356,71 @@ function skillBrainstorm(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: Brainstorm
-description: Brainstorm story ideas, plot beats, character moments, or scene concepts for "${title}". Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
+description: Brainstorm story ideas, plot beats, character moments, or scene concepts. Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
 ---
 
 # Skill: /brainstorm
 
-Brainstorm story ideas, character moments, or plot solutions for "${title}".
+Brainstorm story ideas, character moments, or plot solutions.
 
 ## Trigger
 User says \`/brainstorm\`, "I'm stuck", "help me think of ideas", or "Am I stuck?".
 
-## Clarify first
+## Detect Bindery workspace
+Try calling \`identify_book\` to check if this is a Bindery project.
+- **Bindery workspace** (tool returns a book name): follow the **Bindery workflow** below.
+- **Not a Bindery workspace** (tool unavailable or no book found): follow the **General workflow** below.
+
+## General workflow (without Bindery)
+
+### Clarify first
+- Focus: plot beat / character moment / scene idea / chapter opening-closing?
+- Which chapter or story point?
+- Any constraints to respect (established characters, world rules, tone)?
+
+Ask the user to share any relevant context (character notes, arc outline, previous chapters) they have available.
+
+### Steps
+1. Identify the creative challenge based on user input.
+2. Use any context the user provides (notes, previous scenes, character descriptions).
+3. Generate 3-5 concrete ideas that fit the story and characters.
+
+### Output format
+
+**Option A — [short title]**
+[3-5 sentence description]
+
+...
+
+End with a brief note on which options feel most aligned with the story direction.
+
+### Rules
+- Keep ideas appropriate for ${audienceStr}
+- If no context is provided, ask before generating to avoid off-target suggestions
+
+## Bindery workflow (with Bindery MCP tools)
+
+Brainstorm story ideas, character moments, or plot solutions for "${title}".
+
+### Clarify first
 - Focus: plot beat / character moment / scene idea / chapter opening-closing?
 - Which chapter or story point?
 - Any constraints to respect?
 
-## Tools
+### Tools
 Use these Bindery MCP tools to gather context:
 - \`retrieve_context(query, language)\` — find thematic parallels and related moments across the book
 - \`get_notes(category, name)\` — look up character profiles, world rules, or equipment details
 - \`get_chapter(chapterNumber, language)\` — read a specific chapter for reference
 
-## Steps
+### Steps
 
 1. Read \`${memoriesFolder}/global.md\` and the relevant arc file from \`${arcFolder}/\`.
 2. If character-focused, use \`get_notes(category: "Characters")\` for character profiles.
 3. Use \`retrieve_context\` to find related moments or themes already in the book.
 4. Generate 3-5 concrete ideas that fit the arc and feel true to the characters.
 
-## Output format
+### Output format
 
 **Option A — [short title]**
 [3-5 sentence description]
@@ -371,7 +438,7 @@ End with a brief note on which options feel most aligned with the arc.
 function skillMemory(ctx: TemplateContext): string {
     return `---
 name: Memory
-description: Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
+description: Save session decisions to persistent memory files. Use for /memory, "save this to memory", "update memories", or at end of session.
 ---
 
 # Skill: /memory
@@ -381,22 +448,45 @@ Update project memory files with decisions from the current session.
 ## Trigger
 User says \`/memory\`, "save this to memory", "update memories", or at session end.
 
-## Tools
+## Detect Bindery workspace
+Try calling \`identify_book\` to check if this is a Bindery project.
+- **Bindery workspace** (tool returns a book name): follow the **Bindery workflow** below.
+- **Not a Bindery workspace** (tool unavailable or no book found): follow the **General workflow** below.
+
+## General workflow (without Bindery)
+
+### Steps
+1. List the decisions, insights, or facts from the session worth preserving.
+2. Ask the user where they keep notes (a markdown file, a notes document, etc.).
+3. Present the items to save as a formatted list the user can copy into their preferred notes file.
+
+Format each entry as:
+\`\`\`
+## [Date] — [topic title]
+[decision or insight, one per line]
+\`\`\`
+
+### Rules
+- Do not write files directly — present the content for the user to paste
+
+## Bindery workflow (with Bindery MCP tools)
+
+### Tools
 Use these Bindery MCP tools:
 - \`memory_list\` — discover which memory files exist and their line counts
 - \`memory_append(file, title, content)\` — append a dated session entry; the tool stamps the date automatically
 - \`memory_compact(file, compacted_content)\` — overwrite a file with a summary; backs up the original to \`archive/\` automatically
 - \`git_snapshot(message)\` — after updating memories, offer to save a snapshot
 
-## Steps
+### Steps
 
-### 1. Identify what to save
+#### 1. Identify what to save
 List the decisions, insights, or facts from the session worth preserving.
 
-### 2. Check existing files
+#### 2. Check existing files
 Use \`memory_list\` to see which memory files exist and how large they are.
 
-### 3. Append the entry
+#### 3. Append the entry
 Use \`memory_append\` to write to the right file:
 - \`global.md\` — cross-chapter decisions (character names, world rules, style choices)
 - \`chXX.md\` — chapter-specific decisions (e.g. \`ch10.md\`)
@@ -408,12 +498,12 @@ Arguments:
 
 The tool stamps the current date. Do not add a date to the content.
 
-### 4. Compact if needed
+#### 4. Compact if needed
 If \`memory_list\` shows a file exceeding ~150 lines, offer to compact it:
 - Summarize the existing content into a concise replacement
 - Call \`memory_compact(file, compacted_content)\` — original is backed up automatically
 
-### 5. Snapshot
+#### 5. Snapshot
 Offer to save a snapshot with \`git_snapshot\`.
 
 ## Rules
@@ -426,7 +516,7 @@ Offer to save a snapshot with \`git_snapshot\`.
 function skillTranslate(ctx: TemplateContext): string {
     return `---
 name: Translate
-description: Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
+description: Translate a chapter or spot-check an existing translation. Use for /translate, "translate chapter X", or "help me with the translation".
 ---
 
 # Skill: /translate
@@ -436,11 +526,40 @@ Translate a chapter or passage into the target language.
 ## Trigger
 User says \`/translate\`, "translate chapter X", or "help me with the translation".
 
-## Clarify first
+## Detect Bindery workspace
+Try calling \`identify_book\` to check if this is a Bindery project.
+- **Bindery workspace** (tool returns a book name): follow the **Bindery workflow** below.
+- **Not a Bindery workspace** (tool unavailable or no book found): follow the **General workflow** below.
+
+## General workflow (without Bindery)
+
+### Clarify first
+- Target language?
+- Full translation or spot-check an existing translation?
+
+Ask the user to paste or share the text to translate, and any glossary or style notes they have.
+
+### Steps
+1. Review any terminology notes or glossary the user provides.
+2. Translate the passage, applying all known terms consistently.
+3. For spot-check mode: compare source and translation side-by-side.
+
+**Spot-check table:**
+
+| Location | Source | Current translation | Suggestion | Reason |
+|---|---|---|---|---|
+
+### Rules
+- Flag uncertain world-specific terms rather than guessing
+- Ask for clarification on proper nouns and invented terms
+
+## Bindery workflow (with Bindery MCP tools)
+
+### Clarify first
 - Which chapter number and target language?
 - Full translation or spot-check an existing translation?
 
-## Tools
+### Tools
 Use these Bindery MCP tools:
 - \`get_chapter(chapterNumber, language)\` — read a chapter in any language (source or existing translation)
 - \`get_translation(language)\` — list glossary entries for a target language (e.g. \`"nl"\`)
@@ -450,16 +569,16 @@ Use these Bindery MCP tools:
 - \`add_translation(targetLangCode, from, to)\` — save a new glossary term pair when the user confirms a translation choice
 - \`add_dialect(dialectCode, from, to)\` — save a spelling substitution rule (e.g. US→UK) applied automatically at export
 
-## Steps
+### Steps
 
-### 1. Load the translation table
+#### 1. Load the translation table
 Call \`get_translation(language)\` to load all known glossary term mappings for the target language before translating anything.
 
-### 2. Load the chapter
+#### 2. Load the chapter
 Use \`get_chapter(chapterNumber, sourceLanguage)\` to read the source chapter.
 For spot-check mode, also call \`get_chapter(chapterNumber, targetLanguage)\` to read the existing translation.
 
-### 3. Translate or review
+#### 3. Translate or review
 **Full translation** — translate paragraph by paragraph, applying all terms from the glossary. Output the full result in a fenced \`\`\`markdown block for easy pasting.
 
 **Spot-check** — compare source and translation side-by-side. Use a feedback table:
@@ -467,7 +586,7 @@ For spot-check mode, also call \`get_chapter(chapterNumber, targetLanguage)\` to
 | Location | Source | Current translation | Suggestion | Reason |
 |---|---|---|---|---|
 
-### 4. Save confirmed terms
+#### 4. Save confirmed terms
 When the user confirms a new or corrected term translation, call \`add_translation\` to persist it as a glossary entry. For spelling variant rules (dialect substitutions applied at export), use \`add_dialect\` instead.
 
 ## Rules
@@ -490,7 +609,23 @@ Snapshot of the book's progress: what's done, in progress, and coming up.
 ## Trigger
 User says \`/status\`, "what's the book status", or "where are we".
 
-## Tools
+## Detect Bindery workspace
+Try calling \`identify_book\` to check if this is a Bindery project.
+- **Bindery workspace** (tool returns a book name): follow the **Bindery workflow** below.
+- **Not a Bindery workspace** (tool unavailable or no book found): follow the **General workflow** below.
+
+## General workflow (without Bindery)
+
+### Steps
+1. Ask the user to describe or share their current chapter list and status.
+2. Summarize: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
+
+### Output
+Keep it scannable — bold headers, short lines. This is a working tool, not a narrative summary.
+
+## Bindery workflow (with Bindery MCP tools)
+
+### Tools
 Use these Bindery MCP tools:
 - \`chapter_status_get(book)\` — read the structured progress tracker from \`.bindery/chapter-status.json\`
 - \`chapter_status_update(book, chapters)\` — upsert chapter progress entries (send only changed chapters)
@@ -498,7 +633,7 @@ Use these Bindery MCP tools:
 - \`get_text(identifier)\` — read COWORK.md and \`${memoriesFolder}/global.md\`
 - \`memory_list\` — discover which chapter memory files exist (\`chXX.md\`)
 
-## Steps
+### Steps
 
 1. Use \`chapter_status_get\` to read the current tracker. Use \`memory_list\` to check available memory files. Use \`get_text\` to read COWORK.md (current focus) and \`${memoriesFolder}/global.md\`.
 2. Use \`get_overview\` for the full chapter listing if the tracker is empty or incomplete.
@@ -506,7 +641,7 @@ Use these Bindery MCP tools:
 4. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
 5. If the tracker is out of date or missing entries, update it with \`chapter_status_update\` (upsert only the changed chapters).
 
-## Output
+### Output
 Keep it scannable — bold headers, short lines. This is a working tool, not a narrative summary.
 `;
 }
@@ -525,11 +660,43 @@ Cross-check a chapter for consistency errors.
 ## Trigger
 User says \`/continuity\`, "check continuity", or "check chapter X for errors".
 
-## Clarify first
+## Detect Bindery workspace
+Try calling \`identify_book\` to check if this is a Bindery project.
+- **Bindery workspace** (tool returns a book name): follow the **Bindery workflow** below.
+- **Not a Bindery workspace** (tool unavailable or no book found): follow the **General workflow** below.
+
+## General workflow (without Bindery)
+
+### Clarify first
+- Chapter number or passage to check?
+- Focus: All / Characters / World rules / Timeline?
+
+Ask the user to share the chapter text and any relevant character profiles, world notes, or previous chapter summaries.
+
+### Steps
+1. Read the chapter text provided.
+2. Cross-check against any character profiles, world rules, or previous chapter content the user shares.
+3. For timeline checks, ask the user to share the previous chapter or a summary.
+
+### Output format
+
+| Type | Location | Issue | Reference |
+|---|---|---|---|
+| Character | Para X | Description contradicts... | user-provided notes |
+
+End with a one-line overall assessment. If no issues found, say so clearly.
+
+### Rules
+- Flag issues only — do not suggest rewrites
+- Phrase uncertain items as questions, not errors
+
+## Bindery workflow (with Bindery MCP tools)
+
+### Clarify first
 - Chapter number?
 - Focus: All / Characters / World rules / Timeline?
 
-## Tools
+### Tools
 Use these Bindery MCP tools:
 - \`get_chapter(chapterNumber, language)\` — read the chapter (and previous chapter for timeline checks)
 - \`get_notes(category, name)\` — look up character profiles or world rules
@@ -537,7 +704,7 @@ Use these Bindery MCP tools:
 - \`search(query, language)\` — exact-match search for names, places, or specific terms
 - \`memory_list\` — check whether a chapter-specific memory file exists (\`chXX.md\`)
 
-## Steps
+### Steps
 
 1. Use \`get_chapter\` to read the chapter.
 2. Use \`get_text\` to read \`${memoriesFolder}/global.md\`. Use \`memory_list\` to check if a chapter-specific memory file (\`chXX.md\`) exists; if so, read it with \`get_text\` too. Use \`get_notes(category: "Characters")\` for character profiles.
@@ -545,7 +712,7 @@ Use these Bindery MCP tools:
 4. For timeline: also use \`get_chapter\` to read the previous chapter.
 5. Use \`retrieve_context\` or \`search\` to verify specific details against earlier chapters.
 
-## Output format
+### Output format
 
 | Type | Location | Issue | Reference |
 |---|---|---|---|
@@ -573,15 +740,19 @@ Test how a chapter sounds when read aloud to ${audienceStr}.
 ## Trigger
 User says \`/read-aloud\`, "reading test", or "how does this sound".
 
-## Clarify first
+## Detect Bindery workspace
+Try calling \`identify_book\` to check if this is a Bindery project.
+- **Bindery workspace** (tool returns a book name): follow the **Bindery workflow** below.
+- **Not a Bindery workspace** (tool unavailable or no book found): follow the **General workflow** below.
+
+## General workflow (without Bindery)
+
+### Clarify first
 - Whole chapter or specific passage?
 
-## Tools
-Use these Bindery MCP tools:
-- \`get_chapter(chapterNumber, language)\` — read the full chapter
-- \`get_text(identifier, startLine, endLine)\` — read a specific passage by line range
+Ask the user to paste or share the text to test.
 
-## What to check
+### What to check
 - Sentences over ~30 words
 - Sequences of 3+ short sentences (staccato)
 - Vocabulary too complex for ${audienceStr}
@@ -589,7 +760,37 @@ Use these Bindery MCP tools:
 - Paragraphs over 8 lines without a break
 - Accidental word repetition within 2-3 sentences
 
-## Output format
+### Output format
+
+| Type | Location | Flagged text | Note |
+|---|---|---|---|
+| Long sentence | Para 3 | "..." (34 words) | Consider splitting |
+
+Brief overall impression (2-3 sentences) after the table.
+
+### Rules
+- Focus on how it sounds when spoken — not a content review
+- Suggestions are gentle ("consider", not "must change")
+
+## Bindery workflow (with Bindery MCP tools)
+
+### Clarify first
+- Whole chapter or specific passage?
+
+### Tools
+Use these Bindery MCP tools:
+- \`get_chapter(chapterNumber, language)\` — read the full chapter
+- \`get_text(identifier, startLine, endLine)\` — read a specific passage by line range
+
+### What to check
+- Sentences over ~30 words
+- Sequences of 3+ short sentences (staccato)
+- Vocabulary too complex for ${audienceStr}
+- Said-bookisms in dialogue ("she exclaimed breathlessly" → prefer "said" or action beat)
+- Paragraphs over 8 lines without a break
+- Accidental word repetition within 2-3 sentences
+
+### Output format
 
 | Type | Location | Flagged text | Note |
 |---|---|---|---|
@@ -617,33 +818,54 @@ Load context and get your bearings before starting work.
 ## Trigger
 User says \`/read-in\`, "get your bearings", "what were we working on", or at the start of a session.
 
-## Tools
+## Detect Bindery workspace
+Try calling \`identify_book\` to check if this is a Bindery project.
+- **Bindery workspace** (tool returns a book name): follow the **Bindery workflow** below.
+- **Not a Bindery workspace** (tool unavailable or no book found): follow the **General workflow** below.
+
+## General workflow (without Bindery)
+
+### Steps
+1. Ask the user: "What project or chapter were we working on?"
+2. Ask if they have any notes, a focus file, or a summary they can share.
+3. Once provided, summarize context in 3-6 lines:
+   - What project / chapter / scene we're in
+   - Key open decisions or notes
+   - End with: "Ready — what would you like to work on?"
+
+### Rules
+- Keep the summary brief; this is orientation, not a full status report
+- Do not suggest work or ask multiple questions — one question at most
+
+## Bindery workflow (with Bindery MCP tools)
+
+### Tools
 Use these Bindery MCP tools:
 - \`memory_list\` — discover which memory files exist (\`global.md\`, \`chXX.md\` files)
 - \`get_text(identifier)\` — read COWORK.md and memory files
 - \`chapter_status_get(book)\` — read the structured progress tracker
 - \`get_overview(language)\` — list all acts and chapters (only if tracker is empty or sparse)
 
-## Steps
+### Steps
 
-### 1. Check for current focus
+#### 1. Check for current focus
 Use \`get_text("COWORK.md")\` to read the current focus file (ignore if missing).
 
-### 2. Load global memory
+#### 2. Load global memory
 Use \`memory_list\` to discover available memory files, then \`get_text("${memoriesFolder}/global.md")\` to load cross-chapter decisions.
 
-### 3. Read the progress tracker
+#### 3. Read the progress tracker
 Use \`chapter_status_get\` to read current chapter progress. If it is empty or has fewer than 3 entries, also call \`get_overview\` for the full chapter listing.
 
-### 4. Determine working chapter
+#### 4. Determine working chapter
 If COWORK.md names a chapter, use that.
 Otherwise if the tracker has a single \`in-progress\` chapter, use that.
 Otherwise — **ask the user**: "Which chapter do you want to work on?"
 
-### 5. Load chapter memory
+#### 5. Load chapter memory
 Once the chapter is known (e.g. chapter 10), check \`memory_list\` output for a matching file (\`ch10.md\`). If it exists, read it with \`get_text("${memoriesFolder}/ch10.md")\`.
 
-### 6. Summarize
+#### 6. Summarize
 Output a short orientation (3-6 lines):
 - Which chapter / scene we're in
 - Status from the tracker (draft / in-progress / needs-review)
