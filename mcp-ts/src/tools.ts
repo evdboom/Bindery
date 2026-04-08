@@ -18,7 +18,6 @@ import {
 import {
     setupAiFiles,
     ALL_SKILLS,
-    AI_SETUP_VERSION,
     readAiVersionFile,
     expectedAiVersionEntries,
     type AiTarget,
@@ -100,7 +99,6 @@ export function toolHealth(root: string): string {
         memories: memoriesStatus,
         index: indexStatus,
         embeddings: embeddingsStatus,
-        ai_setup_version: AI_SETUP_VERSION,
         ai_version_outdated: aiVersionsOutdated.length > 0,
         ai_versions_outdated: aiVersionsOutdated,
         message: aiVersionsOutdated.length > 0

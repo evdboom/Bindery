@@ -3,14 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const spawnSyncMock = vi.fn();
-
-vi.mock('node:child_process', () => ({
-  spawnSync: (...args: unknown[]) => spawnSyncMock(...args),
-}));
-
 const tempRoots: string[] = [];
-const originalPlatform = process.platform;
 
 function makeRoot(): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-aisetup-test-'));
@@ -23,32 +16,22 @@ function write(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content, 'utf-8');
 }
 
-function setPlatform(platform: NodeJS.Platform): void {
-  Object.defineProperty(process, 'platform', {
-    value: platform,
-    configurable: true,
-  });
-}
-
 async function loadAiSetup() {
   vi.resetModules();
   return import('../src/aisetup');
 }
 
 afterEach(() => {
-  spawnSyncMock.mockReset();
-  Object.defineProperty(process, 'platform', {
-    value: originalPlatform,
-    configurable: true,
-  });
+  vi.restoreAllMocks();
+  vi.resetModules();
+  vi.unmock('fflate');
   for (const root of tempRoots.splice(0, tempRoots.length)) {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
 describe('setupAiFiles zip generation', () => {
-  it('falls back to zip on Windows when pwsh fails', async () => {
-    setPlatform('win32');
+  it('builds skill zips in-process with normalized entry paths', async () => {
     const { setupAiFiles } = await loadAiSetup();
 
     const root = makeRoot();
@@ -57,14 +40,6 @@ describe('setupAiFiles zip generation', () => {
       storyFolder: 'Story',
       languages: [{ code: 'EN', folderName: 'EN' }],
     }, null, 2) + '\n');
-
-    spawnSyncMock
-      .mockReturnValueOnce({ status: 1, error: undefined })
-      .mockImplementationOnce((_command: string, args: string[]) => {
-        const tmpZip = args[1];
-        fs.writeFileSync(tmpZip, 'PK\u0003\u0004read_aloud/SKILL.md', 'latin1');
-        return { status: 0, error: undefined };
-      });
 
     const result = setupAiFiles({
       root,
@@ -73,26 +48,27 @@ describe('setupAiFiles zip generation', () => {
       overwrite: true,
     });
 
-    expect(spawnSyncMock.mock.calls[0]?.[0]).toBe('pwsh');
-    expect(spawnSyncMock.mock.calls[0]?.[2]).toEqual(
-      expect.objectContaining({ cwd: path.join(root, '.claude', 'skills'), encoding: 'utf-8' })
-    );
-    expect(spawnSyncMock).toHaveBeenNthCalledWith(
-      2,
-      'zip',
-      expect.arrayContaining(['-r', expect.stringContaining('read_aloud.zip'), 'read_aloud']),
-      expect.objectContaining({ cwd: path.join(root, '.claude', 'skills'), encoding: 'utf-8' })
-    );
     expect(result.skillZipManifest.created).toContain('.claude/skills/read_aloud.zip');
     expect(result.skillZipManifest.failed).toEqual([]);
 
     const zipPath = path.join(root, '.claude', 'skills', 'read_aloud.zip');
     expect(fs.existsSync(zipPath)).toBe(true);
-    expect(fs.readFileSync(zipPath, 'latin1')).toContain('read_aloud/SKILL.md');
+
+    const zipText = fs.readFileSync(zipPath, 'latin1');
+    expect(zipText).toContain('read_aloud/SKILL.md');
+    expect(zipText).not.toContain('read_aloud\\SKILL.md');
   });
 
-  it('reports failed skill zips when both Windows zip commands fail', async () => {
-    setPlatform('win32');
+  it('reports a failed skill zip when archive generation throws', async () => {
+    vi.doMock('fflate', async () => {
+      const actual = await vi.importActual<typeof import('fflate')>('fflate');
+      return {
+        ...actual,
+        zipSync: () => {
+          throw new Error('zip failed');
+        },
+      };
+    });
     const { setupAiFiles } = await loadAiSetup();
 
     const root = makeRoot();
@@ -101,10 +77,6 @@ describe('setupAiFiles zip generation', () => {
       storyFolder: 'Story',
       languages: [{ code: 'EN', folderName: 'EN' }],
     }, null, 2) + '\n');
-
-    spawnSyncMock
-      .mockReturnValueOnce({ status: 1, error: undefined })
-      .mockReturnValueOnce({ status: 1, error: undefined });
 
     const result = setupAiFiles({
       root,

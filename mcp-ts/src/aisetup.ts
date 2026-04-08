@@ -11,8 +11,7 @@
 
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
-import * as os   from 'node:os';
-import { spawnSync } from 'node:child_process';
+import { zipSync, strToU8 } from 'fflate';
 import { renderTemplate, FILE_VERSION_INFO, type TemplateContext } from './templates.js';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -51,13 +50,6 @@ export interface AiSetupResult {
     };
     versionStamp: AiVersionFile;
 }
-
-/**
- * Bump this integer whenever templates change significantly enough that
- * existing users should regenerate their AI files.
- * Must be kept in sync with AI_SETUP_VERSION in vscode-ext/src/ai-setup.ts.
- */
-export const AI_SETUP_VERSION = 7;
 
 interface AiVersionEntry {
     version: number;
@@ -147,7 +139,7 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
         }
     }
 
-    stampAiVersion(root, versionFile);
+    stampAiVersionFile(root, versionFile);
     result.versionStamp = versionFile;
     return result;
 }
@@ -217,7 +209,7 @@ function stampVersionEntry(versionFile: AiVersionFile, relPath: string): void {
     };
 }
 
-function stampAiVersion(root: string, versionFile: AiVersionFile): void {
+function stampAiVersionFile(root: string, versionFile: AiVersionFile): void {
     const dir = path.join(root, '.bindery');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
@@ -263,65 +255,24 @@ function toKey(relPath: string): string {
 }
 
 function zipSkillFolder(root: string, skill: SkillTemplate, zipAbs: string): boolean {
-    const skillsBase = path.join(root, '.claude', 'skills');
-    fs.mkdirSync(skillsBase, { recursive: true });
+    const skillMd = path.join(root, '.claude', 'skills', skill, 'SKILL.md');
+    if (!fs.existsSync(skillMd)) { return false; }
 
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-skillzip-'));
-    const tmpZip = path.join(tmpDir, `${skill}.zip`);
-    const zipFrom = skillsBase;
+    try {
+        const skillContent = fs.readFileSync(skillMd, 'utf-8');
+        const zipBytes = zipSync({
+            [`${skill}/SKILL.md`]: strToU8(skillContent),
+        });
 
-    let ok = false;
-
-    if (process.platform === 'win32') {
-        // Claude rejects archives whose internal entry names use backslashes.
-        // pwsh Compress-Archive on the folder emits forward-slash entry names,
-        // while Windows PowerShell may emit backslashes.
-        const psScriptPath = path.join(tmpDir, 'compress-archive.ps1');
-        fs.writeFileSync(
-            psScriptPath,
-            [
-                'param(',
-                '    [string]$Skill,',
-                '    [string]$DestinationPath',
-                ')',
-                "Compress-Archive -LiteralPath $Skill -DestinationPath $DestinationPath -Force",
-                ''
-            ].join('\n'),
-            'utf-8'
-        );
-
-        let zipped = spawnSync(
-            'pwsh',
-            ['-NoProfile', '-File', psScriptPath, skill, tmpZip],
-            { cwd: zipFrom, encoding: 'utf-8' }
-        );
-        if (!zipped.error && zipped.status === 0) {
-            ok = true;
-        } else {
-            zipped = spawnSync('zip', ['-r', tmpZip, skill], { cwd: zipFrom, encoding: 'utf-8' });
-            if (!zipped.error && zipped.status === 0) {
-                ok = true;
-            }
+        fs.mkdirSync(path.dirname(zipAbs), { recursive: true });
+        const copyPath = zipAbs + '.tmp';
+        fs.writeFileSync(copyPath, Buffer.from(zipBytes));
+        if (fs.existsSync(zipAbs)) {
+            fs.unlinkSync(zipAbs);
         }
-    } else {
-        const zipped = spawnSync('zip', ['-r', tmpZip, skill], { cwd: zipFrom, encoding: 'utf-8' });
-        if (!zipped.error && zipped.status === 0) {
-            ok = true;
-        }
-    }
-
-    if (!ok || !fs.existsSync(tmpZip)) {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.renameSync(copyPath, zipAbs);
+        return true;
+    } catch {
         return false;
     }
-
-    fs.mkdirSync(path.dirname(zipAbs), { recursive: true });
-    const copyPath = zipAbs + '.tmp';
-    fs.copyFileSync(tmpZip, copyPath);
-    if (fs.existsSync(zipAbs)) {
-        fs.unlinkSync(zipAbs);
-    }
-    fs.renameSync(copyPath, zipAbs);
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-    return true;
 }
