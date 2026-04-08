@@ -166,4 +166,4 @@ Before releasing mcpb: copy `mcp-ts/out/` → `mcpb/server/`.
   - integration tests for tool wiring / file IO / command flows,
   - end-to-end only when cross-surface behavior must be validated.
 - If full test coverage is not feasible, explicitly document what was not tested and why.
-- When updating packages always regenerate lock files (for ci compatibility force npm v11 `npx --yes npm@11 install`)
+- When updating packages, always regenerate lock files with the same npm major used by CI so contributors do not create lockfiles that CI cannot read.
