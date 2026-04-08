@@ -62,6 +62,8 @@ jobs:
   publish-vscode:
     name: Publish VS Code Extension
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
