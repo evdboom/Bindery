@@ -16,6 +16,6 @@ await build({
     format: 'cjs',
     target: 'node18',
     external: ['vscode'],
-    sourcemap: false,
+    sourcemap: true,
     logLevel: 'info',
 });
