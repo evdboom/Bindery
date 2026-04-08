@@ -91,7 +91,8 @@ export function toolHealth(root: string): string {
     const aiVersionsOutdated: Array<{ file: string; label: string; zip: string | null; expected: number; found: number }> = [];
 
     const healthSettings = readSettings(root);
-    const enabledTargets = new Set<string>(healthSettings?.aiTargets ?? ALL_AI_TARGETS);
+    const validTargets = healthSettings?.aiTargets?.filter(t => ALL_AI_TARGETS.includes(t as AiTarget));;
+    const enabledTargets = new Set<string>(validTargets ?? ALL_AI_TARGETS);
 
     for (const [file, exp] of Object.entries(expected)) {
         if (!enabledTargets.has(targetForFile(file))) { continue; }
