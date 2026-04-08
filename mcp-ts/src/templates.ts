@@ -534,7 +534,7 @@ Use these Bindery MCP tools:
 ## Steps
 
 1. Use \`chapter_status_get\` to read the current tracker. Use \`memory_list\` to check available memory files. 
-2. Use \`get_text\` to read COWORK.md (current focus), \`${memoriesFolder}/global.md\` and for inprogress chapters \`${memoriesFolder}/chXX.md\`.
+2. Use \`get_text\` to read COWORK.md (current focus), \`${memoriesFolder}/global.md\` and for in-progress chapters \`${memoriesFolder}/chXX.md\`.
 3. Use \`get_overview\` for the full chapter listing if the tracker is empty or incomplete.
 4. Check \`${arcFolder}/\` for what's planned vs written (Overall.md + the relevant act file).
 5. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
