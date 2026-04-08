@@ -87,8 +87,10 @@ jobs:
           mkdir -p vscode-ext/mcp-ts/out
           cp -r mcp-ts/out/. vscode-ext/mcp-ts/out/
           # Install production runtime deps (minisearch) that tools.js requires at runtime
-          cd mcp-ts && npm ci --omit=dev
+          cd mcp-ts && npm ci --omit=dev --omit=optional
           cp -r node_modules ../vscode-ext/mcp-ts/node_modules
+          # Remove docs/tests/maps from dependencies to keep VSIX size and file-count lower
+          cd ../vscode-ext/mcp-ts && npx --yes node-prune@1.0.2
 
       - name: Set version from tag and publish extension
         # package.json ships with version "0.0.0" — the real version is injected here from the release tag

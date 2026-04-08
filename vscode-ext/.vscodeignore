@@ -3,3 +3,25 @@ src/
 .vscode-test/
 *.map
 tsconfig.json
+
+# Keep the packaged extension lean.
+test/
+.vscode/
+test-results.json
+icon.svg
+esbuild.mjs
+CLAUDE.md
+
+# mcp-ts runtime is copied under vscode-ext/mcp-ts in release. Exclude non-runtime files.
+mcp-ts/node_modules/**/.github/
+mcp-ts/node_modules/**/test/
+mcp-ts/node_modules/**/tests/
+mcp-ts/node_modules/**/example/
+mcp-ts/node_modules/**/examples/
+mcp-ts/node_modules/**/docs/
+mcp-ts/node_modules/**/doc/
+mcp-ts/node_modules/**/*.md
+mcp-ts/node_modules/**/*.markdown
+mcp-ts/node_modules/**/*.map
+mcp-ts/node_modules/**/*.ts
+mcp-ts/node_modules/**/tsconfig*.json

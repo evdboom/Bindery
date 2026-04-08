@@ -980,8 +980,10 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run build:mcp && npm run compile",
+    "vscode:prepublish": "npm run build:mcp && npm run typecheck && npm run bundle",
     "compile": "tsc -p ./",
+    "typecheck": "tsc --noEmit -p ./",
+    "bundle": "node ./esbuild.mjs",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
     "build:mcp": "cd ../mcp-ts && npm ci && npm run compile",
@@ -990,6 +992,7 @@
     "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json"
   },
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "@types/node": "^25.5.2",
     "@types/vscode": "^1.115.0",
     "typescript": "6.0.2",
