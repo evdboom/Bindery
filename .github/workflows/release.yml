@@ -97,4 +97,4 @@ jobs:
           cd vscode-ext
           npm ci
           npm version "$VERSION" --no-git-tag-version
-          npx vsce publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
+          npx --yes @vscode/vsce publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
