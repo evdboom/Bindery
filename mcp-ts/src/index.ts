@@ -287,8 +287,8 @@ server.registerTool('add_translation', {
     inputSchema: {
         book:           bookSchema,
         targetLangCode: z.string().describe('Target language code (e.g. "nl", "fr")'),
-        from:           z.string().describe('Source term (e.g. "FluxCore")'),
-        to:             z.string().describe('Target term (e.g. "FluxKern")'),
+        from:           z.string().describe('Source term (e.g. "Core")'),
+        to:             z.string().describe('Target term (e.g. "Kern")'),
     },
     annotations: { destructiveHint: true },
 }, async ({ book, targetLangCode, from, to }) => {

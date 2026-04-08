@@ -15,7 +15,15 @@ import {
     buildIndex, loadIndex, indexPath, search, rerank,
     type SearchResult,
 } from './search.js';
-import { setupAiFiles, ALL_SKILLS, type AiTarget, type SkillTemplate } from './aisetup.js';
+import {
+    setupAiFiles,
+    ALL_SKILLS,
+    AI_SETUP_VERSION,
+    readAiVersionFile,
+    expectedAiVersionEntries,
+    type AiTarget,
+    type SkillTemplate,
+} from './aisetup.js';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -43,33 +51,64 @@ function storyFolder(root: string): string {
 // ─── health ───────────────────────────────────────────────────────────────────
 
 export function toolHealth(root: string): string {
-    const lines: string[] = [`root: ${root}`];
-
     const settingsPath = path.join(root, '.bindery', 'settings.json');
-    if (fs.existsSync(settingsPath)) {
-        lines.push('settings.json: present');
-    } else {
-        lines.push('settings.json: missing — run init_workspace to set up this book');
-    }
+    const settingsStatus = fs.existsSync(settingsPath)
+        ? 'present'
+        : 'missing — run init_workspace to set up this book';
 
     const memDir   = path.join(root, '.bindery', 'memories');
     const memFiles = fs.existsSync(memDir)
         ? fs.readdirSync(memDir).filter(f => f.endsWith('.md')).length
         : -1;
-    lines.push(`memories: ${memFiles >= 0 ? `present (${memFiles} file${memFiles === 1 ? '' : 's'})` : 'not created yet'}`);
+    const memoriesStatus = memFiles >= 0
+        ? `present (${memFiles} file${memFiles === 1 ? '' : 's'})`
+        : 'not created yet';
 
     const idxPath = indexPath(root);
+    let indexStatus = 'not built — run index_build first';
     if (fs.existsSync(idxPath)) {
         const raw = readJson<{ meta?: { builtAt?: string; chunkCount?: number } }>(idxPath);
-        lines.push(`index: present (chunks=${raw?.meta?.chunkCount ?? '?'}, built=${raw?.meta?.builtAt ?? '?'})`);
-    } else {
-        lines.push('index: not built — run index_build first');
+        indexStatus = `present (chunks=${raw?.meta?.chunkCount ?? '?'}, built=${raw?.meta?.builtAt ?? '?'})`;
     }
 
     const ollamaUrl = process.env['BINDERY_OLLAMA_URL'];
-    lines.push(`embeddings: ${ollamaUrl ? `ollama at ${ollamaUrl}` : 'BM25 only (set BINDERY_OLLAMA_URL for reranking)'}`);
+    const embeddingsStatus = ollamaUrl
+        ? `ollama at ${ollamaUrl}`
+        : 'BM25 only (set BINDERY_OLLAMA_URL for reranking)';
 
-    return lines.join('\n');
+    const installed = readAiVersionFile(root);
+    const expected = expectedAiVersionEntries();
+    const aiVersionsOutdated: Array<{ file: string; label: string; zip: string | null; expected: number; found: number }> = [];
+
+    for (const [file, exp] of Object.entries(expected)) {
+        if (!fs.existsSync(path.join(root, file))) { continue; }
+        const found = installed.versions[file]?.version ?? 0;
+        if (found < exp.version) {
+            aiVersionsOutdated.push({
+                file,
+                label: exp.label,
+                zip: exp.zip,
+                expected: exp.version,
+                found,
+            });
+        }
+    }
+
+    const response = {
+        root,
+        settings: settingsStatus,
+        memories: memoriesStatus,
+        index: indexStatus,
+        embeddings: embeddingsStatus,
+        ai_setup_version: AI_SETUP_VERSION,
+        ai_version_outdated: aiVersionsOutdated.length > 0,
+        ai_versions_outdated: aiVersionsOutdated,
+        message: aiVersionsOutdated.length > 0
+            ? 'AI instruction files are out of date. Run setup_ai_files, then re-upload any listed skill zip files in Claude Desktop.'
+            : 'AI instruction files are up to date.',
+    };
+
+    return JSON.stringify(response, null, 2);
 }
 
 // ─── index_build ─────────────────────────────────────────────────────────────
@@ -1111,15 +1150,28 @@ export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
         return `Error: ${e instanceof Error ? e.message : String(e)}`;
     }
 
-    const lines: string[] = [];
-    if (result.created.length > 0) {
-        lines.push(`Created (${result.created.length}):\n${result.created.map(f => `  ${f}`).join('\n')}`);
-    }
-    if (result.skipped.length > 0) {
-        lines.push(`Skipped — already exist (pass overwrite: true to replace) (${result.skipped.length}):\n${result.skipped.map(f => `  ${f}`).join('\n')}`);
-    }
-    if (lines.length === 0) { return 'Nothing to do.'; }
-    return lines.join('\n\n');
+    const zipToUpload = [
+        ...result.skillZipManifest.created,
+        ...result.skillZipManifest.rebuilt,
+    ];
+
+    const response = {
+        regenerated_files: result.regenerated,
+        skipped_files: result.skipped,
+        skill_zips: {
+            created: result.skillZipManifest.created,
+            rebuilt: result.skillZipManifest.rebuilt,
+            skipped: result.skillZipManifest.skipped,
+            failed: result.skillZipManifest.failed,
+            reupload_required: zipToUpload,
+        },
+        ai_versions: result.versionStamp,
+        message:
+            'If you are using Claude Desktop as AI assistant, re-upload these skill zips via Customize -> Skills: ' +
+            (zipToUpload.length > 0 ? zipToUpload.join(', ') : 'none'),
+    };
+
+    return JSON.stringify(response, null, 2);
 }
 
 // ─── memory_list ─────────────────────────────────────────────────────────────

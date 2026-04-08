@@ -31,6 +31,5 @@ Thumbs.db
 *.swo
 *~
 
-# misc
-.FluxCoreInfo/
+# misc - added in pipeline
 ai-setup-templates.ts
