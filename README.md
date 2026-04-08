@@ -100,3 +100,47 @@ The VS Code extension works standalone — no server setup needed for typography
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Contributing — template source of truth
+
+The AI instruction file templates are maintained in **one place only**:
+
+```
+mcp-ts/src/templates.ts   ← SINGLE SOURCE OF TRUTH
+```
+
+`vscode-ext/src/ai-setup-templates.ts` is a generated copy and **must never be edited directly**.
+CI syncs it automatically before every publish step.
+
+### Syncing locally
+
+After changing `mcp-ts/src/templates.ts`, copy it to the VS Code extension:
+
+```bash
+cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+```
+
+### Running tests
+
+```bash
+# MCP server (includes template contract tests + copy-parity check)
+cd mcp-ts && npm test
+
+# VS Code extension
+cd vscode-ext && npm test
+```
+
+The copy-parity test (`mcp-ts/test/templates-parity.test.ts`) skips gracefully when
+`ai-setup-templates.ts` is absent (normal in fresh checkouts) and **fails** when it exists
+but differs from the source — this is what CI catches.
+
+### What CI does
+
+The CI workflow (`.github/workflows/ci.yml`) runs on every push and pull request:
+
+1. Builds and tests the MCP server.
+2. Copies `mcp-ts/src/templates.ts` → `vscode-ext/src/ai-setup-templates.ts`.
+3. Verifies the copy is identical to the source (fails with a clear remediation message if not).
+4. Builds and tests the VS Code extension.
+
+If CI fails on the sync check, fix it by running the copy command above and committing the result.
