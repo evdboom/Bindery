@@ -139,6 +139,8 @@ describe('mcp tools', () => {
 
     // claude target is not in aiTargets, so its files should not be reported
     expect(health.ai_versions_outdated?.some(x => x.file === '.claude/skills/review/SKILL.md')).toBeFalsy();
+    // non-Claude health info (settings presence) is still reported
+    expect(JSON.parse(healthRaw)).toHaveProperty('settings', 'present');
   });
 
   it('health includes claude files when aiTargets includes claude', () => {
@@ -187,6 +189,8 @@ describe('mcp tools', () => {
 
     expect(settings.aiTargets).toEqual(['claude', 'copilot']);
     expect(settings.aiSkills).toEqual(['review']);
+    // pre-existing settings are preserved
+    expect((settings as Record<string, unknown>)['bookTitle']).toBe('Test Book');
   });
 
   it('setup_ai_files does not set aiSkills when claude is not a target', () => {
