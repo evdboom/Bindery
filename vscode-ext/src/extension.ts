@@ -894,7 +894,7 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
     const savedTargets = new Set(wsSettings.aiTargets ?? []);
     const targetItems = AI_TARGET_ITEMS.map(item => ({
         ...item,
-        picked: savedTargets.size > 0 ? savedTargets.has(item.value) : false,
+        picked: savedTargets.has(item.value),
     }));
     const targetPicks = await vscode.window.showQuickPick(targetItems, {
         canPickMany:  true,
@@ -909,7 +909,7 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
         const savedSkills = new Set(wsSettings.aiSkills ?? []);
         const skillItems = SKILL_ITEMS.map(item => ({
             ...item,
-            picked: savedSkills.size > 0 ? savedSkills.has(item.value) : false,
+            picked: savedSkills.has(item.value),
         }));
         const skillPicks = await vscode.window.showQuickPick(skillItems, {
             canPickMany:  true,
