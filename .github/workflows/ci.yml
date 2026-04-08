@@ -13,13 +13,19 @@ jobs:
   test:
     name: Test & template-sync check
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            mcp-ts/package-lock.json
+            vscode-ext/package-lock.json
 
       # ── MCP server ────────────────────────────────────────────────────────────
       - name: Install mcp-ts dependencies
@@ -29,7 +35,14 @@ jobs:
         run: cd mcp-ts && npm run compile
 
       - name: Run mcp-ts tests
-        run: cd mcp-ts && npm test
+        run: cd mcp-ts && npm run test:ci
+
+      - name: Upload mcp-ts test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-test-results
+          path: mcp-ts/test-results.json
 
       # ── Template sync ─────────────────────────────────────────────────────────
       # ai-setup-templates.ts is .gitignored — always generated fresh here.
@@ -48,4 +61,11 @@ jobs:
         run: cd vscode-ext && npm run compile
 
       - name: Run vscode-ext tests
-        run: cd vscode-ext && npm test
+        run: cd vscode-ext && npm run test:ci
+
+      - name: Upload vscode-ext test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-ext-test-results
+          path: vscode-ext/test-results.json
