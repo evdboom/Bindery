@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Build mcp-ts
         run: |
@@ -70,7 +70,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Build mcp-ts (bundled inside extension)
         run: |
@@ -97,4 +97,4 @@ jobs:
           cd vscode-ext
           npm ci
           npm version "$VERSION" --no-git-tag-version
-          npx vsce publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
+          npx --yes @vscode/vsce@3.7.1 publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
