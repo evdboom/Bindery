@@ -107,6 +107,111 @@ describe('mcp tools', () => {
     expect(zipText).not.toContain('read_aloud\\SKILL.md');
   });
 
+  it('health skips claude files when aiTargets excludes claude', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+    }, null, 2) + '\n');
+
+    toolSetupAiFiles(root, { targets: ['claude'], skills: ['review'], overwrite: true });
+
+    // After setup, restrict aiTargets to exclude claude
+    const settingsPath = path.join(root, '.bindery', 'settings.json');
+    const settingsAfterSetup = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
+    settingsAfterSetup['aiTargets'] = ['copilot'];
+    fs.writeFileSync(settingsPath, JSON.stringify(settingsAfterSetup, null, 2) + '\n', 'utf-8');
+
+    // Downgrade the review skill version to simulate outdated
+    const versionPath = path.join(root, '.bindery', 'ai-version.json');
+    const versionFile = JSON.parse(fs.readFileSync(versionPath, 'utf-8')) as {
+      versions: Record<string, { version: number; label: string; zip: string | null }>;
+    };
+    versionFile.versions['.claude/skills/review/SKILL.md'].version = 0;
+    fs.writeFileSync(versionPath, JSON.stringify(versionFile, null, 2) + '\n', 'utf-8');
+
+    const healthRaw = toolHealth(root);
+    const health = JSON.parse(healthRaw) as {
+      ai_version_outdated?: boolean;
+      ai_versions_outdated?: Array<{ file: string }>;
+    };
+
+    // claude target is not in aiTargets, so its files should not be reported
+    expect(health.ai_versions_outdated?.some(x => x.file === '.claude/skills/review/SKILL.md')).toBeFalsy();
+    // non-Claude health info (settings presence) is still reported
+    expect(JSON.parse(healthRaw)).toHaveProperty('settings', 'present');
+  });
+
+  it('health includes claude files when aiTargets includes claude', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+      aiTargets: ['claude'],
+    }, null, 2) + '\n');
+
+    toolSetupAiFiles(root, { targets: ['claude'], skills: ['review'], overwrite: true });
+
+    // Downgrade the review skill version to simulate outdated
+    const versionPath = path.join(root, '.bindery', 'ai-version.json');
+    const versionFile = JSON.parse(fs.readFileSync(versionPath, 'utf-8')) as {
+      versions: Record<string, { version: number; label: string; zip: string | null }>;
+    };
+    versionFile.versions['.claude/skills/review/SKILL.md'].version = 0;
+    fs.writeFileSync(versionPath, JSON.stringify(versionFile, null, 2) + '\n', 'utf-8');
+
+    const healthRaw = toolHealth(root);
+    const health = JSON.parse(healthRaw) as {
+      ai_version_outdated?: boolean;
+      ai_versions_outdated?: Array<{ file: string }>;
+    };
+
+    expect(health.ai_version_outdated).toBe(true);
+    expect(health.ai_versions_outdated?.some(x => x.file === '.claude/skills/review/SKILL.md')).toBe(true);
+  });
+
+  it('setup_ai_files persists aiTargets and aiSkills to settings.json', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+    }, null, 2) + '\n');
+
+    toolSetupAiFiles(root, { targets: ['claude', 'copilot'], skills: ['review'], overwrite: true });
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      aiTargets?: string[];
+      aiSkills?: string[];
+    };
+
+    expect(settings.aiTargets).toEqual(['claude', 'copilot']);
+    expect(settings.aiSkills).toEqual(['review']);
+    // pre-existing settings are preserved
+    expect((settings as Record<string, unknown>)['bookTitle']).toBe('Test Book');
+  });
+
+  it('setup_ai_files does not set aiSkills when claude is not a target', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+    }, null, 2) + '\n');
+
+    toolSetupAiFiles(root, { targets: ['copilot'], skills: [], overwrite: true });
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      aiTargets?: string[];
+      aiSkills?: string[];
+    };
+
+    expect(settings.aiTargets).toEqual(['copilot']);
+    expect(settings.aiSkills).toBeUndefined();
+  });
+
   it('health reports per-file AI version mismatches', () => {
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({

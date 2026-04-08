@@ -53,10 +53,19 @@
           "description": "Dialect substitution rules applied across all projects (e.g. US→UK spelling). Applied after the built-in rules but before project-specific rules in .bindery/translations.json. Store in user settings so they follow you to every workspace.",
           "items": {
             "type": "object",
-            "required": ["from", "to"],
+            "required": [
+              "from",
+              "to"
+            ],
             "properties": {
-              "from": { "type": "string", "description": "Source word (e.g. US English)" },
-              "to":   { "type": "string", "description": "Target word (e.g. UK English)" }
+              "from": {
+                "type": "string",
+                "description": "Source word (e.g. US English)"
+              },
+              "to": {
+                "type": "string",
+                "description": "Target word (e.g. UK English)"
+              }
             }
           }
         },
@@ -105,14 +114,33 @@
           "description": "Fallback language configurations for merge/export. Prefer .bindery/settings.json.",
           "items": {
             "type": "object",
-            "required": ["code", "folderName", "chapterWord", "actPrefix", "prologueLabel", "epilogueLabel"],
+            "required": [
+              "code",
+              "folderName",
+              "chapterWord",
+              "actPrefix",
+              "prologueLabel",
+              "epilogueLabel"
+            ],
             "properties": {
-              "code":           { "type": "string" },
-              "folderName":     { "type": "string" },
-              "chapterWord":    { "type": "string" },
-              "actPrefix":      { "type": "string" },
-              "prologueLabel":  { "type": "string" },
-              "epilogueLabel":  { "type": "string" }
+              "code": {
+                "type": "string"
+              },
+              "folderName": {
+                "type": "string"
+              },
+              "chapterWord": {
+                "type": "string"
+              },
+              "actPrefix": {
+                "type": "string"
+              },
+              "prologueLabel": {
+                "type": "string"
+              },
+              "epilogueLabel": {
+                "type": "string"
+              }
             }
           }
         }
@@ -203,34 +231,51 @@
     "languageModelTools": [
       {
         "name": "bindery_health",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Health",
         "toolReferenceName": "binderyHealth",
         "canBeReferencedInPrompt": true,
         "modelDescription": "Check Bindery workspace status: settings, index, embedding backend.",
-        "inputSchema": { "type": "object", "properties": {} }
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       },
       {
         "name": "bindery_index_build",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Build Index",
         "toolReferenceName": "binderyIndexBuild",
         "canBeReferencedInPrompt": true,
         "modelDescription": "Build or rebuild the full-text search index for the book workspace.",
-        "inputSchema": { "type": "object", "properties": {} }
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       },
       {
         "name": "bindery_index_status",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Index Status",
         "toolReferenceName": "binderyIndexStatus",
         "canBeReferencedInPrompt": true,
         "modelDescription": "Show current index metadata: chunk count and build time.",
-        "inputSchema": { "type": "object", "properties": {} }
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       },
       {
         "name": "bindery_get_text",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Get Text",
         "toolReferenceName": "binderyGetText",
         "canBeReferencedInPrompt": true,
@@ -238,16 +283,27 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "identifier": { "type": "string", "description": "Relative path from workspace root" },
-            "startLine":  { "type": "number" },
-            "endLine":    { "type": "number" }
+            "identifier": {
+              "type": "string",
+              "description": "Relative path from workspace root"
+            },
+            "startLine": {
+              "type": "number"
+            },
+            "endLine": {
+              "type": "number"
+            }
           },
-          "required": ["identifier"]
+          "required": [
+            "identifier"
+          ]
         }
       },
       {
         "name": "bindery_get_chapter",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Get Chapter",
         "toolReferenceName": "binderyGetChapter",
         "canBeReferencedInPrompt": true,
@@ -255,15 +311,24 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "chapterNumber": { "type": "number" },
-            "language":      { "type": "string" }
+            "chapterNumber": {
+              "type": "number"
+            },
+            "language": {
+              "type": "string"
+            }
           },
-          "required": ["chapterNumber", "language"]
+          "required": [
+            "chapterNumber",
+            "language"
+          ]
         }
       },
       {
         "name": "bindery_get_overview",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Get Overview",
         "toolReferenceName": "binderyGetOverview",
         "canBeReferencedInPrompt": true,
@@ -271,14 +336,22 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "language": { "type": "string", "description": "Language code or ALL" },
-            "act":      { "type": "number", "description": "Act number 1, 2 or 3" }
+            "language": {
+              "type": "string",
+              "description": "Language code or ALL"
+            },
+            "act": {
+              "type": "number",
+              "description": "Act number 1, 2 or 3"
+            }
           }
         }
       },
       {
         "name": "bindery_get_notes",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Get Notes",
         "toolReferenceName": "binderyGetNotes",
         "canBeReferencedInPrompt": true,
@@ -286,14 +359,20 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "category": { "type": "string" },
-            "name":     { "type": "string" }
+            "category": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
           }
         }
       },
       {
         "name": "bindery_search",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Search",
         "toolReferenceName": "binderySearch",
         "canBeReferencedInPrompt": true,
@@ -301,16 +380,26 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "query":      { "type": "string" },
-            "language":   { "type": "string" },
-            "maxResults": { "type": "number" }
+            "query": {
+              "type": "string"
+            },
+            "language": {
+              "type": "string"
+            },
+            "maxResults": {
+              "type": "number"
+            }
           },
-          "required": ["query"]
+          "required": [
+            "query"
+          ]
         }
       },
       {
         "name": "bindery_retrieve_context",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Retrieve Context",
         "toolReferenceName": "binderyRetrieveContext",
         "canBeReferencedInPrompt": true,
@@ -318,16 +407,26 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "query":    { "type": "string" },
-            "language": { "type": "string" },
-            "topK":     { "type": "number" }
+            "query": {
+              "type": "string"
+            },
+            "language": {
+              "type": "string"
+            },
+            "topK": {
+              "type": "number"
+            }
           },
-          "required": ["query"]
+          "required": [
+            "query"
+          ]
         }
       },
       {
         "name": "bindery_format",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Format",
         "toolReferenceName": "binderyFormat",
         "canBeReferencedInPrompt": true,
@@ -335,15 +434,23 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "filePath":  { "type": "string" },
-            "dryRun":    { "type": "boolean" },
-            "noRecurse": { "type": "boolean" }
+            "filePath": {
+              "type": "string"
+            },
+            "dryRun": {
+              "type": "boolean"
+            },
+            "noRecurse": {
+              "type": "boolean"
+            }
           }
         }
       },
       {
         "name": "bindery_get_review_text",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Review Text",
         "toolReferenceName": "binderyGetReviewText",
         "canBeReferencedInPrompt": true,
@@ -351,15 +458,26 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "language":     { "type": "string", "description": "Language filter: EN, NL, or ALL (default ALL)" },
-            "contextLines": { "type": "number", "description": "Context lines around each change (default 3)" },
-            "autoStage":    { "type": "boolean", "description": "Stage reviewed files after producing diff (default false)" }
+            "language": {
+              "type": "string",
+              "description": "Language filter: EN, NL, or ALL (default ALL)"
+            },
+            "contextLines": {
+              "type": "number",
+              "description": "Context lines around each change (default 3)"
+            },
+            "autoStage": {
+              "type": "boolean",
+              "description": "Stage reviewed files after producing diff (default false)"
+            }
           }
         }
       },
       {
         "name": "bindery_git_snapshot",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Git Snapshot",
         "toolReferenceName": "binderyGitSnapshot",
         "canBeReferencedInPrompt": true,
@@ -367,13 +485,18 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "message": { "type": "string", "description": "Snapshot message (default: timestamp)" }
+            "message": {
+              "type": "string",
+              "description": "Snapshot message (default: timestamp)"
+            }
           }
         }
       },
       {
         "name": "bindery_add_translation",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Add Translation",
         "toolReferenceName": "binderyAddTranslation",
         "canBeReferencedInPrompt": true,
@@ -381,15 +504,31 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "langKey": { "type": "string", "description": "Language key in translations.json, e.g. 'en-gb' or 'nl'" },
-            "from":    { "type": "string", "description": "Source word or phrase" },
-            "to":      { "type": "string", "description": "Target word or phrase" }
+            "langKey": {
+              "type": "string",
+              "description": "Language key in translations.json, e.g. 'en-gb' or 'nl'"
+            },
+            "from": {
+              "type": "string",
+              "description": "Source word or phrase"
+            },
+            "to": {
+              "type": "string",
+              "description": "Target word or phrase"
+            }
           },
-          "required": ["langKey", "from", "to"]
+          "required": [
+            "langKey",
+            "from",
+            "to"
+          ]
         }
       },
-      {        "name": "bindery_get_translation",
-        "tags": ["bindery"],
+      {
+        "name": "bindery_get_translation",
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Get Translation",
         "toolReferenceName": "binderyGetTranslation",
         "canBeReferencedInPrompt": true,
@@ -397,15 +536,25 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "language": { "type": "string", "description": "Language key, label, or code (e.g. 'nl', 'en-gb', 'British English')" },
-            "word":     { "type": "string", "description": "Word or term to look up (omit to list all rules for the language)" }
+            "language": {
+              "type": "string",
+              "description": "Language key, label, or code (e.g. 'nl', 'en-gb', 'British English')"
+            },
+            "word": {
+              "type": "string",
+              "description": "Word or term to look up (omit to list all rules for the language)"
+            }
           },
-          "required": ["language"]
+          "required": [
+            "language"
+          ]
         }
       },
       {
         "name": "bindery_setup_ai_files",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Setup AI Files",
         "toolReferenceName": "binderySetupAiFiles",
         "canBeReferencedInPrompt": true,
@@ -413,15 +562,32 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "targets":   { "type": "array", "items": { "type": "string" }, "description": "Files to generate: claude, copilot, cursor, agents. Default: all." },
-            "skills":    { "type": "array", "items": { "type": "string" }, "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read_aloud, read_in. Default: all." },
-            "overwrite": { "type": "boolean", "description": "Overwrite existing files? Default false." }
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Files to generate: claude, copilot, cursor, agents. Default: all."
+            },
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read_aloud, read_in. Default: all."
+            },
+            "overwrite": {
+              "type": "boolean",
+              "description": "Overwrite existing files? Default false."
+            }
           }
         }
       },
       {
         "name": "bindery_init_workspace",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Init Workspace",
         "toolReferenceName": "binderyInitWorkspace",
         "canBeReferencedInPrompt": true,
@@ -429,17 +595,36 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "bookTitle":      { "type": "string", "description": "Book title (defaults to folder name)" },
-            "author":         { "type": "string" },
-            "storyFolder":    { "type": "string", "description": "Story folder name relative to root (default: Story)" },
-            "genre":          { "type": "string" },
-            "description":    { "type": "string", "description": "One-line description for AI instruction files" },
-            "targetAudience": { "type": "string", "description": "Target audience, e.g. 12+ or adults" }
+            "bookTitle": {
+              "type": "string",
+              "description": "Book title (defaults to folder name)"
+            },
+            "author": {
+              "type": "string"
+            },
+            "storyFolder": {
+              "type": "string",
+              "description": "Story folder name relative to root (default: Story)"
+            },
+            "genre": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string",
+              "description": "One-line description for AI instruction files"
+            },
+            "targetAudience": {
+              "type": "string",
+              "description": "Target audience, e.g. 12+ or adults"
+            }
           }
         }
       },
-      { "name": "bindery_add_dialect",
-        "tags": ["bindery"],
+      {
+        "name": "bindery_add_dialect",
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Add Dialect Rule",
         "toolReferenceName": "binderyAddDialect",
         "canBeReferencedInPrompt": true,
@@ -447,15 +632,31 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "dialectCode": { "type": "string", "description": "Dialect key in translations.json, e.g. 'en-gb'" },
-            "from":        { "type": "string", "description": "Source word (e.g. 'airplane')" },
-            "to":          { "type": "string", "description": "Dialect form (e.g. 'aeroplane')" }
+            "dialectCode": {
+              "type": "string",
+              "description": "Dialect key in translations.json, e.g. 'en-gb'"
+            },
+            "from": {
+              "type": "string",
+              "description": "Source word (e.g. 'airplane')"
+            },
+            "to": {
+              "type": "string",
+              "description": "Dialect form (e.g. 'aeroplane')"
+            }
           },
-          "required": ["dialectCode", "from", "to"]
+          "required": [
+            "dialectCode",
+            "from",
+            "to"
+          ]
         }
       },
-      { "name": "bindery_get_dialect",
-        "tags": ["bindery"],
+      {
+        "name": "bindery_get_dialect",
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Get Dialect Rules",
         "toolReferenceName": "binderyGetDialect",
         "canBeReferencedInPrompt": true,
@@ -463,14 +664,25 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "dialectCode": { "type": "string", "description": "Dialect key, e.g. 'en-gb'" },
-            "word":        { "type": "string", "description": "Word to look up (optional)" }
+            "dialectCode": {
+              "type": "string",
+              "description": "Dialect key, e.g. 'en-gb'"
+            },
+            "word": {
+              "type": "string",
+              "description": "Word to look up (optional)"
+            }
           },
-          "required": ["dialectCode"]
+          "required": [
+            "dialectCode"
+          ]
         }
       },
-      { "name": "bindery_add_language",
-        "tags": ["bindery"],
+      {
+        "name": "bindery_add_language",
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Add Language",
         "toolReferenceName": "binderyAddLanguage",
         "canBeReferencedInPrompt": true,
@@ -478,28 +690,59 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "code":          { "type": "string", "description": "Language code (e.g. FR, DE, NL)" },
-            "folderName":    { "type": "string", "description": "Folder name under Story/ (default: same as code)" },
-            "chapterWord":   { "type": "string", "description": "Word for 'Chapter' in target language" },
-            "actPrefix":    { "type": "string", "description": "Word for 'Act' in target language" },
-            "prologueLabel": { "type": "string", "description": "Word for 'Prologue'" },
-            "epilogueLabel": { "type": "string", "description": "Word for 'Epilogue'" },
-            "createStubs":   { "type": "boolean", "description": "Create stub .md files mirroring source (default true)" }
+            "code": {
+              "type": "string",
+              "description": "Language code (e.g. FR, DE, NL)"
+            },
+            "folderName": {
+              "type": "string",
+              "description": "Folder name under Story/ (default: same as code)"
+            },
+            "chapterWord": {
+              "type": "string",
+              "description": "Word for 'Chapter' in target language"
+            },
+            "actPrefix": {
+              "type": "string",
+              "description": "Word for 'Act' in target language"
+            },
+            "prologueLabel": {
+              "type": "string",
+              "description": "Word for 'Prologue'"
+            },
+            "epilogueLabel": {
+              "type": "string",
+              "description": "Word for 'Epilogue'"
+            },
+            "createStubs": {
+              "type": "boolean",
+              "description": "Create stub .md files mirroring source (default true)"
+            }
           },
-          "required": ["code"]
+          "required": [
+            "code"
+          ]
         }
       },
-      { "name": "bindery_memory_list",
-        "tags": ["bindery"],
+      {
+        "name": "bindery_memory_list",
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Memory List",
         "toolReferenceName": "binderyMemoryList",
         "canBeReferencedInPrompt": true,
         "modelDescription": "List all session memory files in .bindery/memories/ with their line counts.",
-        "inputSchema": { "type": "object", "properties": {} }
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       },
       {
         "name": "bindery_memory_append",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Memory Append",
         "toolReferenceName": "binderyMemoryAppend",
         "canBeReferencedInPrompt": true,
@@ -507,16 +750,31 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "file":    { "type": "string", "description": "Filename within .bindery/memories/, e.g. global.md or ch10.md" },
-            "title":   { "type": "string", "description": "Short session title describing the topic" },
-            "content": { "type": "string", "description": "Text to record under this session entry" }
+            "file": {
+              "type": "string",
+              "description": "Filename within .bindery/memories/, e.g. global.md or ch10.md"
+            },
+            "title": {
+              "type": "string",
+              "description": "Short session title describing the topic"
+            },
+            "content": {
+              "type": "string",
+              "description": "Text to record under this session entry"
+            }
           },
-          "required": ["file", "title", "content"]
+          "required": [
+            "file",
+            "title",
+            "content"
+          ]
         }
       },
       {
         "name": "bindery_memory_compact",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Memory Compact",
         "toolReferenceName": "binderyMemoryCompact",
         "canBeReferencedInPrompt": true,
@@ -524,24 +782,40 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "file":              { "type": "string", "description": "Filename within .bindery/memories/, e.g. global.md" },
-            "compacted_content": { "type": "string", "description": "Full replacement content (model-supplied summary)" }
+            "file": {
+              "type": "string",
+              "description": "Filename within .bindery/memories/, e.g. global.md"
+            },
+            "compacted_content": {
+              "type": "string",
+              "description": "Full replacement content (model-supplied summary)"
+            }
           },
-          "required": ["file", "compacted_content"]
+          "required": [
+            "file",
+            "compacted_content"
+          ]
         }
       },
       {
         "name": "bindery_chapter_status_get",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Chapter Status",
         "toolReferenceName": "binderyChapterStatusGet",
         "canBeReferencedInPrompt": true,
         "modelDescription": "Read the current chapter progress tracker from .bindery/chapter-status.json. Returns a grouped summary (done, in-progress, draft, planned, needs-review). Returns a clear empty-state message if no status has been recorded yet.",
-        "inputSchema": { "type": "object", "properties": {} }
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       },
       {
         "name": "bindery_chapter_status_update",
-        "tags": ["bindery"],
+        "tags": [
+          "bindery"
+        ],
         "displayName": "Bindery: Chapter Status Update",
         "toolReferenceName": "binderyChapterStatusUpdate",
         "canBeReferencedInPrompt": true,
@@ -554,18 +828,49 @@
               "items": {
                 "type": "object",
                 "properties": {
-                  "number":    { "type": "number", "description": "Chapter number" },
-                  "title":     { "type": "string", "description": "Chapter title" },
-                  "language":  { "type": "string", "description": "Language code, e.g. EN or NL" },
-                  "status":    { "type": "string", "enum": ["done", "in-progress", "draft", "planned", "needs-review"] },
-                  "wordCount": { "type": "number", "description": "Approximate word count" },
-                  "notes":     { "type": "string", "description": "Short agent note about this chapter" }
+                  "number": {
+                    "type": "number",
+                    "description": "Chapter number"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Chapter title"
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "Language code, e.g. EN or NL"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "done",
+                      "in-progress",
+                      "draft",
+                      "planned",
+                      "needs-review"
+                    ]
+                  },
+                  "wordCount": {
+                    "type": "number",
+                    "description": "Approximate word count"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "Short agent note about this chapter"
+                  }
                 },
-                "required": ["number", "title", "language", "status"]
+                "required": [
+                  "number",
+                  "title",
+                  "language",
+                  "status"
+                ]
               }
             }
           },
-          "required": ["chapters"]
+          "required": [
+            "chapters"
+          ]
         }
       }
     ],
@@ -592,52 +897,102 @@
         }
       ],
       "bindery.contextMenu": [
-        { "command": "bindery.formatDocument",          "when": "resourceLangId == markdown", "group": "1_format@1"  },
-        { "command": "bindery.formatFolder",            "when": "explorerResourceIsFolder",   "group": "1_format@2"  },
-        { "command": "bindery.findProbableUsToUkWords", "when": "resourceLangId == markdown", "group": "2_dialect@1" },
-        { "command": "bindery.addDialect",              "when": "resourceLangId == markdown", "group": "2_dialect@2" },
-        { "command": "bindery.addTranslation",          "when": "resourceLangId == markdown", "group": "2_dialect@3" },
-        { "command": "bindery.mergeMarkdown",           "group": "3_export@1"                                        },
-        { "command": "bindery.mergeDocx",               "group": "3_export@2"                                        },
-        { "command": "bindery.mergeEpub",               "group": "3_export@3"                                        },
-        { "command": "bindery.mergePdf",                "group": "3_export@4"                                        },
-        { "command": "bindery.mergeAll",                "group": "3_export@5"                                        }
+        {
+          "command": "bindery.formatDocument",
+          "when": "resourceLangId == markdown",
+          "group": "1_format@1"
+        },
+        {
+          "command": "bindery.formatFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "1_format@2"
+        },
+        {
+          "command": "bindery.findProbableUsToUkWords",
+          "when": "resourceLangId == markdown",
+          "group": "2_dialect@1"
+        },
+        {
+          "command": "bindery.addDialect",
+          "when": "resourceLangId == markdown",
+          "group": "2_dialect@2"
+        },
+        {
+          "command": "bindery.addTranslation",
+          "when": "resourceLangId == markdown",
+          "group": "2_dialect@3"
+        },
+        {
+          "command": "bindery.mergeMarkdown",
+          "group": "3_export@1"
+        },
+        {
+          "command": "bindery.mergeDocx",
+          "group": "3_export@2"
+        },
+        {
+          "command": "bindery.mergeEpub",
+          "group": "3_export@3"
+        },
+        {
+          "command": "bindery.mergePdf",
+          "group": "3_export@4"
+        },
+        {
+          "command": "bindery.mergeAll",
+          "group": "3_export@5"
+        }
       ],
       "bindery.exportMenu": [
-        { "command": "bindery.mergeMarkdown", "group": "1_merge@1" },
-        { "command": "bindery.mergeDocx",     "group": "1_merge@2" },
-        { "command": "bindery.mergeEpub",     "group": "1_merge@3" },
-        { "command": "bindery.mergePdf",      "group": "1_merge@4" },
-        { "command": "bindery.mergeAll",      "group": "2_all@1"   }
+        {
+          "command": "bindery.mergeMarkdown",
+          "group": "1_merge@1"
+        },
+        {
+          "command": "bindery.mergeDocx",
+          "group": "1_merge@2"
+        },
+        {
+          "command": "bindery.mergeEpub",
+          "group": "1_merge@3"
+        },
+        {
+          "command": "bindery.mergePdf",
+          "group": "1_merge@4"
+        },
+        {
+          "command": "bindery.mergeAll",
+          "group": "2_all@1"
+        }
       ]
     },
     "submenus": [
       {
-        "id":    "bindery.contextMenu",
+        "id": "bindery.contextMenu",
         "label": "Bindery",
-        "icon":  "$(book)"
+        "icon": "$(book)"
       },
       {
-        "id":    "bindery.exportMenu",
+        "id": "bindery.exportMenu",
         "label": "Bindery Export",
-        "icon":  "$(book)"
+        "icon": "$(book)"
       }
     ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build:mcp && npm run compile",
     "compile": "tsc -p ./",
-    "watch":   "tsc -watch -p ./",
-    "lint":    "eslint src --ext ts",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
     "build:mcp": "cd ../mcp-ts && npm ci && npm run compile",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json"
   },
   "devDependencies": {
-    "@types/node":   "^25.5.2",
+    "@types/node": "^25.5.2",
     "@types/vscode": "^1.115.0",
-    "typescript":    "^6.0.2",
+    "typescript": "6.0.2",
     "vitest": "^4.1.3"
   }
 }
