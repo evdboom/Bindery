@@ -104,7 +104,7 @@ export const ALL_SKILLS: SkillTemplate[] = [
  * significantly enough that existing users should regenerate their AI files.
  * Written to .bindery/ai-version.json after each successful setupAiFiles() run.
  */
-export const AI_SETUP_VERSION = 6;
+export const AI_SETUP_VERSION = 7;
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
@@ -149,8 +149,15 @@ export function readAiSetupVersion(root: string): number {
     const p = path.join(root, '.bindery', 'ai-version.json');
     if (!fs.existsSync(p)) { return 0; }
     try {
-        const raw = JSON.parse(fs.readFileSync(p, 'utf-8')) as { version?: unknown };
-        return typeof raw.version === 'number' ? raw.version : 0;
+        const raw = JSON.parse(fs.readFileSync(p, 'utf-8')) as { version?: unknown; versions?: unknown };
+        if (typeof raw.version === 'number') { return raw.version; }
+        if (raw.versions && typeof raw.versions === 'object') {
+            const entries = Object.values(raw.versions as Record<string, { version?: unknown }>);
+            const nums = entries
+                .map(e => (typeof e.version === 'number' ? e.version : 0));
+            return nums.length > 0 ? Math.max(...nums) : 0;
+        }
+        return 0;
     } catch { return 0; }
 }
 

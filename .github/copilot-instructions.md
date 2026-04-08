@@ -154,3 +154,15 @@ cd vscode-ext && npx tsc --noEmit
 ```
 
 Before releasing mcpb: copy `mcp-ts/out/` → `mcpb/server/`.
+
+# Hygiene rules for generated files
+
+- Keep generated files small and focused.
+- Prefer splitting responsibilities over growing a single file; aim for roughly <= 400 lines per file unless there is a clear reason not to.
+- Test behavior, not just happy paths.
+- Include at least one non-happy-path test for new behavior (for example: invalid input, edge case, failure path, or regression case).
+- Choose test level intentionally:
+  - unit tests for pure logic,
+  - integration tests for tool wiring / file IO / command flows,
+  - end-to-end only when cross-surface behavior must be validated.
+- If full test coverage is not feasible, explicitly document what was not tested and why.

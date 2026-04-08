@@ -29,7 +29,7 @@ import {
     type WorkspaceSettings, type TranslationsFile, type TranslationEntry,
 } from './workspace';
 import {
-    setupAiFiles, ALL_SKILLS, AI_SETUP_VERSION, readAiSetupVersion,
+    ALL_SKILLS,
     type AiTarget, type SkillTemplate,
 } from './ai-setup';
 import { registerLmTools, registerMcpCommand } from './mcp';
@@ -58,6 +58,19 @@ function getVscConfig() {
 
 function getWorkspaceRoot(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+
+interface McpToolsForAi {
+    toolHealth: (root: string) => string;
+    toolSetupAiFiles: (root: string, args: { targets?: string[]; skills?: string[]; overwrite?: boolean }) => string;
+}
+
+function loadMcpToolsForAi(extensionPath: string): McpToolsForAi {
+    const bundledPath = path.join(extensionPath, 'mcp-ts', 'out', 'tools');
+    const devPath     = path.join(extensionPath, '..', 'mcp-ts', 'out', 'tools');
+    const modulePath  = fs.existsSync(bundledPath + '.js') ? bundledPath : devPath;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require(modulePath) as McpToolsForAi;
 }
 
 interface EffectiveConfig {
@@ -817,7 +830,7 @@ const SKILL_ITEMS: Array<{ label: string; description: string; value: SkillTempl
     { label: '/read-in',    description: 'Load context and get your bearings at the start of a session', value: 'read_in'    },
 ];
 
-async function setupAiCommand() {
+async function setupAiCommand(context?: vscode.ExtensionContext) {
     const root = getWorkspaceRoot();
     if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
 
@@ -906,19 +919,52 @@ async function setupAiCommand() {
     );
     if (!overwritePick) { return; }
 
-    // Generate
-    const result = setupAiFiles({ root, settings, targets, skills, overwrite: overwritePick.value });
-
-    const summary: string[] = [];
-    if (result.created.length > 0) {
-        summary.push(`Created: ${result.created.join(', ')}`);
-    }
-    if (result.skipped.length > 0) {
-        summary.push(`Skipped (already exist): ${result.skipped.join(', ')}`);
+    // Generate using MCP implementation so VS Code and MCP workflows stay aligned.
+    if (!context) {
+        vscode.window.showErrorMessage('Bindery setup error: missing extension context.');
+        return;
     }
 
-    const msg = summary.length > 0 ? summary.join(' | ') : 'No files generated.';
-    vscode.window.showInformationMessage(msg);
+    let raw = '';
+    try {
+        const tools = loadMcpToolsForAi(context.extensionPath);
+        raw = tools.toolSetupAiFiles(root, {
+            targets,
+            skills,
+            overwrite: overwritePick.value,
+        });
+    } catch (e: any) {
+        vscode.window.showErrorMessage(`Bindery AI setup failed: ${e?.message ?? String(e)}`);
+        return;
+    }
+
+    try {
+        const parsed = JSON.parse(raw) as {
+            regenerated_files?: string[];
+            skipped_files?: string[];
+            skill_zips?: { reupload_required?: string[] };
+        };
+
+        const regenerated = parsed.regenerated_files ?? [];
+        const skipped = parsed.skipped_files ?? [];
+        const reupload = parsed.skill_zips?.reupload_required ?? [];
+
+        const summary: string[] = [];
+        if (regenerated.length > 0) {
+            summary.push(`Regenerated: ${regenerated.join(', ')}`);
+        }
+        if (skipped.length > 0) {
+            summary.push(`Skipped (up-to-date): ${skipped.join(', ')}`);
+        }
+
+        const base = summary.length > 0 ? summary.join(' | ') : 'No files changed.';
+        const suffix = reupload.length > 0
+            ? ` If you use Claude Desktop: open Customize > Skills and re-upload ${reupload.join(', ')}.`
+            : '';
+        vscode.window.showInformationMessage(base + suffix);
+    } catch {
+        vscode.window.showInformationMessage(raw || 'AI files setup completed.');
+    }
 }
 
 // ─── Typography formatting provider ──────────────────────────────────────────
@@ -1144,7 +1190,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Commands
     context.subscriptions.push(
         vscode.commands.registerCommand('bindery.init',                    initWorkspaceCommand),
-        vscode.commands.registerCommand('bindery.setupAI',                 setupAiCommand),
+        vscode.commands.registerCommand('bindery.setupAI',                 () => setupAiCommand(context)),
         vscode.commands.registerCommand('bindery.formatDocument',          formatDocumentCommand),
         vscode.commands.registerCommand('bindery.formatFolder',            formatFolderCommand),
         vscode.commands.registerCommand('bindery.mergeMarkdown',           () => mergeCommand(['md'])),
@@ -1167,8 +1213,11 @@ export function activate(context: vscode.ExtensionContext) {
     // AI setup version check — prompt if generated files are out of date
     const root = getWorkspaceRoot();
     if (root && fs.existsSync(getSettingsPath(root))) {
-        const installedVersion = readAiSetupVersion(root);
-        if (installedVersion < AI_SETUP_VERSION) {
+        try {
+            const tools = loadMcpToolsForAi(context.extensionPath);
+            const raw = tools.toolHealth(root);
+            const health = JSON.parse(raw) as { ai_version_outdated?: boolean };
+            if (health.ai_version_outdated) {
             vscode.window.showInformationMessage(
                 'Bindery: AI assistant files may be out of date (skill templates were updated).',
                 'Update now',
@@ -1178,6 +1227,9 @@ export function activate(context: vscode.ExtensionContext) {
                     vscode.commands.executeCommand('bindery.setupAI');
                 }
             });
+            }
+        } catch {
+            // Non-fatal: keep activation resilient if MCP tools are unavailable.
         }
     }
 
