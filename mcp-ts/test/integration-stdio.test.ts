@@ -215,7 +215,17 @@ describe('MCP stdio integration', () => {
         expect(resp.error).toBeUndefined();
 
         const content = (resp.result as { content: Array<{ text: string }> })?.content;
-        expect(content[0]?.text).toContain('root:');
+        const health = JSON.parse(content[0]?.text ?? '{}') as {
+            root?: string;
+            settings?: string;
+            ai_version_outdated?: boolean;
+            ai_versions_outdated?: unknown[];
+        };
+
+        expect(health.root).toBe(root);
+        expect(typeof health.settings).toBe('string');
+        expect(typeof health.ai_version_outdated).toBe('boolean');
+        expect(Array.isArray(health.ai_versions_outdated)).toBe(true);
     });
 
     it('get_text blocks a path-traversal attack and returns an error result', async () => {
