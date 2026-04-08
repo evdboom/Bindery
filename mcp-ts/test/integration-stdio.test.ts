@@ -11,7 +11,7 @@ import * as child_process from 'child_process';
 import * as fs            from 'fs';
 import * as os            from 'os';
 import * as path          from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -191,7 +191,7 @@ describe('MCP stdio integration', () => {
 
         const content = (resp.result as { content: Array<{ text: string }> })?.content;
         expect(Array.isArray(content)).toBe(true);
-        // The text must contain the book name (not sensitive path data to the test runner)
+        // The response text should include the configured book name.
         expect(content[0]?.text).toContain('TestBook');
     });
 
