@@ -89,6 +89,24 @@ describe('mcp tools', () => {
     expect(parsed.ai_versions?.versions?.['.claude/skills/review/SKILL.md']?.label).toBe('review skill');
   });
 
+  it('builds skill zips with normalized forward-slash entry paths', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+    }, null, 2) + '\n');
+
+    toolSetupAiFiles(root, { targets: ['claude'], skills: ['read_aloud'], overwrite: true });
+
+    const zipPath = path.join(root, '.claude', 'skills', 'read_aloud.zip');
+    expect(fs.existsSync(zipPath)).toBe(true);
+
+    const zipText = fs.readFileSync(zipPath).toString('latin1');
+    expect(zipText).toContain('read_aloud/SKILL.md');
+    expect(zipText).not.toContain('read_aloud\\SKILL.md');
+  });
+
   it('health reports per-file AI version mismatches', () => {
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({

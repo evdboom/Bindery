@@ -13,7 +13,7 @@ import * as fs   from 'node:fs';
 import * as path from 'node:path';
 import * as os   from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { renderTemplate, type TemplateContext } from './templates.js';
+import { renderTemplate, FILE_VERSION_INFO, type TemplateContext } from './templates.js';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -68,21 +68,6 @@ interface AiVersionEntry {
 export interface AiVersionFile {
     versions: Record<string, AiVersionEntry>;
 }
-
-const FILE_VERSION_INFO: Record<string, { version: number; label: string; zip: string | null }> = {
-    'CLAUDE.md': { version: 7, label: 'project instructions', zip: null },
-    '.github/copilot-instructions.md': { version: 7, label: 'copilot instructions', zip: null },
-    '.cursor/rules': { version: 7, label: 'cursor rules', zip: null },
-    'AGENTS.md': { version: 7, label: 'agents instructions', zip: null },
-    '.claude/skills/review/SKILL.md': { version: 7, label: 'review skill', zip: '.claude/skills/review.zip' },
-    '.claude/skills/brainstorm/SKILL.md': { version: 7, label: 'brainstorm skill', zip: '.claude/skills/brainstorm.zip' },
-    '.claude/skills/memory/SKILL.md': { version: 7, label: 'memory skill', zip: '.claude/skills/memory.zip' },
-    '.claude/skills/translate/SKILL.md': { version: 7, label: 'translate skill', zip: '.claude/skills/translate.zip' },
-    '.claude/skills/status/SKILL.md': { version: 7, label: 'status skill', zip: '.claude/skills/status.zip' },
-    '.claude/skills/continuity/SKILL.md': { version: 7, label: 'continuity skill', zip: '.claude/skills/continuity.zip' },
-    '.claude/skills/read_aloud/SKILL.md': { version: 7, label: 'read-aloud skill', zip: '.claude/skills/read_aloud.zip' },
-    '.claude/skills/read_in/SKILL.md': { version: 7, label: 'read-in skill', zip: '.claude/skills/read_in.zip' },
-};
 
 // ─── Settings types ───────────────────────────────────────────────────────────
 
@@ -287,17 +272,39 @@ function zipSkillFolder(root: string, skill: SkillTemplate, zipAbs: string): boo
 
     let ok = false;
 
-    // zip -r review.zip review
-    let zipped = spawnSync('zip', ['-r', tmpZip, skill], { cwd: zipFrom, encoding: 'utf-8' });
-    if (!zipped.error && zipped.status === 0) {
-        ok = true;
-    } else {
-        // powershell Compress-Archive -LiteralPath review -DestinationPath review.zip -Force
-        zipped = spawnSync(
-            'powershell',
-            ['-NoProfile', '-Command', `Compress-Archive -LiteralPath '${skill}' -DestinationPath '${tmpZip}' -Force`],
+    if (process.platform === 'win32') {
+        // Claude rejects archives whose internal entry names use backslashes.
+        // pwsh Compress-Archive on the folder emits forward-slash entry names,
+        // while Windows PowerShell may emit backslashes.
+        const psScriptPath = path.join(tmpDir, 'compress-archive.ps1');
+        fs.writeFileSync(
+            psScriptPath,
+            [
+                'param(',
+                '    [string]$Skill,',
+                '    [string]$DestinationPath',
+                ')',
+                "Compress-Archive -LiteralPath $Skill -DestinationPath $DestinationPath -Force",
+                ''
+            ].join('\n'),
+            'utf-8'
+        );
+
+        let zipped = spawnSync(
+            'pwsh',
+            ['-NoProfile', '-File', psScriptPath, skill, tmpZip],
             { cwd: zipFrom, encoding: 'utf-8' }
         );
+        if (!zipped.error && zipped.status === 0) {
+            ok = true;
+        } else {
+            zipped = spawnSync('zip', ['-r', tmpZip, skill], { cwd: zipFrom, encoding: 'utf-8' });
+            if (!zipped.error && zipped.status === 0) {
+                ok = true;
+            }
+        }
+    } else {
+        const zipped = spawnSync('zip', ['-r', tmpZip, skill], { cwd: zipFrom, encoding: 'utf-8' });
         if (!zipped.error && zipped.status === 0) {
             ok = true;
         }
