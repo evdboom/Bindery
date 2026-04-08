@@ -1,5 +1,15 @@
 name: Dependabot auto-approve and merge
 
+# PREREQUISITE — branch protection must be configured or auto-merge fires
+# immediately even when CI is red. In GitHub repo settings:
+#   Settings → Branches → Add rule for "main":
+#     ✓ Require status checks to pass before merging
+#       Add required check: "Test & template-sync check"   (from ci.yml)
+#     ✓ Require branches to be up to date before merging
+#
+# With those rules in place, "gh pr merge --auto" below only merges once CI
+# has passed — it will not merge a failing PR.
+
 on: pull_request_target
 
 permissions:

@@ -37,6 +37,8 @@ interface Settings {
     author?: string;
     bookTitle?: string | Record<string, string>;
     languages?: Array<{ code: string; folderName: string; chapterWord: string; actPrefix: string; prologueLabel: string; epilogueLabel: string }>;
+    aiTargets?: string[];
+    aiSkills?: string[];
 }
 
 function readSettings(root: string): Settings | null {
@@ -45,6 +47,15 @@ function readSettings(root: string): Settings | null {
 
 function storyFolder(root: string): string {
     return readSettings(root)?.storyFolder ?? 'Story';
+}
+
+const ALL_AI_TARGETS: AiTarget[] = ['claude', 'copilot', 'cursor', 'agents'];
+
+function targetForFile(file: string): AiTarget {
+    if (file === 'CLAUDE.md' || file.startsWith('.claude/')) { return 'claude'; }
+    if (file.startsWith('.github/copilot')) { return 'copilot'; }
+    if (file.startsWith('.cursor/')) { return 'cursor'; }
+    return 'agents';
 }
 
 // ─── health ───────────────────────────────────────────────────────────────────
@@ -79,7 +90,11 @@ export function toolHealth(root: string): string {
     const expected = expectedAiVersionEntries();
     const aiVersionsOutdated: Array<{ file: string; label: string; zip: string | null; expected: number; found: number }> = [];
 
+    const healthSettings = readSettings(root);
+    const enabledTargets = new Set<string>(healthSettings?.aiTargets ?? ALL_AI_TARGETS);
+
     for (const [file, exp] of Object.entries(expected)) {
+        if (!enabledTargets.has(targetForFile(file))) { continue; }
         if (!fs.existsSync(path.join(root, file))) { continue; }
         const found = installed.versions[file]?.version ?? 0;
         if (found < exp.version) {
@@ -1130,11 +1145,16 @@ export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
     const validTargets: AiTarget[] = ['claude', 'copilot', 'cursor', 'agents'];
     const validSkills  = new Set(ALL_SKILLS);
 
-    const targets: AiTarget[] = (args.targets ?? validTargets)
+    const setupSettings = readSettings(root);
+    // Explicit arg → saved setting → all
+    const rawTargets = args.targets ?? setupSettings?.aiTargets ?? validTargets;
+    const targets: AiTarget[] = rawTargets
         .filter((t): t is AiTarget => validTargets.includes(t as AiTarget));
 
-    const skills: SkillTemplate[] = args.skills
-        ? args.skills.filter((s): s is SkillTemplate => validSkills.has(s as SkillTemplate))
+    // Explicit arg → saved setting (only meaningful for claude) → all
+    const rawSkills = args.skills ?? (targets.includes('claude') ? setupSettings?.aiSkills ?? null : null);
+    const skills: SkillTemplate[] = rawSkills
+        ? rawSkills.filter((s): s is SkillTemplate => validSkills.has(s as SkillTemplate))
         : ALL_SKILLS;
 
     if (targets.length === 0) {
@@ -1147,6 +1167,17 @@ export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
     } catch (e) {
         return `Error: ${e instanceof Error ? e.message : String(e)}`;
     }
+
+    // Persist chosen targets + skills so health checks and future runs use the same set
+    const settingsPath = path.join(root, '.bindery', 'settings.json');
+    try {
+        if (fs.existsSync(settingsPath)) {
+            const existing = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
+            existing['aiTargets'] = targets;
+            if (targets.includes('claude')) { existing['aiSkills'] = skills; }
+            fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+        }
+    } catch { /* non-fatal */ }
 
     const zipToUpload = [
         ...result.skillZipManifest.created,

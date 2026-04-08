@@ -34,6 +34,10 @@ export interface WorkspaceSettings {
     genre?:          string;
     /** Target audience, e.g. "12+" or "adults" or "8-10". Used to calibrate AI review feedback. */
     targetAudience?: string;
+    /** AI targets previously chosen when running Set Up AI Files (claude, copilot, cursor, agents). */
+    aiTargets?: string[];
+    /** Claude skills previously chosen when running Set Up AI Files. */
+    aiSkills?: string[];
     storyFolder?:     string;
     mergedOutputDir?:  string;
     mergeFilePrefix?: string;

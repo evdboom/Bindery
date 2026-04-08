@@ -890,18 +890,28 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
         } catch { /* non-fatal */ }
     }
 
-    // Select AI targets
-    const targetPicks = await vscode.window.showQuickPick(AI_TARGET_ITEMS, {
+    // Select AI targets — pre-select previously saved choices
+    const savedTargets = new Set(wsSettings.aiTargets ?? []);
+    const targetItems = AI_TARGET_ITEMS.map(item => ({
+        ...item,
+        picked: savedTargets.size > 0 ? savedTargets.has(item.value) : false,
+    }));
+    const targetPicks = await vscode.window.showQuickPick(targetItems, {
         canPickMany:  true,
         placeHolder:  'Select AI assistants to set up',
     });
     if (!targetPicks || targetPicks.length === 0) { return; }
     const targets = targetPicks.map(p => p.value);
 
-    // Select skills (only for Claude target)
+    // Select skills (only for Claude target) — pre-select previously saved choices
     let skills: SkillTemplate[] = ALL_SKILLS;
     if (targets.includes('claude')) {
-        const skillPicks = await vscode.window.showQuickPick(SKILL_ITEMS, {
+        const savedSkills = new Set(wsSettings.aiSkills ?? []);
+        const skillItems = SKILL_ITEMS.map(item => ({
+            ...item,
+            picked: savedSkills.size > 0 ? savedSkills.has(item.value) : false,
+        }));
+        const skillPicks = await vscode.window.showQuickPick(skillItems, {
             canPickMany:  true,
             placeHolder:  'Select skill templates to generate (.claude/skills/)',
         });
