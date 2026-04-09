@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -131,16 +131,7 @@ describe('toolGetNotes', () => {
         expect(result).not.toContain('Bob');
     });
 
-    it('includes Details_*.md files at root', () => {
-        const root = makeRoot();
-        write(path.join(root, 'Details_Setting.md'), '# Setting\nA fantasy world.\n');
-
-        const result = toolGetNotes(root, {});
-        expect(result).toContain('Details_Setting.md');
-        expect(result).toContain('A fantasy world.');
-    });
-
-    it('returns no-files message when Notes directory is missing and no Details_* files', () => {
+    it('returns no-files message when Notes directory is missing', () => {
         const root = makeRoot();
         const result = toolGetNotes(root, {});
         expect(result).toContain('No notes files found.');

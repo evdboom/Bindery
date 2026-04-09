@@ -44,11 +44,11 @@ export function updateTypography(text: string): string {
     let result = text;
 
     // Step 1: Convert ... to ellipsis (must happen before quote processing)
-    result = result.replace(/\.\.\./g, ELLIPSIS);
+    result = result.replaceAll(/\.\.\./g, ELLIPSIS);
 
     // Step 2: Protect HTML comments from em-dash conversion
     const protectedComments: string[] = [];
-    result = result.replace(COMMENT_RE, (match) => {
+    result = result.replaceAll(COMMENT_RE, (match) => {
         const placeholder = `\x00COMMENT${protectedComments.length}\x00`;
         protectedComments.push(match);
         return placeholder;
@@ -56,39 +56,39 @@ export function updateTypography(text: string): string {
 
     // Step 3: Convert -- to em-dash (but preserve --- for markdown HR)
     const protectedTriple = '\x00TRIPLE\x00';
-    result = result.replace(/---/g, protectedTriple);
-    result = result.replace(/--/g, EM_DASH);
-    result = result.replace(new RegExp(escapeRegex(protectedTriple), 'g'), '---');
+    result = result.replaceAll(/---/g, protectedTriple);
+    result = result.replaceAll(/--/g, EM_DASH);
+    result = result.replaceAll(new RegExp(escapeRegex(protectedTriple), 'g'), '---');
 
     // Step 4: Restore HTML comments
     for (let i = 0; i < protectedComments.length; i++) {
-        result = result.replace(`\x00COMMENT${i}\x00`, protectedComments[i]);
+        result = result.replaceAll(`\x00COMMENT${i}\x00`, protectedComments[i]);
     }
 
     // Step 4b: Fix closing quotes after em-dash introduced from --
-    result = result.replace(CLOSE_DOUBLE_AFTER_EM_DASH_RE, (_match, after) => {
+    result = result.replaceAll(CLOSE_DOUBLE_AFTER_EM_DASH_RE, (_match, after) => {
         return `${EM_DASH}${CLOSE_DOUBLE}${after}`;
     });
 
     // Step 5: Convert double quotes
     // Opening: after whitespace, start of line, or opening brackets
-    result = result.replace(OPEN_DOUBLE_RE, (_match, before) => {
+    result = result.replaceAll(OPEN_DOUBLE_RE, (_match, before) => {
         return `${before}${OPEN_DOUBLE}`;
     });
     // Closing: all remaining straight double quotes
-    result = result.replace(/"/g, CLOSE_DOUBLE);
+    result = result.replaceAll(/"/g, CLOSE_DOUBLE);
 
     // Step 6: Convert single quotes
     // Opening: after whitespace, start of line, or opening brackets
-    result = result.replace(OPEN_SINGLE_RE, (_match, before) => {
+    result = result.replaceAll(OPEN_SINGLE_RE, (_match, before) => {
         return `${before}${OPEN_SINGLE}`;
     });
     // Closing/apostrophe: all remaining straight single quotes
-    result = result.replace(/'/g, CLOSE_SINGLE);
+    result = result.replaceAll(/'/g, CLOSE_SINGLE);
 
     return result;
 }
 
 function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

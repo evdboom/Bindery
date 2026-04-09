@@ -69,7 +69,7 @@
     { "name": "get_text",         "description": "Read a source file by relative path, optionally restricted to a line range." },
     { "name": "get_chapter",      "description": "Fetch the full content of a chapter by number and language code (e.g. EN or NL)." },
     { "name": "get_overview",     "description": "List the chapter structure (acts, chapters, titles) for one or all languages." },
-    { "name": "get_notes",        "description": "Read from Notes/ and Details_*.md, optionally filtered by category or character name." },
+    { "name": "get_notes",        "description": "Read from Notes/, optionally filtered by category or character name." },
     { "name": "format",           "description": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder." },
     { "name": "get_review_text",  "description": "Structured git diff of uncommitted changes. Filter by language (EN, NL, ALL). Set autoStage to stage reviewed files." },
     { "name": "git_snapshot",     "description": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Use after writing sessions or reviews." },

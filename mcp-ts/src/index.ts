@@ -67,7 +67,7 @@ server.registerTool('list_books', {
 }, async () => {
     const books = listBooks();
     if (books.length === 0) {
-    return ok(
+        return ok(
             'No books configured.\n\n' +
             'Add --book args to the MCP server in your claude_desktop_config.json:\n\n' +
             '  "args": ["dist/index.js", "--book", "MyNovel=/path/to/project"]'
@@ -174,7 +174,7 @@ server.registerTool('get_overview', {
 
 server.registerTool('get_notes', {
     title: 'Get Notes',
-    description: 'Read from Notes/ and Details_*.md files, optionally filtered by category name or character/place name.',
+    description: 'Read from Notes/ files, optionally filtered by category name or character/place name.',
     inputSchema: {
         book:     bookSchema,
         category: z.string().optional().describe('Filter by file/category name substring'),

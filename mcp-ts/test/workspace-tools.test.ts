@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os'
+import * as path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -222,15 +222,6 @@ describe('toolAddLanguage', () => {
 // ─── toolSetupAiFiles ─────────────────────────────────────────────────────────
 
 describe('toolSetupAiFiles', () => {
-    function makeSettingsRoot(): string {
-        const root = makeRoot();
-        write(
-            path.join(root, '.bindery', 'settings.json'),
-            JSON.stringify({ bookTitle: 'Test Book', storyFolder: 'Story', languages: [{ code: 'EN', folderName: 'EN' }] }) + '\n'
-        );
-        return root;
-    }
-
     it('creates CLAUDE.md when claude target requested', () => {
         const root = makeSettingsRoot();
         toolSetupAiFiles(root, { targets: ['claude'], skills: [], overwrite: true });
@@ -462,3 +453,12 @@ describe('toolChapterStatusGet', () => {
         expect(result).toContain('Needs polish');
     });
 });
+
+function makeSettingsRoot(): string {
+    const root = makeRoot();
+    write(
+        path.join(root, '.bindery', 'settings.json'),
+        JSON.stringify({ bookTitle: 'Test Book', storyFolder: 'Story', languages: [{ code: 'EN', folderName: 'EN' }] }) + '\n'
+    );
+    return root;
+}

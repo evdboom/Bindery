@@ -38,7 +38,7 @@ mcpb/              ← Claude Desktop extension package (mcpb manifest + bundled
 The MCP server is published to the Anthropic MCPB directory. These rules are hard requirements to stay publishable.
 
 ### Every tool MUST have the correct annotations
-Readonly/destructive are mutaully exclusive categories that determine how the tool is presented to users and whether it can be called by read-only agents. Every tool MUST have exactly one of these annotations:
+Readonly/destructive are mutually exclusive categories that determine how the tool is presented to users and whether it can be called by read-only agents. Every tool MUST have exactly one of these annotations:
 ```typescript
 annotations: { readOnlyHint: true }    // reads only — never writes files
 annotations: { destructiveHint: true } // writes, creates, or modifies files

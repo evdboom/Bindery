@@ -24,6 +24,7 @@ function write(filePath: string, content: string): void {
 
 afterEach(() => {
     delete process.env['BINDERY_MAX_RESPONSE_BYTES'];
+    delete process.env['BINDERY_EMBEDDING_MAX_CHARS'];
     for (const root of tempRoots.splice(0, tempRoots.length)) {
         fs.rmSync(root, { recursive: true, force: true });
     }
@@ -180,22 +181,6 @@ describe('Arc folder in lexical index', () => {
 describe('mocked Ollama — semantic_rerank', () => {
     const mockEmbedding = Array.from({ length: 8 }, (_, i) => (i + 1) / 10);
 
-    function ollamaFetchMock() {
-        return vi.fn().mockImplementation(async (input: unknown) => {
-            const url = String(input);
-            if (url.endsWith('/api/tags')) {
-                return {
-                    ok: true,
-                    json: async () => ({ models: [{ name: 'nomic-embed-text' }] }),
-                };
-            }
-            return {
-                ok: true,
-                json: async () => ({ embedding: mockEmbedding }),
-            };
-        });
-    }
-
     afterEach(() => {
         vi.restoreAllMocks();
         delete process.env['BINDERY_OLLAMA_URL'];
@@ -208,7 +193,7 @@ describe('mocked Ollama — semantic_rerank', () => {
 
         process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
 
-        vi.stubGlobal('fetch', ollamaFetchMock());
+        vi.stubGlobal('fetch', ollamaFetchMock(mockEmbedding));
 
         const result = await toolSearch(root, { query: 'captain sailed', mode: 'semantic_rerank' });
         expect(result).not.toContain('Warning:');
@@ -257,15 +242,18 @@ describe('mocked Ollama — semantic_rerank', () => {
         expect(result).toContain('Warning: semantic_rerank requested but BINDERY_OLLAMA_URL is not an Ollama endpoint; using lexical results.');
         expect(result).toContain('/api/tags response did not contain a models array');
     });
-});
 
-// ─── Mocked Ollama — buildSemanticIndex + full_semantic ──────────────────────
+    it('truncates rerank embedding prompts to BINDERY_EMBEDDING_MAX_CHARS', async () => {
+        const root = makeRoot();
+        const longText = 'Alpha '.repeat(200);
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), `# Long\n${longText}\n`);
+        await toolIndexBuild(root);
 
-describe('mocked Ollama — full_semantic', () => {
-    const mockEmbedding = Array.from({ length: 8 }, (_, i) => (i + 1) / 10);
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+        process.env['BINDERY_EMBEDDING_MAX_CHARS'] = '64';
 
-    function ollamaFetchMock() {
-        return vi.fn().mockImplementation(async (input: unknown) => {
+        const prompts: string[] = [];
+        vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: unknown, init?: RequestInit) => {
             const url = String(input);
             if (url.endsWith('/api/tags')) {
                 return {
@@ -273,12 +261,24 @@ describe('mocked Ollama — full_semantic', () => {
                     json: async () => ({ models: [{ name: 'nomic-embed-text' }] }),
                 };
             }
+            const body = typeof init?.body === 'string' ? JSON.parse(init.body) as { prompt?: string } : {};
+            if (typeof body.prompt === 'string') { prompts.push(body.prompt); }
             return {
                 ok: true,
                 json: async () => ({ embedding: mockEmbedding }),
             };
-        });
-    }
+        }));
+
+        await toolSearch(root, { query: 'Alpha', mode: 'semantic_rerank' });
+        expect(prompts.length).toBeGreaterThan(0);
+        expect(prompts.every(p => p.length <= 64)).toBe(true);
+    });
+});
+
+// ─── Mocked Ollama — buildSemanticIndex + full_semantic ──────────────────────
+
+describe('mocked Ollama — full_semantic', () => {
+    const mockEmbedding = Array.from({ length: 8 }, (_, i) => (i + 1) / 10);
 
     afterEach(() => {
         vi.restoreAllMocks();
@@ -293,7 +293,7 @@ describe('mocked Ollama — full_semantic', () => {
         process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
         process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
 
-        vi.stubGlobal('fetch', ollamaFetchMock());
+        vi.stubGlobal('fetch', ollamaFetchMock(mockEmbedding));
 
         const result = await toolIndexBuild(root);
         expect(result).toContain('Lexical index built:');
@@ -308,7 +308,7 @@ describe('mocked Ollama — full_semantic', () => {
         process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
         process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
 
-        vi.stubGlobal('fetch', ollamaFetchMock());
+        vi.stubGlobal('fetch', ollamaFetchMock(mockEmbedding));
 
         // Build the semantic index
         await toolIndexBuild(root);
@@ -327,7 +327,7 @@ describe('mocked Ollama — full_semantic', () => {
         process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
 
         // Build succeeds
-        vi.stubGlobal('fetch', ollamaFetchMock());
+        vi.stubGlobal('fetch', ollamaFetchMock(mockEmbedding));
         await toolIndexBuild(root);
 
         // Query fails
@@ -363,4 +363,51 @@ describe('mocked Ollama — full_semantic', () => {
         expect(result).toContain('Semantic index failed: Semantic indexing requires an Ollama server.');
         expect(result).toContain('/api/tags response did not contain a models array');
     });
+
+    it('truncates semantic index embedding prompts to BINDERY_EMBEDDING_MAX_CHARS', async () => {
+        const root = makeRoot();
+        const longText = 'Forest '.repeat(220);
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), `# Forest\n${longText}\n`);
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+        process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
+        process.env['BINDERY_EMBEDDING_MAX_CHARS'] = '80';
+
+        const prompts: string[] = [];
+        vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: unknown, init?: RequestInit) => {
+            const url = String(input);
+            if (url.endsWith('/api/tags')) {
+                return {
+                    ok: true,
+                    json: async () => ({ models: [{ name: 'nomic-embed-text' }] }),
+                };
+            }
+            const body = typeof init?.body === 'string' ? JSON.parse(init.body) as { prompt?: string } : {};
+            if (typeof body.prompt === 'string') { prompts.push(body.prompt); }
+            return {
+                ok: true,
+                json: async () => ({ embedding: mockEmbedding }),
+            };
+        }));
+
+        await toolIndexBuild(root);
+        expect(prompts.length).toBeGreaterThan(0);
+        expect(prompts.every(p => p.length <= 80)).toBe(true);
+    });
 });
+
+function ollamaFetchMock(mockEmbedding: number[]) {
+    return vi.fn().mockImplementation(async (input: unknown) => {
+        const url = String(input);
+        if (url.endsWith('/api/tags')) {
+            return {
+                ok: true,
+                json: async () => ({ models: [{ name: 'nomic-embed-text' }] }),
+            };
+        }
+        return {
+            ok: true,
+            json: async () => ({ embedding: mockEmbedding }),
+        };
+    });
+}

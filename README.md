@@ -68,8 +68,9 @@ Packages the MCP server as a `.mcpb` file for one-click installation in Claude D
 3. Fill in the **Books** field with semicolon-separated `Name=path` pairs:
    `ScaryBook=C:\Users\My\Projects\ScaryBook;MyNovel=D:\Writing\MyNovel`
 4. Optionally set the **Ollama URL** if you want semantic reranking
-5. Optionally enable the semantic index and choose a default search mode if you want `full_semantic` search with rebuild warnings when the embedding index becomes stale
-5. Tools are now available — the agent calls `list_books` to discover book names
+5. Optionally enable the semantic index and choose a default search mode if you want `full_semantic` search with rebuild warnings when the embedding index becomes stale.
+ - Note full embedding can be a heavy operation, depending on your hardware when running a local Ollama instance.
+6. Tools are now available — the agent calls `list_books` to discover book names
 
 ### Formatting & Export only (no MCP)
 

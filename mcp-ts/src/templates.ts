@@ -155,7 +155,7 @@ function claudeMd(ctx: TemplateContext): string {
         '| `get_text` | Read any file by relative path, with optional line range |',
         '| `get_chapter` | Full chapter content by number and language |',
         '| `get_overview` | Chapter structure — acts, chapters, titles |',
-        '| `get_notes` | Notes/ and Details_*.md files, filterable by category or name |',
+        '| `get_notes` | Notes/ files, filterable by category or name |',
         '| `search` | BM25 full-text search with ranked snippets, optional semantic ranking |',
         '| `format` | Apply typography formatting to a file or folder |',
         '| `get_review_text` | Structured git diff with optional auto-staging |',
@@ -197,7 +197,6 @@ function copilotMd(ctx: TemplateContext): string {
         '## Writing guidelines',
         '- HTML comments `<!-- -->` in chapter files are writer notes — treat as context only.',
         '- Quotation marks and dashes are managed by the Bindery VS Code extension. Do not normalize them.',
-        '- Check `Notes/Details_Translation_notes.md` before using or translating world-specific terms.',
     );
     if (ctx.audience) {
         lines.push(`- Content targets ${ctx.audience}. Keep vocabulary accessible and themes appropriate.`);
@@ -216,10 +215,8 @@ function cursorRules(ctx: TemplateContext): string {
         '',
         '## Context files to read',
         `- \`${memoriesFolder}/global.md\` — cross-chapter decisions (read at start of session)`,
-        `- \`${arcFolder}/Overall.md\` — full story arc`,
-        `- \`${notesFolder}/Details_Characters.md\` — character profiles`,
-        `- \`${notesFolder}/Details_World_and_Magic.md\` — world rules`,
-        `- \`${notesFolder}/Details_Translation_notes.md\` — term translations`,
+        `- \`${arcFolder}/\` — story arc files for overall and per-act structure and beats`,
+        `- \`${notesFolder}/\` — story notes, like character profiles and world rules`,        
         '',
         '## Rules',
         '- HTML comments `<!-- -->` in chapter files are writer notes. Treat as context, not story content.',
@@ -246,7 +243,6 @@ function agentsMd(ctx: TemplateContext): string {
         '## Start of session',
         `1. Read \`${memoriesFolder}/global.md\` for cross-chapter context.`,
         `2. If working on a specific chapter, read \`${memoriesFolder}/chXX.md\` if it exists.`,
-        `3. Check \`${notesFolder}/Details_Translation_notes.md\` before using or translating world-specific terms.`,
         '',
         '## Story files',
         `- Chapter files are \`.md\` files in \`${storyFolder}/\`, organized in act subfolders.`,
@@ -264,11 +260,8 @@ function agentsMd(ctx: TemplateContext): string {
         '## Key reference files',
         '| File | Contains |',
         '|---|---|',
-        `| \`${arcFolder}/Overall.md\` | Full story arc |`,
-        `| \`${arcFolder}/Act_I_*.md\`, \`Act_II_*.md\`, \`Act_III_*.md\` | Per-act arc details |`,
-        `| \`${notesFolder}/Details_Characters.md\` | Character profiles |`,
-        `| \`${notesFolder}/Details_World_and_Magic.md\` | World rules |`,
-        `| \`${notesFolder}/Details_Translation_notes.md\` | EN ↔ translation term table |`,
+        `| \`${arcFolder}/\` | Story arc files for overall and per-act structure and beats |`,        
+        `| \`${notesFolder}/\` | Story notes, like character profiles and world rules |`,
         `| \`${memoriesFolder}/global.md\` | Cross-session decisions |`,
     );
     return lines.join('\n') + '\n';

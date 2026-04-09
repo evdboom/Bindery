@@ -12,21 +12,21 @@
  */
 
 import * as vscode from 'vscode';
-import * as fs     from 'fs';
-import * as path   from 'path';
-import { execSync } from 'child_process';
+import * as fs     from 'node:fs';
+import * as path   from 'node:path'
+import { execSync } from 'node:child_process'
 import { updateTypography }                    from './format';
 import {
     mergeBook, checkPandoc, getBuiltInUkReplacements,
     type LanguageConfig, type DialectConfig, type OutputType, type MergeOptions, type UkReplacement,
 } from './merge';
 import {
-    readWorkspaceSettings, readTranslations, writeTranslations,
+    readWorkspaceSettings, readTranslations,
     getBinderyFolder, getSettingsPath, getTranslationsPath,
     getBookTitleForLang, getSubstitutionRules, getIgnoredWords,
     upsertSubstitutionRule, upsertGlossaryRule, addIgnoredWords,
-    getDefaultLanguage, getDialectsForLanguage, getGlossaryRules,
-    type WorkspaceSettings, type TranslationsFile, type TranslationEntry,
+    getDefaultLanguage, getDialectsForLanguage,
+    type WorkspaceSettings, type TranslationsFile,
 } from './workspace';
 import {
     ALL_SKILLS,
@@ -112,7 +112,7 @@ function getEffectiveConfig(wsSettings: WorkspaceSettings | null): EffectiveConf
 /** True if filePath is inside <root>/<storyFolder>/. */
 function isInsideStoryFolder(filePath: string, root: string, storyFolder: string): boolean {
     // Normalize separators so Windows paths compare correctly
-    const norm  = (p: string) => p.replace(/\\/g, '/');
+    const norm  = (p: string) => p.replaceAll(/\\/g, '/');
     const story = norm(path.join(root, storyFolder));
     const file  = norm(filePath);
     return file.startsWith(story + '/');
@@ -194,16 +194,16 @@ function suggestUkSpelling(usWord: string): string | undefined {
     const lower = usWord.toLowerCase();
     const builtInMap = new Map(getBuiltInUkReplacements().map(r => [r.us.toLowerCase(), r.uk]));
     if (builtInMap.has(lower)) { return builtInMap.get(lower); }
-    if (lower.endsWith('izations')) { return lower.replace(/izations$/, 'isations'); }
-    if (lower.endsWith('ization'))  { return lower.replace(/ization$/,  'isation');  }
-    if (lower.endsWith('izing'))    { return lower.replace(/izing$/,    'ising');    }
-    if (lower.endsWith('izes'))     { return lower.replace(/izes$/,     'ises');     }
-    if (lower.endsWith('ized'))     { return lower.replace(/ized$/,     'ised');     }
-    if (lower.endsWith('ize'))      { return lower.replace(/ize$/,      'ise');      }
-    if (lower.endsWith('yzing'))    { return lower.replace(/yzing$/,    'ysing');    }
-    if (lower.endsWith('yzes'))     { return lower.replace(/yzes$/,     'yses');     }
-    if (lower.endsWith('yzed'))     { return lower.replace(/yzed$/,     'ysed');     }
-    if (lower.endsWith('yze'))      { return lower.replace(/yze$/,      'yse');      }
+    if (lower.endsWith('izations')) { return lower.replaceAll(/izations$/, 'isations'); }
+    if (lower.endsWith('ization'))  { return lower.replaceAll(/ization$/,  'isation');  }
+    if (lower.endsWith('izing'))    { return lower.replaceAll(/izing$/,    'ising');    }
+    if (lower.endsWith('izes'))     { return lower.replaceAll(/izes$/,     'ises');     }
+    if (lower.endsWith('ized'))     { return lower.replaceAll(/ized$/,     'ised');     }
+    if (lower.endsWith('ize'))      { return lower.replaceAll(/ize$/,      'ise');      }
+    if (lower.endsWith('yzing'))    { return lower.replaceAll(/yzing$/,    'ysing');    }
+    if (lower.endsWith('yzes'))     { return lower.replaceAll(/yzes$/,     'yses');     }
+    if (lower.endsWith('yzed'))     { return lower.replaceAll(/yzed$/,     'ysed');     }
+    if (lower.endsWith('yze'))      { return lower.replaceAll(/yze$/,      'yse');      }
     return undefined;
 }
 
@@ -293,7 +293,7 @@ async function initWorkspaceCommand() {
     const detectedLangs = detectLanguageFolders(path.join(root, storyFolder));
     const languages     = detectedLangs.length > 0 ? detectedLangs : [DEFAULT_LANGUAGE];
 
-    const slug: string = title.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/, '') || 'Book';
+    const slug: string = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/, '') || 'Book';
 
     const settings: WorkspaceSettings = {
         ...(title    ? { bookTitle: title }             : {}),
@@ -441,8 +441,8 @@ async function addDialectCommand() {
     let sourceLang: LanguageConfig | undefined;
     if (editor) {
         const sf   = wsSettings?.storyFolder ?? 'Story';
-        const file = editor.document.uri.fsPath.replace(/\\/g, '/');
-        const base = path.join(root, sf).replace(/\\/g, '/');
+        const file = editor.document.uri.fsPath.replaceAll(/\\/g, '/');
+        const base = path.join(root, sf).replaceAll(/\\/g, '/');
         if (file.startsWith(base + '/')) {
             const folderName = file.slice(base.length + 1).split('/')[0];
             sourceLang = wsSettings?.languages?.find(

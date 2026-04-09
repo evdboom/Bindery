@@ -697,7 +697,7 @@ export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
     if (!staged.trim()) { return 'Nothing to snapshot — no changes in content folders.'; }
 
     const fileCount = staged.trim().split('\n').length;
-    const msg       = args.message ?? `Snapshot ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+    const msg       = args.message ?? `Snapshot ${new Date().toISOString().slice(0, 16).replaceAll('T', ' ')}`;
 
     try {
         const result = spawnSync('git', ['commit', '-m', msg], { cwd: root, encoding: 'utf-8' });
@@ -1202,7 +1202,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
     const existingLangs   = ((existing['languages'] as unknown[] | undefined) ?? []) as Array<Record<string, unknown>>;
     const languages       = detectWorkspaceLangs(path.join(root, storyFolderName), existingLangs);
 
-    const slug = bookTitle.replaceAll(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/, '') || 'Book';
+    const slug = bookTitle.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/, '') || 'Book';
     const settings: Record<string, unknown> = {
         ...existing,
         bookTitle,

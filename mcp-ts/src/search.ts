@@ -4,9 +4,9 @@
  * index.
  */
 
-import * as crypto from 'crypto';
-import * as fs     from 'fs';
-import * as path   from 'path';
+import * as crypto from 'node:crypto';
+import * as fs     from 'node:fs';
+import * as path   from 'node:path';
 import MiniSearch from 'minisearch';
 import { chunkWorkspace, type Chunk } from './docstore.js';
 
@@ -382,6 +382,18 @@ export function semanticDiscoverOptions() {
     return { includeArc: true } as const;
 }
 
+function embeddingMaxChars(): number {
+    const raw = Number.parseInt(process.env['BINDERY_EMBEDDING_MAX_CHARS'] ?? '4000', 10);
+    if (Number.isNaN(raw)) { return 4000; }
+    return raw > 0 ? raw : 4000;
+}
+
+function normalizeEmbeddingInput(text: string): string {
+    const compact = text.replaceAll(/\s+/g, ' ').trim();
+    const maxChars = embeddingMaxChars();
+    return compact.length <= maxChars ? compact : compact.slice(0, maxChars);
+}
+
 function ollamaConfig(): { url: string | null; model: string } {
     return {
         url: process.env['BINDERY_OLLAMA_URL']?.trim() || null,
@@ -415,7 +427,7 @@ function chapterStatusSignature(root: string): string {
         const interesting = (parsed.chapters ?? [])
             .filter(chapter => chapter.status === 'done' || chapter.status === 'needs-review')
             .map(chapter => `${(chapter.language ?? 'EN').toUpperCase()}:${chapter.number}:${chapter.status}`)
-            .sort()
+            .sort((a, b) => a.localeCompare(b))
             .join('|');
         return interesting || 'none';
     } catch {
@@ -428,11 +440,12 @@ async function fetchEmbedding(
     model:   string,
     text:    string,
 ): Promise<number[] | null> {
-    const url = baseUrl.replace(/\/$/, '') + '/api/embeddings';
+    const url = baseUrl.replaceAll(/\/$/, '') + '/api/embeddings';
+    const prompt = normalizeEmbeddingInput(text);
     const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, prompt: text }),
+        body: JSON.stringify({ model, prompt }),
         signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) { return null; }
@@ -441,7 +454,7 @@ async function fetchEmbedding(
 }
 
 async function validateOllamaEndpoint(baseUrl: string): Promise<string | null> {
-    const url = baseUrl.replace(/\/$/, '') + '/api/tags';
+    const url = baseUrl.replaceAll(/\/$/, '') + '/api/tags';
     try {
         const res = await fetch(url, {
             method: 'GET',

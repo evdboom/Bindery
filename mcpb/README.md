@@ -132,7 +132,7 @@ profiles and world rules, then uses `search` to verify specific details against 
 | `get_text` | Read any file by relative path, with optional line range |
 | `get_chapter` | Full chapter content by number and language |
 | `get_overview` | Chapter structure — acts, chapters, titles |
-| `get_notes` | Notes/ and Details_*.md files, filterable by category or name |
+| `get_notes` | Notes/ files, filterable by category or name |
 | `search` | Search in lexical, semantic-rerank, or full-semantic mode; semantic modes fall back to lexical with warnings |
 | `format` | Apply typography formatting to a file or folder |
 | `get_review_text` | Structured git diff with optional auto-staging |
