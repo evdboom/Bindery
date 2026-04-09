@@ -378,7 +378,7 @@ function generateSlug(text: string): string {
 }
 
 function demoteH1ToH2(text: string): string {
-    return text.replaceAll(FIRST_H1_RE, '$1## ');
+    return text.replace(FIRST_H1_RE, '$1## ');
 }
 
 function collapseBlankLines(text: string): string {
