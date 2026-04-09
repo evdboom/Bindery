@@ -23,7 +23,6 @@ import {
     toolGetOverview,
     toolGetNotes,
     toolSearch,
-    toolRetrieveContext,
     toolFormat,
     toolGetReviewText,
     toolGitSnapshot,
@@ -68,7 +67,7 @@ server.registerTool('list_books', {
 }, async () => {
     const books = listBooks();
     if (books.length === 0) {
-        return ok(
+    return ok(
             'No books configured.\n\n' +
             'Add --book args to the MCP server in your claude_desktop_config.json:\n\n' +
             '  "args": ["dist/index.js", "--book", "MyNovel=/path/to/project"]'
@@ -98,7 +97,7 @@ server.registerTool('identify_book', {
             return ok(
                 `No book matches directory "${workingDirectory}".\n\n` +
                 (books.length
-                    ? `Available books:\n${books.map(b => `  ${b.name}  →  ${b.path}`).join('\n')}`
+                    ? 'Available books:\n' + books.map(b => '  ' + b.name + '  →  ' + b.path).join('\n')
                     : 'No books configured.')
             );
         }
@@ -117,11 +116,11 @@ server.registerTool('health', {
 
 server.registerTool('index_build', {
     title: 'Build Index',
-    description: 'Build or rebuild the search index for a book. Run after adding/editing chapters.',
+    description: 'Build or rebuild the lexical search index and, when enabled, the semantic embedding index for a book. Run after meaningful content changes.',
     inputSchema: { book: bookSchema },
-    annotations: { destructiveHint: true },
+    annotations: { destructiveHint: true, openWorldHint: true },
 }, async ({ book }) => {
-    try { return ok(toolIndexBuild(resolveBook(book).root)); } catch (e) { return err(e); }
+    try { return ok(await toolIndexBuild(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
 server.registerTool('index_status', {
@@ -188,30 +187,17 @@ server.registerTool('get_notes', {
 
 server.registerTool('search', {
     title: 'Search',
-    description: 'Full-text BM25 search across all story and notes files. Returns ranked snippets. If BINDERY_OLLAMA_URL is configured, the search query and matching book passages are sent to that Ollama instance for semantic reranking.',
+    description: 'Search the book corpus using lexical BM25, semantic reranking, or full semantic search. If Ollama or a semantic index is unavailable, semantic modes fall back to lexical results with a warning.',
     inputSchema: {
         book:       bookSchema,
         query:      z.string().describe('Search query'),
         language:   z.string().optional().describe('Language filter: EN, NL, or ALL'),
         maxResults: z.number().optional().describe('Max results to return (default 10)'),
+        mode:       z.enum(['lexical', 'semantic_rerank', 'full_semantic']).optional().describe('Search mode override. Defaults to the configured MCP search mode.'),
     },
     annotations: { readOnlyHint: true, openWorldHint: true },
-}, async ({ book, query, language, maxResults }) => {
-    try { return ok(await toolSearch(resolveBook(book).root, { query, language, maxResults })); } catch (e) { return err(e); }
-});
-
-server.registerTool('retrieve_context', {
-    title: 'Retrieve Context',
-    description: 'Retrieve the most relevant passages for a query. Best for "where did X happen" or "what did character Y say about Z". If BINDERY_OLLAMA_URL is configured, the query and matching book passages are sent to that Ollama instance for semantic reranking.',
-    inputSchema: {
-        book:     bookSchema,
-        query:    z.string().describe('Natural language query'),
-        language: z.string().optional().describe('Language filter: EN, NL, or ALL'),
-        topK:     z.number().optional().describe('Number of results (default 6)'),
-    },
-    annotations: { readOnlyHint: true, openWorldHint: true },
-}, async ({ book, query, language, topK }) => {
-    try { return ok(await toolRetrieveContext(resolveBook(book).root, { query, language, topK })); } catch (e) { return err(e); }
+}, async ({ book, query, language, maxResults, mode }) => {
+    try { return ok(await toolSearch(resolveBook(book).root, { query, language, maxResults, mode })); } catch (e) { return err(e); }
 });
 
 server.registerTool('format', {

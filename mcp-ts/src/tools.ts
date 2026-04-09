@@ -6,13 +6,22 @@
  * tool-specific arguments, and return a plain string (tool result content).
  */
 
-import * as fs   from 'fs';
-import * as path from 'path';
-import { spawnSync } from 'child_process';
+import * as fs   from 'node:fs';
+import * as path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { updateTypography }                 from './format.js';
-import { chunkFile, discoverFiles, type Language } from './docstore.js';
 import {
-    buildIndex, loadIndex, indexPath, search, rerank,
+    buildIndex,
+    buildSemanticIndex,
+    fullSemanticSearch,
+    indexPath,
+    loadIndex,
+    loadSemanticIndex,
+    rerank,
+    search,
+    semanticIndexPath,
+    semanticIndexStaleness,
+    type SearchMode,
     type SearchResult,
 } from './search.js';
 import {
@@ -58,7 +67,57 @@ function targetForFile(file: string): AiTarget {
     return 'agents';
 }
 
+const SEARCH_MODES = new Set<SearchMode>(['lexical', 'semantic_rerank', 'full_semantic']);
+
+function parseSearchMode(value: string | undefined): SearchMode {
+    return SEARCH_MODES.has(value as SearchMode) ? value as SearchMode : 'lexical';
+}
+
+function semanticIndexEnabled(): boolean {
+    return /^(1|true|yes|on)$/i.test(process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] ?? '');
+}
+
+function appendWarnings(body: string, warnings: string[]): string {
+    if (warnings.length === 0) { return body; }
+    const header = warnings.map(w => 'Warning: ' + w).join('\n');
+    return `${header}\n\n${body}`;
+}
+
 // ─── health ───────────────────────────────────────────────────────────────────
+
+interface SemanticStatus { status: string; staleReasons: string[] }
+
+function getSemanticStatus(root: string): SemanticStatus {
+    const semanticPath = semanticIndexPath(root);
+    if (!fs.existsSync(semanticPath)) {
+        return { status: 'not built', staleReasons: [] };
+    }
+    const semanticIndex = loadSemanticIndex(root);
+    if (!semanticIndex) {
+        return { status: 'present but unreadable', staleReasons: [] };
+    }
+    const { meta } = semanticIndex;
+    const status = `present (chunks=${meta.chunkCount}, vectors=${meta.vectorCount}, model=${meta.model}, built=${meta.builtAt})`;
+    const stale = semanticIndexStaleness(root, semanticIndex);
+    return { status, staleReasons: stale.isStale ? stale.reasons : [] };
+}
+
+type OutdatedEntry = { file: string; label: string; zip: string | null; expected: number; found: number };
+
+function getOutdatedAiFiles(root: string, enabledTargets: Set<string>): OutdatedEntry[] {
+    const installed = readAiVersionFile(root);
+    const expected = expectedAiVersionEntries();
+    const outdated: OutdatedEntry[] = [];
+    for (const [file, exp] of Object.entries(expected)) {
+        if (!enabledTargets.has(targetForFile(file))) { continue; }
+        if (!fs.existsSync(path.join(root, file))) { continue; }
+        const found = installed.versions[file]?.version ?? 0;
+        if (found < exp.version) {
+            outdated.push({ file, label: exp.label, zip: exp.zip, expected: exp.version, found });
+        }
+    }
+    return outdated;
+}
 
 export function toolHealth(root: string): string {
     const settingsPath = path.join(root, '.bindery', 'settings.json');
@@ -70,51 +129,41 @@ export function toolHealth(root: string): string {
     const memFiles = fs.existsSync(memDir)
         ? fs.readdirSync(memDir).filter(f => f.endsWith('.md')).length
         : -1;
+    const memFileSuffix = memFiles === 1 ? '' : 's';
     const memoriesStatus = memFiles >= 0
-        ? `present (${memFiles} file${memFiles === 1 ? '' : 's'})`
+        ? `present (${memFiles} file${memFileSuffix})`
         : 'not created yet';
 
     const idxPath = indexPath(root);
     let indexStatus = 'not built — run index_build first';
     if (fs.existsSync(idxPath)) {
-        const raw = readJson<{ meta?: { builtAt?: string; chunkCount?: number } }>(idxPath);
+        const raw = readJson<{ meta?: { builtAt?: string; chunkCount?: number; contentSignature?: string } }>(idxPath);
         indexStatus = `present (chunks=${raw?.meta?.chunkCount ?? '?'}, built=${raw?.meta?.builtAt ?? '?'})`;
     }
+
+    const { status: semanticIndexStatus, staleReasons: semanticIndexStale } = getSemanticStatus(root);
 
     const ollamaUrl = process.env['BINDERY_OLLAMA_URL'];
     const embeddingsStatus = ollamaUrl
         ? `ollama at ${ollamaUrl}`
         : 'BM25 only (set BINDERY_OLLAMA_URL for reranking)';
 
-    const installed = readAiVersionFile(root);
-    const expected = expectedAiVersionEntries();
-    const aiVersionsOutdated: Array<{ file: string; label: string; zip: string | null; expected: number; found: number }> = [];
-
     const healthSettings = readSettings(root);
-    const validTargets = healthSettings?.aiTargets?.filter(t => ALL_AI_TARGETS.includes(t as AiTarget));;
+    const validTargets = healthSettings?.aiTargets?.filter(t => ALL_AI_TARGETS.includes(t as AiTarget));
     const enabledTargets = new Set<string>(validTargets ?? ALL_AI_TARGETS);
-
-    for (const [file, exp] of Object.entries(expected)) {
-        if (!enabledTargets.has(targetForFile(file))) { continue; }
-        if (!fs.existsSync(path.join(root, file))) { continue; }
-        const found = installed.versions[file]?.version ?? 0;
-        if (found < exp.version) {
-            aiVersionsOutdated.push({
-                file,
-                label: exp.label,
-                zip: exp.zip,
-                expected: exp.version,
-                found,
-            });
-        }
-    }
+    const aiVersionsOutdated = getOutdatedAiFiles(root, enabledTargets);
 
     const response = {
         root,
         settings: settingsStatus,
         memories: memoriesStatus,
         index: indexStatus,
+        semantic_index: semanticIndexStatus,
+        semantic_index_enabled: semanticIndexEnabled(),
+        semantic_index_stale: semanticIndexStale.length > 0,
+        semantic_index_stale_reasons: semanticIndexStale,
         embeddings: embeddingsStatus,
+        default_search_mode: parseSearchMode(process.env['BINDERY_DEFAULT_SEARCH_MODE']),
         ai_version_outdated: aiVersionsOutdated.length > 0,
         ai_versions_outdated: aiVersionsOutdated,
         message: aiVersionsOutdated.length > 0
@@ -127,23 +176,78 @@ export function toolHealth(root: string): string {
 
 // ─── index_build ─────────────────────────────────────────────────────────────
 
-export function toolIndexBuild(root: string): string {
+export async function toolIndexBuild(root: string): Promise<string> {
     const { meta } = buildIndex(root);
-    return `Index built: ${meta.chunkCount} chunks, ${new Date(meta.builtAt).toLocaleString()}`;
+    const lines = [
+        `Lexical index built: ${meta.chunkCount} chunks, ${new Date(meta.builtAt).toLocaleString()}`,
+    ];
+
+    if (!semanticIndexEnabled()) {
+        lines.push('Semantic index skipped: disabled (set BINDERY_ENABLE_SEMANTIC_INDEX=true to build it).');
+        return lines.join('\n');
+    }
+
+    if (!process.env['BINDERY_OLLAMA_URL']) {
+        lines.push('Semantic index skipped: BINDERY_OLLAMA_URL is not configured.');
+        return lines.join('\n');
+    }
+
+    try {
+        const semantic = await buildSemanticIndex(root);
+        lines.push(
+            `Semantic index built: ${semantic.meta.vectorCount}/${semantic.meta.chunkCount} vectors, ` +
+            `${new Date(semantic.meta.builtAt).toLocaleString()} (${semantic.meta.model})`
+        );
+    } catch (e) {
+        lines.push(`Semantic index failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    return lines.join('\n');
 }
 
 // ─── index_status ─────────────────────────────────────────────────────────────
 
 export function toolIndexStatus(root: string): string {
-    const p = indexPath(root);
-    if (!fs.existsSync(p)) { return 'No index found. Run index_build first.'; }
-    const raw = readJson<{ meta?: { builtAt?: string; chunkCount?: number; root?: string } }>(p);
-    if (!raw?.meta) { return 'Index file exists but metadata is unreadable.'; }
-    return [
-        `chunks: ${raw.meta.chunkCount ?? '?'}`,
-        `built:  ${raw.meta.builtAt ?? '?'}`,
-        `root:   ${raw.meta.root ?? '?'}`,
-    ].join('\n');
+    const lines: string[] = [];
+
+    const lexicalPath = indexPath(root);
+    if (fs.existsSync(lexicalPath)) {
+        const raw = readJson<{ meta?: { builtAt?: string; chunkCount?: number; root?: string; contentSignature?: string } }>(lexicalPath);
+        if (raw?.meta) {
+            lines.push(
+                `lexical chunks: ${raw.meta.chunkCount ?? '?'}`,
+                `lexical built:  ${raw.meta.builtAt ?? '?'}`,
+                `lexical root:   ${raw.meta.root ?? '?'}`,
+            );
+        } else {
+            lines.push('lexical: present but metadata is unreadable');
+        }
+    } else {
+        lines.push('lexical: not built — run index_build first');
+    }
+
+    const semantic = loadSemanticIndex(root);
+    if (semantic) {
+        const stale = semanticIndexStaleness(root, semantic);
+        lines.push(
+            `semantic chunks: ${semantic.meta.chunkCount}`,
+            `semantic vectors: ${semantic.meta.vectorCount}`,
+            `semantic built:   ${semantic.meta.builtAt}`,
+            `semantic model:   ${semantic.meta.model}`,
+            `semantic stale:   ${stale.isStale ? 'yes' : 'no'}`,
+        );
+        if (stale.reasons.length > 0) {
+            lines.push(`semantic why:     ${stale.reasons.join('; ')}`);
+        }
+    } else {
+        lines.push('semantic: not built');
+    }
+
+    lines.push(
+        `default mode:     ${parseSearchMode(process.env['BINDERY_DEFAULT_SEARCH_MODE'])}`,
+        `semantic enabled: ${semanticIndexEnabled() ? 'yes' : 'no'}`,
+    );
+    return lines.join('\n');
 }
 
 // ─── get_text ─────────────────────────────────────────────────────────────────
@@ -212,7 +316,7 @@ function findChapterFile(dir: string, num: number): string | null {
             if (found) { return found; }
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
             const m = /(?:chapter|hoofdstuk|chapter_?)\s*(\d+)/i.exec(entry.name);
-            if (m && parseInt(m[1], 10) === num) { return fullPath; }
+            if (m && Number.parseInt(m[1], 10) === num) { return fullPath; }
         }
     }
     return null;
@@ -236,12 +340,37 @@ export function toolGetOverview(root: string, args: GetOverviewArgs): string {
     for (const lang of langs) {
         const langDir = path.join(root, story, lang);
         if (!fs.existsSync(langDir)) { continue; }
-        lines.push(`## ${lang}`);
-        lines.push(...overviewForLang(langDir, args.act));
-        lines.push('');
+        lines.push(`## ${lang}`, ...overviewForLang(langDir, args.act), '');
     }
 
     return lines.join('\n') || 'No language folders found.';
+}
+
+function actLines(langDir: string, actEntry: { name: string }): string[] {
+    const actDir = path.join(langDir, actEntry.name);
+    const chapters = fs.readdirSync(actDir, { withFileTypes: true })
+        .filter(e => e.isFile() && e.name.endsWith('.md'))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    return [
+        `### ${actEntry.name}`,
+        ...chapters.map(ch => {
+            const firstLine = firstH1(path.join(actDir, ch.name));
+            return `- ${ch.name}${firstLine ? ': ' + firstLine : ''}`;
+        }),
+    ];
+}
+
+function topLevelLines(langDir: string): string[] {
+    const topLevel = fs.readdirSync(langDir, { withFileTypes: true })
+        .filter(e => e.isFile() && e.name.endsWith('.md'));
+    if (topLevel.length === 0) { return []; }
+    return [
+        '### Top-level',
+        ...topLevel.map(f => {
+            const firstLine = firstH1(path.join(langDir, f.name));
+            return `- ${f.name}${firstLine ? ': ' + firstLine : ''}`;
+        }),
+    ];
 }
 
 function overviewForLang(langDir: string, actFilter?: number): string[] {
@@ -253,27 +382,11 @@ function overviewForLang(langDir: string, actFilter?: number): string[] {
     for (const actEntry of entries) {
         const actNum = parseActNumber(actEntry.name);
         if (actFilter !== undefined && actNum !== null && actNum !== actFilter) { continue; }
-        lines.push(`### ${actEntry.name}`);
-        const actDir = path.join(langDir, actEntry.name);
-        const chapters = fs.readdirSync(actDir, { withFileTypes: true })
-            .filter(e => e.isFile() && e.name.endsWith('.md'))
-            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-        for (const ch of chapters) {
-            const fullPath = path.join(actDir, ch.name);
-            const firstLine = firstH1(fullPath);
-            lines.push(`- ${ch.name}${firstLine ? ': ' + firstLine : ''}`);
-        }
+        lines.push(...actLines(langDir, actEntry));
     }
 
-    // Top-level .md files (prologue, epilogue)
-    const topLevel = fs.readdirSync(langDir, { withFileTypes: true })
-        .filter(e => e.isFile() && e.name.endsWith('.md'));
-    if (topLevel.length > 0 && actFilter === undefined) {
-        lines.push('### Top-level');
-        for (const f of topLevel) {
-            const firstLine = firstH1(path.join(langDir, f.name));
-            lines.push(`- ${f.name}${firstLine ? ': ' + firstLine : ''}`);
-        }
+    if (actFilter === undefined) {
+        lines.push(...topLevelLines(langDir));
     }
 
     return lines;
@@ -308,6 +421,13 @@ export interface GetNotesArgs {
     name?:     string;
 }
 
+function extractNamedSections(content: string, nameFilter: string): string[] {
+    const lowerFilter = nameFilter.toLowerCase();
+    return content.split(/^#{1,3}\s+/m)
+        .filter(section => section.toLowerCase().includes(lowerFilter))
+        .map(section => section.trim());
+}
+
 export function toolGetNotes(root: string, args: GetNotesArgs): string {
     const notesDir = path.join(root, 'Notes');
     const candidates: string[] = [];
@@ -315,7 +435,6 @@ export function toolGetNotes(root: string, args: GetNotesArgs): string {
     if (fs.existsSync(notesDir)) {
         collectAllMd(notesDir, candidates);
     }
-    // Also Details_*.md files at root
     for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
         if (entry.isFile() && /^Details_.*\.md$/i.test(entry.name)) {
             candidates.push(path.join(root, entry.name));
@@ -326,7 +445,6 @@ export function toolGetNotes(root: string, args: GetNotesArgs): string {
 
     const catFilter  = args.category?.toLowerCase();
     const nameFilter = args.name?.toLowerCase();
-
     const results: string[] = [];
 
     for (const filePath of candidates) {
@@ -334,13 +452,7 @@ export function toolGetNotes(root: string, args: GetNotesArgs): string {
         if (catFilter && !relName.includes(catFilter)) { continue; }
         const content = fs.readFileSync(filePath, 'utf-8');
         if (nameFilter) {
-            // Extract sections containing the name
-            const sections = content.split(/^#{1,3}\s+/m);
-            for (const section of sections) {
-                if (section.toLowerCase().includes(nameFilter)) {
-                    results.push(section.trim());
-                }
-            }
+            results.push(...extractNamedSections(content, nameFilter));
         } else {
             results.push(`## ${path.basename(filePath)}\n\n${content}`);
         }
@@ -364,70 +476,65 @@ export interface SearchArgs {
     language?:      string;
     maxResults?:    number;
     caseSensitive?: boolean;
+    mode?:          SearchMode;
+}
+
+function addStalenessWarning(root: string, warnings: string[]): void {
+    const semantic = loadSemanticIndex(root);
+    if (!semantic) { return; }
+    const stale = semanticIndexStaleness(root, semantic);
+    if (stale.isStale) {
+        warnings.push('semantic index is stale; run index_build. ' + stale.reasons.join('; '));
+    }
+}
+
+async function applySearchMode(
+    root:           string,
+    mode:           SearchMode,
+    lexicalResults: SearchResult[],
+    query:          string,
+    topK:           number,
+    language:       string | undefined,
+    warnings:       string[],
+): Promise<SearchResult[]> {
+    if (mode === 'semantic_rerank') {
+        const reranked = await rerank(lexicalResults, query);
+        if (reranked.warning) { warnings.push(reranked.warning); }
+        return reranked.usedSemantic ? reranked.results : lexicalResults;
+    }
+    if (mode === 'full_semantic') {
+        const semanticSearch = await fullSemanticSearch(root, query, topK * 4, language);
+        if (semanticSearch.usedSemantic) {
+            addStalenessWarning(root, warnings);
+            return semanticSearch.results;
+        }
+        if (semanticSearch.warning) { warnings.push(semanticSearch.warning); }
+    }
+    return lexicalResults;
 }
 
 export async function toolSearch(root: string, args: SearchArgs): Promise<string> {
-    const topK     = args.maxResults ?? 10;
-    const language = args.language?.toUpperCase() as Language | undefined;
+    const topK     = args.maxResults ?? Number.parseInt(process.env['BINDERY_DEFAULT_TOPK'] ?? '10', 10);
+    const language = args.language?.toUpperCase();
+    const mode     = args.mode ?? parseSearchMode(process.env['BINDERY_DEFAULT_SEARCH_MODE']);
+    const warnings: string[] = [];
 
-    let idxData = loadIndex(root);
-    if (!idxData) {
-        idxData = buildIndex(root);
-    }
+    const idxData = loadIndex(root) ?? buildIndex(root);
+    const lexicalResults = search(idxData.ms, idxData.chunks, args.query, topK * 4, language);
+    const results = (await applySearchMode(root, mode, lexicalResults, args.query, topK, language, warnings)).slice(0, topK);
 
-    let results = search(idxData.ms, idxData.chunks, args.query, topK * 3, language);
+    if (results.length === 0) { return appendWarnings('No results found.', warnings); }
 
-    // Optional Ollama reranking
-    if (process.env['BINDERY_OLLAMA_URL']) {
-        results = await rerank(results, args.query);
-    }
-
-    results = results.slice(0, topK);
-
-    if (results.length === 0) { return 'No results found.'; }
-
-    return results.map((r, i) => formatResult(r, i + 1)).join('\n\n---\n\n');
-}
-
-// ─── retrieve_context ─────────────────────────────────────────────────────────
-
-export interface RetrieveArgs {
-    query:     string;
-    language?: string;
-    topK?:     number;
-}
-
-export async function toolRetrieveContext(root: string, args: RetrieveArgs): Promise<string> {
-    const topK     = args.topK ?? parseInt(process.env['BINDERY_DEFAULT_TOPK'] ?? '6', 10);
-    const language = args.language?.toUpperCase() as Language | undefined;
-
-    let idxData = loadIndex(root);
-    if (!idxData) {
-        idxData = buildIndex(root);
-    }
-
-    let results = search(idxData.ms, idxData.chunks, args.query, topK * 4, language);
-
-    if (process.env['BINDERY_OLLAMA_URL']) {
-        results = await rerank(results, args.query);
-    }
-
-    results = results.slice(0, topK);
-
-    if (results.length === 0) { return 'No context found.'; }
-
-    const maxBytes = parseInt(process.env['BINDERY_MAX_RESPONSE_BYTES'] ?? '60000', 10);
+    const maxBytes = Number.parseInt(process.env['BINDERY_MAX_RESPONSE_BYTES'] ?? '60000', 10);
     const parts: string[] = [];
     let total = 0;
-
     for (let i = 0; i < results.length; i++) {
         const fragment = formatResult(results[i], i + 1);
         if (total + fragment.length > maxBytes) { break; }
         parts.push(fragment);
         total += fragment.length;
     }
-
-    return parts.join('\n\n---\n\n');
+    return appendWarnings(parts.join('\n\n---\n\n') || 'No results found.', warnings);
 }
 
 // ─── format ───────────────────────────────────────────────────────────────────
@@ -439,9 +546,10 @@ export interface FormatArgs {
 }
 
 export function toolFormat(root: string, args: FormatArgs): string {
-    const target = args.filePath
-        ? path.isAbsolute(args.filePath) ? args.filePath : path.join(root, args.filePath)
-        : root;
+    let target = root;
+    if (args.filePath) {
+        target = path.isAbsolute(args.filePath) ? args.filePath : path.join(root, args.filePath);
+    }
 
     const changed: string[] = [];
 
@@ -533,7 +641,7 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     const filtered = language === 'ALL'
         ? files
         : files.filter(f => {
-            const upper = f.file.toUpperCase().replace(/\\/g, '/');
+            const upper = f.file.toUpperCase().replaceAll('\\', '/');
             return upper.includes(`/${language}/`);
         });
 
@@ -639,7 +747,7 @@ export function toolGetTranslation(root: string, args: GetTranslationArgs): stri
     if (!matchedKey) {
         const available = Object.entries(translations)
             .filter(([, e]) => e.type === entryType || args.type === undefined)
-            .map(([k, e]) => `${k}${e.label ? ` (${e.label})` : ''}`)
+            .map(([k, e]) => k + (e.label ? ` (${e.label})` : ''))
             .join(', ');
         return `No translation entry found for "${args.language}". Available: ${available || 'none'}`;
     }
@@ -652,12 +760,13 @@ export function toolGetTranslation(root: string, args: GetTranslationArgs): stri
     const rules = entry.rules ?? [];
     if (!args.word) {
         if (rules.length === 0) { return `No rules defined for "${matchedKey}" yet.`; }
-        const header = `${matchedKey}${entry.label ? ` — ${entry.label}` : ''} (${entry.type}, ${rules.length} rules):`;
+        const labelPart = entry.label ? ` — ${entry.label}` : '';
+        const header = `${matchedKey}${labelPart} (${entry.type}, ${rules.length} rules):`;
         return [header, ...rules.map(r => `  ${r.from}  →  ${r.to}`)].join('\n');
     }
 
     const stems = wordStems(args.word.toLowerCase());
-    const matches = rules.filter(r => stems.some(s => r.from.toLowerCase() === s));
+    const matches = rules.filter(r => stems.includes(r.from.toLowerCase()));
     if (matches.length === 0) { return `"${args.word}" not found in ${matchedKey} translations.`; }
     return matches.map(r => `${r.from}  →  ${r.to}  [${matchedKey}]`).join('\n');
 }
@@ -870,12 +979,13 @@ export function toolGetDialect(root: string, args: GetDialectArgs): string {
     const rules = entry.rules ?? [];
     if (!args.word) {
         if (rules.length === 0) { return `No dialect rules defined for "${key}" yet.`; }
-        const header = `${key}${entry.label ? ` — ${entry.label}` : ''} (${rules.length} substitution rules):`;
+        const labelPart = entry.label ? ` — ${entry.label}` : '';
+        const header = `${key}${labelPart} (${rules.length} substitution rules):`;
         return [header, ...rules.map(r => `  ${r.from}  →  ${r.to}`)].join('\n');
     }
 
     const stems   = wordStems(args.word.toLowerCase());
-    const matches = rules.filter(r => stems.some(s => r.from.toLowerCase() === s));
+    const matches = rules.filter(r => stems.includes(r.from.toLowerCase()));
     if (matches.length === 0) { return `"${args.word}" not found in dialect "${key}".`; }
     return matches.map(r => `${r.from}  →  ${r.to}  [${key}]`).join('\n');
 }
@@ -958,6 +1068,22 @@ export function toolAddLanguage(root: string, args: AddLanguageArgs): string {
 
 // ─── diff helpers ─────────────────────────────────────────────────────────────
 
+function parseHunkLines(body: string, beforeStart: number, afterStart: number): DiffLine[] {
+    const lines: DiffLine[] = [];
+    let oldLine = beforeStart;
+    let newLine = afterStart;
+    for (const line of body.split('\n')) {
+        if (line.startsWith('+')) {
+            lines.push({ type: 'insert', text: line.slice(1), newLine: newLine++ });
+        } else if (line.startsWith('-')) {
+            lines.push({ type: 'delete', text: line.slice(1), oldLine: oldLine++ });
+        } else if (line.startsWith(' ')) {
+            lines.push({ type: 'context', text: line.slice(1), oldLine: oldLine++, newLine: newLine++ });
+        }
+    }
+    return lines;
+}
+
 function parseUnifiedDiff(raw: string): DiffFile[] {
     const files: DiffFile[] = [];
     const fileChunks = raw.split(/^diff --git /m).filter(Boolean);
@@ -968,42 +1094,17 @@ function parseUnifiedDiff(raw: string): DiffFile[] {
         const fileName = nameMatch[2];
 
         const hunks: DiffHunk[] = [];
-        const hunkParts = chunk.split(/^@@\s+/m).slice(1);
-
-        for (const hunkPart of hunkParts) {
+        for (const hunkPart of chunk.split(/^@@\s+/m).slice(1)) {
             const headerMatch = /^-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)/.exec(hunkPart);
             if (!headerMatch) { continue; }
 
-            const beforeStart = parseInt(headerMatch[1], 10);
-            const beforeCount = headerMatch[2] !== undefined ? parseInt(headerMatch[2], 10) : 1;
-            const afterStart  = parseInt(headerMatch[3], 10);
-            const afterCount  = headerMatch[4] !== undefined ? parseInt(headerMatch[4], 10) : 1;
+            const beforeStart = Number.parseInt(headerMatch[1], 10);
+            const beforeCount = headerMatch[2] === undefined ? 1 : Number.parseInt(headerMatch[2], 10);
+            const afterStart  = Number.parseInt(headerMatch[3], 10);
+            const afterCount  = headerMatch[4] === undefined ? 1 : Number.parseInt(headerMatch[4], 10);
 
             const body = headerMatch[5] + '\n' + hunkPart.slice(headerMatch[0].length);
-            const bodyLines = body.split('\n');
-
-            const lines: DiffLine[] = [];
-            let oldLine = beforeStart;
-            let newLine = afterStart;
-
-            for (const line of bodyLines) {
-                if (line.startsWith('+')) {
-                    lines.push({ type: 'insert', text: line.slice(1), newLine: newLine });
-                    newLine++;
-                } else if (line.startsWith('-')) {
-                    lines.push({ type: 'delete', text: line.slice(1), oldLine: oldLine });
-                    oldLine++;
-                } else if (line.startsWith(' ') || line === '') {
-                    // context line — but skip trailing empty from split
-                    if (line.startsWith(' ')) {
-                        lines.push({ type: 'context', text: line.slice(1), oldLine: oldLine, newLine: newLine });
-                        oldLine++;
-                        newLine++;
-                    }
-                }
-            }
-
-            hunks.push({ beforeStart, beforeCount, afterStart, afterCount, lines });
+            hunks.push({ beforeStart, beforeCount, afterStart, afterCount, lines: parseHunkLines(body, beforeStart, afterStart) });
         }
 
         files.push({ file: fileName, hunks });
@@ -1021,8 +1122,14 @@ function formatReviewFiles(files: DiffFile[]): string {
         for (const hunk of file.hunks) {
             lines.push(`\n@@ -${hunk.beforeStart},${hunk.beforeCount} +${hunk.afterStart},${hunk.afterCount} @@`);
             for (const l of hunk.lines) {
-                const prefix = l.type === 'insert' ? '+' : l.type === 'delete' ? '-' : ' ';
-                lines.push(`${prefix} ${l.text}`);
+                const lineType = (() => {
+                    switch (l.type) {
+                        case 'delete': return '-';
+                        case 'insert': return '+';
+                        default: return ' ';
+                    }
+                })();
+                lines.push(`${lineType} ${l.text}`);
             }
         }
 
@@ -1043,11 +1150,51 @@ export interface InitWorkspaceArgs {
     targetAudience?: string;
 }
 
+type LangEntry = { code: string; folderName: string; chapterWord: string; actPrefix: string; prologueLabel: string; epilogueLabel: string };
+
+function detectWorkspaceLangs(
+    storyPath:    string,
+    existingLangs: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+    const detected: LangEntry[] = [];
+    if (fs.existsSync(storyPath)) {
+        for (const entry of fs.readdirSync(storyPath, { withFileTypes: true })) {
+            if (entry.isDirectory() && /^[A-Z]{2,3}$/i.test(entry.name)) {
+                detected.push({ code: entry.name.toUpperCase(), folderName: entry.name, chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' });
+            }
+        }
+    }
+    const base = detected.length > 0
+        ? detected
+        : [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' }];
+    return base.map(dl => {
+        const el = existingLangs.find(l => (l['code'] as string | undefined)?.toUpperCase() === dl.code);
+        return el ? { ...el, code: dl.code, folderName: dl.folderName } : (dl as unknown as Record<string, unknown>);
+    });
+}
+
+function seedTranslations(translationsPath: string, languages: Array<Record<string, unknown>>): boolean {
+    type LangWithDialects = { dialects?: Array<{ code: string }> };
+    const engbDeclared = languages.some((l: unknown) =>
+        (l as LangWithDialects).dialects?.some(d => d.code?.toLowerCase() === 'en-gb')
+    );
+    if (!engbDeclared) { return false; }
+
+    let trans: TranslationsFile = {};
+    if (fs.existsSync(translationsPath)) {
+        try { trans = JSON.parse(fs.readFileSync(translationsPath, 'utf-8')) as TranslationsFile; } catch { /* ignore */ }
+    }
+    if (trans['en-gb']?.rules?.length) { return false; }
+
+    trans['en-gb'] = { label: 'British English', type: 'substitution', sourceLanguage: 'en', rules: BUILTIN_EN_GB_RULES, ignoredWords: [] };
+    fs.writeFileSync(translationsPath, JSON.stringify(trans, null, 2) + '\n', 'utf-8');
+    return true;
+}
+
 export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string {
     const settingsPath     = path.join(root, '.bindery', 'settings.json');
     const translationsPath = path.join(root, '.bindery', 'translations.json');
 
-    // Load existing settings to preserve any keys not being updated
     let existing: Record<string, unknown> = {};
     const isNew = !fs.existsSync(settingsPath);
     if (!isNew) {
@@ -1057,29 +1204,10 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
 
     const storyFolderName = args.storyFolder ?? (existing['storyFolder'] as string | undefined) ?? 'Story';
     const bookTitle       = args.bookTitle   ?? (existing['bookTitle']   as string | undefined) ?? path.basename(root);
+    const existingLangs   = ((existing['languages'] as unknown[] | undefined) ?? []) as Array<Record<string, unknown>>;
+    const languages       = detectWorkspaceLangs(path.join(root, storyFolderName), existingLangs);
 
-    // Detect language folders from the story directory
-    const storyPath = path.join(root, storyFolderName);
-    const detectedLangs: Array<{ code: string; folderName: string; chapterWord: string; actPrefix: string; prologueLabel: string; epilogueLabel: string }> = [];
-    if (fs.existsSync(storyPath)) {
-        for (const entry of fs.readdirSync(storyPath, { withFileTypes: true })) {
-            if (entry.isDirectory() && /^[A-Z]{2,3}$/i.test(entry.name)) {
-                const code = entry.name.toUpperCase();
-                detectedLangs.push({ code, folderName: entry.name, chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' });
-            }
-        }
-    }
-    // Merge detected langs with existing to preserve custom properties (dialects, isDefault, labels)
-    const existingLangs = ((existing['languages'] as unknown[] | undefined) ?? []) as Array<Record<string, unknown>>;
-    const baseLangs = detectedLangs.length > 0
-        ? detectedLangs
-        : [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' }];
-    const languages: Array<Record<string, unknown>> = baseLangs.map(dl => {
-        const el = existingLangs.find(l => (l['code'] as string | undefined)?.toUpperCase() === dl.code);
-        return el ? { ...el, code: dl.code, folderName: dl.folderName } : (dl as unknown as Record<string, unknown>);
-    });
-
-    const slug = bookTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/, '') || 'Book';
+    const slug = bookTitle.replaceAll(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/, '') || 'Book';
     const settings: Record<string, unknown> = {
         ...existing,
         bookTitle,
@@ -1098,7 +1226,6 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
     const created: string[] = ['.bindery/settings.json'];
 
-    // Create translations.json only if it does not already exist
     if (!fs.existsSync(translationsPath)) {
         const translations = {
             'en-gb': { label: 'British English', type: 'substitution', sourceLanguage: 'en', rules: [], ignoredWords: [] },
@@ -1107,23 +1234,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         created.push('.bindery/translations.json');
     }
 
-    // Seed en-gb rules if any language declares it as a dialect and it isn't already populated
-    type LangWithDialects = { dialects?: Array<{ code: string }> };
-    const engbDeclared = languages.some((l: unknown) =>
-        (l as LangWithDialects).dialects?.some(d => d.code?.toLowerCase() === 'en-gb')
-    );
-    let engbSeeded = false;
-    if (engbDeclared) {
-        let trans: TranslationsFile = {};
-        if (fs.existsSync(translationsPath)) {
-            try { trans = JSON.parse(fs.readFileSync(translationsPath, 'utf-8')) as TranslationsFile; } catch { /* ignore */ }
-        }
-        if (!trans['en-gb']?.rules?.length) {
-            trans['en-gb'] = { label: 'British English', type: 'substitution', sourceLanguage: 'en', rules: BUILTIN_EN_GB_RULES, ignoredWords: [] };
-            fs.writeFileSync(translationsPath, JSON.stringify(trans, null, 2) + '\n', 'utf-8');
-            engbSeeded = true;
-        }
-    }
+    const engbSeeded = seedTranslations(translationsPath, languages);
 
     const action   = isNew ? 'Initialised' : 'Updated';
     const langNote = languages.map(l => (l as { code: string }).code).join(', ');
@@ -1308,6 +1419,19 @@ const STATUS_LABELS: Record<string, string> = {
     'planned':      'Planned',
 };
 
+function formatStatusGroup(group: ChapterStatusEntry[]): string[] {
+    const lines: string[] = [];
+    for (const ch of group) {
+        const meta: string[] = [];
+        if (ch.language !== 'EN') { meta.push(ch.language); }
+        if (ch.wordCount)         { meta.push(`~${ch.wordCount}w`); }
+        const suffix = meta.length ? ` [${meta.join(', ')}]` : '';
+        lines.push(`  Ch ${ch.number} \u2014 ${ch.title}${suffix}`);
+        if (ch.notes) { lines.push(`    ${ch.notes}`); }
+    }
+    return lines;
+}
+
 export function toolChapterStatusGet(root: string): string {
     const filePath = path.join(root, '.bindery', 'chapter-status.json');
     if (!fs.existsSync(filePath)) {
@@ -1329,19 +1453,11 @@ export function toolChapterStatusGet(root: string): string {
         byStatus.set(ch.status, list);
     }
 
-    const lines: string[] = [`Chapter status — updated ${data.updatedAt}, ${chapters.length} chapter(s)`];
+    const lines: string[] = [`Chapter status \u2014 updated ${data.updatedAt}, ${chapters.length} chapter(s)`];
     for (const status of STATUS_ORDER) {
         const group = byStatus.get(status);
         if (!group || group.length === 0) { continue; }
-        lines.push(`\n${STATUS_LABELS[status]} (${group.length})`);
-        for (const ch of group) {
-            const meta: string[] = [];
-            if (ch.language !== 'EN') { meta.push(ch.language); }
-            if (ch.wordCount)         { meta.push(`~${ch.wordCount}w`); }
-            const suffix = meta.length ? ` [${meta.join(', ')}]` : '';
-            lines.push(`  Ch ${ch.number} — ${ch.title}${suffix}`);
-            if (ch.notes) { lines.push(`    ${ch.notes}`); }
-        }
+        lines.push(`\n${STATUS_LABELS[status]} (${group.length})`, ...formatStatusGroup(group));
     }
     return lines.join('\n');
 }
@@ -1388,7 +1504,7 @@ export function toolChapterStatusUpdate(root: string, args: ChapterStatusUpdateA
 // ─── Shared formatter ─────────────────────────────────────────────────────────
 
 function formatResult(r: SearchResult, idx: number): string {
-    const snippetMax = parseInt(process.env['BINDERY_SNIPPET_MAX_CHARS'] ?? '1600', 10);
+    const snippetMax = Number.parseInt(process.env['BINDERY_SNIPPET_MAX_CHARS'] ?? '1600', 10);
     const text = r.chunk.text.length > snippetMax
         ? r.chunk.text.slice(0, snippetMax) + '…'
         : r.chunk.text;

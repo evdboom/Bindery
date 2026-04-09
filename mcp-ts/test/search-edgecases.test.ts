@@ -1,11 +1,10 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
     toolSearch,
-    toolRetrieveContext,
     toolIndexBuild,
     toolIndexStatus,
 } from '../src/tools';
@@ -36,18 +35,19 @@ describe('toolIndexStatus', () => {
     it('reports "No index found" before any build', () => {
         const root = makeRoot();
         const result = toolIndexStatus(root);
-        expect(result).toContain('No index found');
+        expect(result).toContain('lexical: not built');
     });
 
-    it('reports chunk count and build time after build', () => {
+    it('reports chunk count and build time after build', async () => {
         const root = makeRoot();
         write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Ch1\nThe silver moon rose over the mountains.\n');
 
-        toolIndexBuild(root);
+        await toolIndexBuild(root);
 
         const result = toolIndexStatus(root);
-        expect(result).toContain('chunks:');
-        expect(result).toContain('built:');
+        expect(result).toContain('lexical chunks:');
+        expect(result).toContain('lexical built:');
+        expect(result).toContain('semantic: not built');
     });
 });
 
@@ -67,7 +67,7 @@ describe('toolSearch', () => {
         const root = makeRoot();
         write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# EN\nThe silver knight rode forward.\n');
         write(path.join(root, 'Story', 'NL', 'Act I', 'Hoofdstuk 1.md'), '# NL\nDe zilveren ridder reed vooruit.\n');
-        toolIndexBuild(root);
+        await toolIndexBuild(root);
 
         const result = await toolSearch(root, { query: 'silver knight', language: 'EN' });
         expect(result).toContain('EN');
@@ -77,7 +77,7 @@ describe('toolSearch', () => {
     it('returns "No results found." when query matches nothing', async () => {
         const root = makeRoot();
         write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Ch1\nThe wizard cast a spell.\n');
-        toolIndexBuild(root);
+        await toolIndexBuild(root);
 
         const result = await toolSearch(root, { query: 'xyzzy quux wibble' });
         expect(result).toBe('No results found.');
@@ -92,7 +92,7 @@ describe('toolSearch', () => {
                 `# Chapter ${i}\nThe ancient dragon awoke from slumber in chapter ${i}.\n`
             );
         }
-        toolIndexBuild(root);
+        await toolIndexBuild(root);
 
         const result = await toolSearch(root, { query: 'ancient dragon', maxResults: 2 });
         // Should have [1] and [2] but not [3]
@@ -100,50 +100,195 @@ describe('toolSearch', () => {
         expect(result).toContain('[2]');
         expect(result).not.toContain('[3]');
     });
-});
 
-// ─── toolRetrieveContext ──────────────────────────────────────────────────────
-
-describe('toolRetrieveContext', () => {
-    it('returns context for a matching query', async () => {
+    it('returns results for a natural-language passage query', async () => {
         const root = makeRoot();
         write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Arrival\nThe wandering merchant arrived at the crossroads.\n');
-        toolIndexBuild(root);
+        await toolIndexBuild(root);
 
-        const result = await toolRetrieveContext(root, { query: 'wandering merchant' });
+        const result = await toolSearch(root, { query: 'wandering merchant' });
         expect(result).toContain('Chapter 1.md');
-        expect(result).not.toBe('No context found.');
-    });
-
-    it('returns "No context found." for unmatched query', async () => {
-        const root = makeRoot();
-        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Ch1\nThe blacksmith hammered the sword.\n');
-        toolIndexBuild(root);
-
-        const result = await toolRetrieveContext(root, { query: 'xyzzy zork frotz' });
-        expect(result).toBe('No context found.');
+        expect(result).not.toBe('No results found.');
     });
 
     it('truncates output when BINDERY_MAX_RESPONSE_BYTES is very small', async () => {
         const root = makeRoot();
-        // Create several files to ensure multiple results
         for (let i = 1; i <= 4; i++) {
             write(
                 path.join(root, 'Story', 'EN', 'Act I', `Chapter ${i}.md`),
                 `# Chapter ${i}\nThe ancient forest held many secrets in chapter ${i}.\n`
             );
         }
-        toolIndexBuild(root);
+        await toolIndexBuild(root);
 
-        // Set a very small budget — only the first result should fit
         process.env['BINDERY_MAX_RESPONSE_BYTES'] = '50';
-
-        const full = await toolRetrieveContext(root, { query: 'ancient forest', topK: 4 });
+        const capped = await toolSearch(root, { query: 'ancient forest', maxResults: 4 });
 
         delete process.env['BINDERY_MAX_RESPONSE_BYTES'];
-        const unlimited = await toolRetrieveContext(root, { query: 'ancient forest', topK: 4 });
+        const unlimited = await toolSearch(root, { query: 'ancient forest', maxResults: 4 });
 
-        // With a tiny budget the result must be shorter (or empty, capped at 0 parts)
-        expect(full.length).toBeLessThan(unlimited.length);
+        expect(capped.length).toBeLessThan(unlimited.length);
+    });
+
+    it('warns and falls back to lexical when semantic_rerank is requested without Ollama', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Arrival\nThe wandering merchant arrived at the crossroads.\n');
+        await toolIndexBuild(root);
+
+        const result = await toolSearch(root, { query: 'wandering merchant', mode: 'semantic_rerank' });
+        expect(result).toContain('Warning: semantic_rerank requested but BINDERY_OLLAMA_URL is not configured; using lexical results.');
+        expect(result).toContain('Chapter 1.md');
+    });
+
+    it('warns and falls back to lexical when full_semantic is requested without a semantic index', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Arrival\nThe wandering merchant arrived at the crossroads.\n');
+        await toolIndexBuild(root);
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+        const result = await toolSearch(root, { query: 'wandering merchant', mode: 'full_semantic' });
+
+        delete process.env['BINDERY_OLLAMA_URL'];
+        expect(result).toContain('Warning: full_semantic requested but the semantic index is unavailable; using lexical results.');
+        expect(result).toContain('Chapter 1.md');
+    });
+});
+
+// ─── Arc folder in lexical index ─────────────────────────────────────────────
+
+describe('Arc folder in lexical index', () => {
+    it('indexes Arc .md files alongside Story content', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Ch1\nThe knight arrived at the fortress.\n');
+        write(path.join(root, 'Arc', 'act1-arc.md'), '# Arc Notes\nThe fortress siege was planned by the council.\n');
+        await toolIndexBuild(root);
+
+        const result = await toolSearch(root, { query: 'fortress siege' });
+        expect(result).toContain('act1-arc.md');
+    });
+
+    it('does not throw when Arc folder is absent', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Ch1\nThe wanderer set out at dawn.\n');
+
+        await expect(toolIndexBuild(root)).resolves.toContain('Lexical index built:');
+    });
+});
+
+// ─── Mocked Ollama — semantic_rerank ─────────────────────────────────────────
+
+describe('mocked Ollama — semantic_rerank', () => {
+    const mockEmbedding = Array.from({ length: 8 }, (_, i) => (i + 1) / 10);
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete process.env['BINDERY_OLLAMA_URL'];
+    });
+
+    it('reranks lexical results and returns them without a warning', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Voyage\nThe captain sailed into uncharted waters.\n');
+        await toolIndexBuild(root);
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ embedding: mockEmbedding }),
+        }));
+
+        const result = await toolSearch(root, { query: 'captain sailed', mode: 'semantic_rerank' });
+        expect(result).not.toContain('Warning:');
+        expect(result).toContain('Chapter 1.md');
+    });
+
+    it('falls back gracefully when Ollama returns non-ok response', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Harbor\nThe ship docked at midnight in a hidden harbor.\n');
+        await toolIndexBuild(root);
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: false,
+            json: async () => ({}),
+        }));
+
+        const result = await toolSearch(root, { query: 'ship harbor midnight', mode: 'semantic_rerank' });
+        expect(result).toContain('Warning:');
+        expect(result).toContain('Chapter 1.md');
+    });
+});
+
+// ─── Mocked Ollama — buildSemanticIndex + full_semantic ──────────────────────
+
+describe('mocked Ollama — full_semantic', () => {
+    const mockEmbedding = Array.from({ length: 8 }, (_, i) => (i + 1) / 10);
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete process.env['BINDERY_OLLAMA_URL'];
+        delete process.env['BINDERY_ENABLE_SEMANTIC_INDEX'];
+    });
+
+    it('builds semantic index and reports vector count', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Forest\nThe ancient forest held many secrets.\n');
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+        process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
+
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ embedding: mockEmbedding }),
+        }));
+
+        const result = await toolIndexBuild(root);
+        expect(result).toContain('Lexical index built:');
+        expect(result).toContain('Semantic index built:');
+        expect(result).toMatch(/\d+\/\d+ vectors/);
+    });
+
+    it('full_semantic returns results ranked by cosine without warning', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Ruins\nThe explorer found the ancient ruins at dusk.\n');
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+        process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
+
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ embedding: mockEmbedding }),
+        }));
+
+        // Build the semantic index
+        await toolIndexBuild(root);
+
+        // Now search using full_semantic
+        const result = await toolSearch(root, { query: 'ancient ruins', mode: 'full_semantic' });
+        expect(result).not.toContain('Warning:');
+        expect(result).toContain('Chapter 1.md');
+    });
+
+    it('full_semantic falls back when Ollama is unreachable at query time', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Desert\nThe nomad crossed the vast desert alone.\n');
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+        process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
+
+        // Build succeeds
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ embedding: mockEmbedding }),
+        }));
+        await toolIndexBuild(root);
+
+        // Query fails
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNREFUSED')));
+
+        const result = await toolSearch(root, { query: 'nomad desert', mode: 'full_semantic' });
+        expect(result).toContain('Warning:');
+        expect(result).toContain('using lexical results');
     });
 });

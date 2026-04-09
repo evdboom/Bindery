@@ -5,9 +5,9 @@
  * lines into chunks with stable path-based IDs.
  */
 
-import * as fs   from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
+import * as fs     from 'node:fs';
+import * as path   from 'node:path';
+import * as crypto from 'node:crypto';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -21,60 +21,62 @@ export interface Chunk {
     language?: string;   // 'EN' | 'NL' | ...
 }
 
-export type Language = 'EN' | 'NL' | 'ALL' | string;
 
 export interface DiscoverOptions {
-    language?: Language;
+    language?: string;
     actName?:  string;
     chapterRange?: string;   // e.g. "5-10" or "3"
+    includeArc?: boolean;
 }
 
 // ─── Discovery ───────────────────────────────────────────────────────────────
+
+function collectStoryRoot(
+    storyRoot:  string,
+    langFilter: string[] | null,
+    actName:    string | undefined,
+    chMin:      number | null,
+    chMax:      number | null,
+    results:    string[]
+): void {
+    if (!fs.existsSync(storyRoot)) { return; }
+    for (const entry of fs.readdirSync(storyRoot, { withFileTypes: true })) {
+        if (!entry.isDirectory()) {
+            if (entry.isFile() && entry.name.endsWith('.md')) {
+                results.push(path.join(storyRoot, entry.name));
+            }
+            continue;
+        }
+        const lang = entry.name.toUpperCase();
+        if (langFilter !== null && !langFilter.includes(lang)) { continue; }
+        collectStoryLang(path.join(storyRoot, entry.name), lang, actName, chMin, chMax, results);
+    }
+}
 
 /**
  * Collect all .md files in the workspace that should be indexed:
  * - Story/<lang>/  (language folders, with optional act filtering)
  * - Notes/
- * - Details_*.md at root
+ * - Arc/
  * - AGENTS.md / CLAUDE.md etc at Story root
  */
 export function discoverFiles(root: string, opts: DiscoverOptions = {}): string[] {
     const results: string[] = [];
-    const storyRoot = path.join(root, 'Story');
     const langFilter = resolvedLangs(opts.language);
     const [chMin, chMax] = parseChapterRange(opts.chapterRange);
 
-    // Story language folders
-    if (fs.existsSync(storyRoot)) {
-        for (const entry of fs.readdirSync(storyRoot, { withFileTypes: true })) {
-            if (!entry.isDirectory()) {
-                if (entry.isFile() && entry.name.endsWith('.md')) {
-                    results.push(path.join(storyRoot, entry.name));
-                }
-                continue;
-            }
-            const lang = entry.name.toUpperCase();
-            if (langFilter !== null && !langFilter.includes(lang)) { continue; }
-            collectStoryLang(
-                path.join(storyRoot, entry.name),
-                lang,
-                opts.actName,
-                chMin, chMax,
-                results
-            );
-        }
-    }
+    collectStoryRoot(path.join(root, 'Story'), langFilter, opts.actName, chMin, chMax, results);
 
-    // Notes folder
     const notesRoot = path.join(root, 'Notes');
     if (fs.existsSync(notesRoot)) {
         collectAllMd(notesRoot, results);
     }
 
-    // Details_*.md at workspace root
-    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-        if (entry.isFile() && /^Details_.*\.md$/i.test(entry.name)) {
-            results.push(path.join(root, entry.name));
+
+    if (opts.includeArc) {
+        const arcRoot = path.join(root, 'Arc');
+        if (fs.existsSync(arcRoot)) {
+            collectAllMd(arcRoot, results);
         }
     }
 
@@ -103,6 +105,15 @@ function collectStoryLang(
     }
 }
 
+function passesRangeFilter(filename: string, chMin: number | null, chMax: number | null): boolean {
+    if (chMin === null && chMax === null) { return true; }
+    const num = extractChapterNumber(filename);
+    if (num === null) { return true; }
+    if (chMin !== null && num < chMin) { return false; }
+    if (chMax !== null && num > chMax) { return false; }
+    return true;
+}
+
 function collectChapterFiles(
     actDir: string,
     _lang:  string,
@@ -113,14 +124,9 @@ function collectChapterFiles(
     if (!fs.existsSync(actDir)) { return; }
     for (const entry of fs.readdirSync(actDir, { withFileTypes: true })) {
         if (!entry.isFile() || !entry.name.endsWith('.md')) { continue; }
-        if (chMin !== null || chMax !== null) {
-            const num = extractChapterNumber(entry.name);
-            if (num !== null) {
-                if (chMin !== null && num < chMin) { continue; }
-                if (chMax !== null && num > chMax) { continue; }
-            }
+        if (passesRangeFilter(entry.name, chMin, chMax)) {
+            out.push(path.join(actDir, entry.name));
         }
-        out.push(path.join(actDir, entry.name));
     }
 }
 
@@ -139,7 +145,7 @@ function collectAllMd(dir: string, out: string[]): void {
 
 /** Split a file into paragraph-level chunks (separated by blank lines). */
 export function chunkFile(absPath: string, root: string): Chunk[] {
-    const relPath = path.relative(root, absPath).replace(/\\/g, '/');
+    const relPath = path.relative(root, absPath).replaceAll('\\', '/');
     const raw     = fs.readFileSync(absPath, 'utf-8');
     const lines   = raw.split(/\r?\n/);
     const chunks: Chunk[] = [];
@@ -203,18 +209,18 @@ function chunkId(relPath: string, start: number, end: number, text: string): str
 
 function extractChapterNumber(filename: string): number | null {
     const m = /(\d+)/.exec(filename);
-    return m ? parseInt(m[1], 10) : null;
+    return m ? Number.parseInt(m[1], 10) : null;
 }
 
 function parseChapterRange(range: string | undefined): [number | null, number | null] {
     if (!range) { return [null, null]; }
     const parts = range.split('-');
-    const min   = parseInt(parts[0], 10);
-    const max   = parts.length > 1 ? parseInt(parts[1], 10) : min;
-    return [isNaN(min) ? null : min, isNaN(max) ? null : max];
+    const min   = Number.parseInt(parts[0], 10);
+    const max   = parts.length > 1 ? Number.parseInt(parts[1], 10) : min;
+    return [Number.isNaN(min) ? null : min, Number.isNaN(max) ? null : max];
 }
 
-function resolvedLangs(language: Language | undefined): string[] | null {
+function resolvedLangs(language: string | undefined): string[] | null {
     if (!language || language === 'ALL') { return null; }
     return [language.toUpperCase()];
 }

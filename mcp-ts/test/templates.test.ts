@@ -302,9 +302,9 @@ describe('renderTemplate — continuity skill', () => {
     expect(result).toContain('## Rules');
   });
 
-  it('references retrieve_context and get_notes tools', () => {
+  it('references search and get_notes tools', () => {
     const result = renderTemplate('continuity', makeCtx());
-    expect(result).toContain('retrieve_context');
+    expect(result).toContain('search');
     expect(result).toContain('get_notes');
   });
 });

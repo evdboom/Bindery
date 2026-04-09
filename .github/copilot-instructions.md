@@ -37,17 +37,24 @@ mcpb/              ← Claude Desktop extension package (mcpb manifest + bundled
 
 The MCP server is published to the Anthropic MCPB directory. These rules are hard requirements to stay publishable.
 
-### Every tool MUST have exactly one annotation
+### Every tool MUST have the correct annotations
+Readonly/destructive are mutaully exclusive categories that determine how the tool is presented to users and whether it can be called by read-only agents. Every tool MUST have exactly one of these annotations:
 ```typescript
 annotations: { readOnlyHint: true }    // reads only — never writes files
 annotations: { destructiveHint: true } // writes, creates, or modifies files
 ```
-No annotation = mcpb submission rejection. Both annotations on one tool = also wrong.
+Tools that call external tools/api (eg Ollama) should be annotated with the openWorldHint, but this is required for MCPB submission in addition to one of the above, eg a readonly tool that calls an external search API would have:
+```typescript
+annotations: { readOnlyHint: true, openWorldHint: true }     // reads only — never writes files, calls external API or tool
+```
+
+No annotation = mcpb submission rejection. 
 
 | Tool behavior | Annotation |
 |---|---|
 | list, get, read, search, status checks | `readOnlyHint: true` |
 | write, append, overwrite, format, commit, create | `destructiveHint: true` |
+| calls external API or tool (eg search API) | `openWorldHint: true` (in addition to one of the above) |
 
 ### Adding a new tool — checklist
 When adding a tool, touch **all four** of these: missing any breaks one surface.
