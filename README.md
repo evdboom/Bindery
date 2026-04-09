@@ -36,14 +36,16 @@ See [vscode-ext/README.md](vscode-ext/README.md) for full documentation.
 
 ### [mcp-ts/](mcp-ts/) — MCP Server (Node.js / TypeScript)
 
-A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes your book project to AI assistants. Pure Node.js — no Rust, no WSL, no extra installs.
+A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes your book project to AI assistants. Pure Node.js..
 
 - **BM25 full-text search** — fast lexical search across all chapters and notes via [MiniSearch](https://lucaong.github.io/minisearch/)
 - **Optional semantic search** — set `BINDERY_OLLAMA_URL` for semantic reranking, or enable a full semantic index for precomputed embedding search
-- **Tools** — `list_books`, `identify_book`, `search`, `get_chapter`, `get_overview`, `get_notes`, `get_text`, `get_review_text`, `git_snapshot`, `format`, `index_build`, `index_status`, `health`
-- **Version tracking** — `get_review_text` shows uncommitted changes as a structured diff; `git_snapshot` saves progress as a git commit scoped to story/notes/arc folders. Git is auto-initialised during workspace setup if available
+- **Version tracking** — `get_review_text` shows uncommitted changes as a structured diff; `git_snapshot` saves progress as a git commit scoped to story/notes/arc folders. Git is auto-initialized during workspace setup if available
 - **Multi-book support** — configure one or more books via `--book Name=path` CLI args or `BINDERY_BOOKS` env var; every tool call specifies which book to use by name (agents never see raw paths)
 - **Container/mount aware** — agents in sandboxed environments (e.g. Cowork) can call `identify_book` with their working directory to discover their book name, even when mount paths differ from the configured paths
+
+See [mcpb/README.md](vscode-ext/README.md) for full documentation and tool list.
+
 
 ### [mcpb/](mcpb/) — Claude Desktop Extension
 
@@ -102,7 +104,7 @@ The VS Code extension works standalone — no server setup needed for typography
 
 ## Privacy
 
-Bindery stays within your workspace, only if the optional Ollama URL is filled for the MCP server will texts be sent to Ollama for embedding / semantic search. The full privacy policy can be viewed at [https://www.option-a.tech/projects/bindery/privacy](https://www.option-a.tech/projects/bindery/privacy)
+Bindery stays within your workspace, only if the optional Ollama URL is filled for the MCP server will texts be sent to Ollama for embedding / semantic search. The full privacy policy can be viewed at [https://evdboom.nl/projects/bindery/privacy](https://evdboom.nl/projects/bindery/privacy)
 
 ## License
 
