@@ -7,8 +7,7 @@ Works with any Markdown book project structured with the Bindery VS Code extensi
 ## Features
 
 - **Chapter navigation** — jump to any chapter by number and language
-- **Full-text search** — BM25 ranked search across all story and notes files
-- **Context retrieval** — "where did X happen" queries with ranked passages
+- **Full-text search** — lexical BM25, semantic rerank, or full semantic search across the book corpus
 - **Translation management** — list, look up, add, and update translation and dialect substitution rules
 - **Session memory** — append, list, and compact persistent cross-session notes in `.bindery/memories/`
 - **Workspace setup** — create or update `.bindery/settings.json` and scaffold AI instruction files
@@ -32,6 +31,8 @@ To install manually without using published Claude Connectors
 |---------|----------|-------------|
 | Books | Yes | Semicolon-separated `Name=path` pairs pointing to book projects |
 | Ollama URL | No | URL for Ollama instance (enables semantic reranking, see [https://docs.ollama.com/quickstart](https://docs.ollama.com/quickstart)) |
+| Build full semantic index | No | `true` to let `index_build` precompute embeddings for `full_semantic` search |
+| Default search mode | No | `lexical`, `semantic_rerank`, or `full_semantic` |
 
 **Books** example: `MyBook=C:\Users\Me\MyBook;MyNovel=D:\Writing\MyNovel`
 
@@ -48,8 +49,9 @@ all acts and chapters with titles.
 
 > "Where does Landa first meet the Keeper?"
 
-Claude calls `retrieve_context` with the query and returns the most relevant
-passages with file paths and line numbers, letting you jump straight to the scene.
+Claude calls `search` with the query and returns the most relevant passages with file paths and line numbers, letting you jump straight to the scene.
+
+If `full_semantic` is enabled and the semantic index is stale, Claude should call `index_status`, then recommend `index_build` before relying on semantic results.
 
 ### Add a dialect substitution rule
 
@@ -114,9 +116,7 @@ are saved back with `add_translation` (glossary) or `add_dialect` (dialect subst
 > "Check chapter 8 for consistency errors — character descriptions and world rules"
 
 Claude calls `get_chapter` to read the chapter, `get_notes` to load character
-profiles and world rules, then uses `retrieve_context` and `search` to verify
-specific details against earlier chapters. Results are presented in a table with
-issue type, location, and the reference that contradicts it.
+profiles and world rules, then uses `search` to verify specific details against earlier chapters. Results are presented in a table with issue type, location, and the reference that contradicts it.
 
 ## Tools reference
 
@@ -127,14 +127,13 @@ issue type, location, and the reference that contradicts it.
 | `health` | Server status: settings, index, embedding backend |
 | `init_workspace` | Create or update `.bindery/settings.json` and `translations.json` with smart defaults |
 | `setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md) and Claude skill templates |
-| `index_build` | Build or rebuild the full-text search index |
-| `index_status` | Show index chunk count and build time |
+| `index_build` | Build or rebuild the lexical index and, when enabled, the semantic embedding index |
+| `index_status` | Show lexical and semantic index status, build times, and stale hints |
 | `get_text` | Read any file by relative path, with optional line range |
 | `get_chapter` | Full chapter content by number and language |
 | `get_overview` | Chapter structure — acts, chapters, titles |
-| `get_notes` | Notes/ and Details_*.md files, filterable by category or name |
-| `search` | BM25 full-text search with ranked snippets |
-| `retrieve_context` | Semantic passage retrieval for "where did X happen" queries |
+| `get_notes` | Notes/ files, filterable by category or name |
+| `search` | Search in lexical, semantic-rerank, or full-semantic mode; semantic modes fall back to lexical with warnings |
 | `format` | Apply typography formatting to a file or folder |
 | `get_review_text` | Structured git diff with optional auto-staging |
 | `git_snapshot` | Git commit of story, notes, and arc changes |

@@ -62,7 +62,9 @@ Bindery includes a bundled MCP server that makes your book's chapters, notes, an
 
 **Claude for VS Code / Codex** — run `Bindery: Register MCP Server` once per workspace. This writes `.vscode/mcp.json` pointing to the bundled server. Both extensions pick this up automatically on next reload.
 
-Available tools: `bindery_health`, `bindery_index_build`, `bindery_index_status`, `bindery_get_text`, `bindery_get_chapter`, `bindery_get_overview`, `bindery_get_notes`, `bindery_search`, `bindery_retrieve_context`, `bindery_format`.
+Available tools: `bindery_health`, `bindery_index_build`, `bindery_index_status`, `bindery_get_text`, `bindery_get_chapter`, `bindery_get_overview`, `bindery_get_notes`, `bindery_search`, `bindery_format`.
+
+`bindery_search` supports `lexical`, `semantic_rerank`, and `full_semantic` modes. Semantic modes fall back to lexical results with a warning if Ollama or the semantic index is unavailable.
 
 ### File Discovery
 

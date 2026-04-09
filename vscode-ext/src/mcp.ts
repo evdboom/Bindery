@@ -9,8 +9,8 @@
  */
 
 import * as vscode from 'vscode';
-import * as fs     from 'fs';
-import * as path   from 'path';
+import * as fs     from 'node:fs';
+import * as path   from 'node:path';
 
 // ─── Types mirrored from mcp-ts ───────────────────────────────────────────────
 
@@ -18,8 +18,7 @@ interface GetTextInput    { identifier: string; startLine?: number; endLine?: nu
 interface GetChapterInput { chapterNumber: number; language: string }
 interface GetOverviewInput { language?: string; act?: number }
 interface GetNotesInput   { category?: string; name?: string }
-interface SearchInput     { query: string; language?: string; maxResults?: number }
-interface RetrieveInput   { query: string; language?: string; topK?: number }
+interface SearchInput     { query: string; language?: string; maxResults?: number; mode?: 'lexical' | 'semantic_rerank' | 'full_semantic' }
 interface FormatInput     { filePath?: string; dryRun?: boolean; noRecurse?: boolean }
 interface GetReviewTextInput { language?: string; contextLines?: number; autoStage?: boolean }
 interface GitSnapshotInput   { message?: string }
@@ -36,14 +35,13 @@ interface ChapterStatusUpdateInput { chapters: Array<{ number: number; title: st
 
 interface McpTools {
     toolHealth:           (root: string) => string;
-    toolIndexBuild:       (root: string) => string;
+    toolIndexBuild:       (root: string) => Promise<string>;
     toolIndexStatus:      (root: string) => string;
     toolGetText:          (root: string, args: GetTextInput) => string;
     toolGetChapter:       (root: string, args: GetChapterInput) => string;
     toolGetOverview:      (root: string, args: GetOverviewInput) => string;
     toolGetNotes:         (root: string, args: GetNotesInput) => string;
     toolSearch:           (root: string, args: SearchInput) => Promise<string>;
-    toolRetrieveContext:  (root: string, args: RetrieveInput) => Promise<string>;
     toolFormat:           (root: string, args: FormatInput) => string;
     toolGetReviewText:    (root: string, args: GetReviewTextInput) => string;
     toolGitSnapshot:      (root: string, args: GitSnapshotInput) => string;
@@ -105,7 +103,7 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
         }),
 
         vscode.lm.registerTool('bindery_index_build', {
-            invoke: async (_opts, _token) => ok(t.toolIndexBuild(requireRoot())),
+            invoke: async (_opts, _token) => ok(await t.toolIndexBuild(requireRoot())),
         }),
 
         vscode.lm.registerTool('bindery_index_status', {
@@ -130,10 +128,6 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<SearchInput>('bindery_search', {
             invoke: async (opts, _token) => ok(await t.toolSearch(requireRoot(), opts.input)),
-        }),
-
-        vscode.lm.registerTool<RetrieveInput>('bindery_retrieve_context', {
-            invoke: async (opts, _token) => ok(await t.toolRetrieveContext(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<FormatInput>('bindery_format', {

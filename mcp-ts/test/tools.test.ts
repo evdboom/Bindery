@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -55,8 +55,8 @@ describe('mcp tools', () => {
     const root = makeRoot();
     write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Arrival\nThe red comet crossed the sky.\n');
 
-    const build = toolIndexBuild(root);
-    expect(build).toContain('Index built:');
+    const build = await toolIndexBuild(root);
+    expect(build).toContain('Lexical index built:');
 
     const result = await toolSearch(root, { query: 'red comet', language: 'EN', maxResults: 3 });
     expect(result).toContain('Chapter 1.md');
@@ -104,7 +104,7 @@ describe('mcp tools', () => {
 
     const zipText = fs.readFileSync(zipPath).toString('latin1');
     expect(zipText).toContain('read_aloud/SKILL.md');
-    expect(zipText).not.toContain('read_aloud\\SKILL.md');
+    expect(zipText).not.toContain(String.raw`read_aloud\SKILL.md`);
   });
 
   it('health skips claude files when aiTargets excludes claude', () => {
@@ -135,12 +135,16 @@ describe('mcp tools', () => {
     const health = JSON.parse(healthRaw) as {
       ai_version_outdated?: boolean;
       ai_versions_outdated?: Array<{ file: string }>;
+      default_search_mode?: string;
+      semantic_index?: string;
     };
 
     // claude target is not in aiTargets, so its files should not be reported
     expect(health.ai_versions_outdated?.some(x => x.file === '.claude/skills/review/SKILL.md')).toBeFalsy();
     // non-Claude health info (settings presence) is still reported
     expect(JSON.parse(healthRaw)).toHaveProperty('settings', 'present');
+    expect(health).toHaveProperty('default_search_mode', 'lexical');
+    expect(health).toHaveProperty('semantic_index');
   });
 
   it('health includes claude files when aiTargets includes claude', () => {

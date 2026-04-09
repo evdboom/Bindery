@@ -4,9 +4,9 @@
  * Ported from mcp-rust/src/merge.rs
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as cp from 'child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as cp from 'node:child_process';
 import { updateTypography } from './format';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -14,6 +14,8 @@ import { updateTypography } from './format';
 export interface LanguageConfig {
     code: string;
     folderName: string;
+    /** Optional per-language export title from settings.json languages[]. */
+    bookTitle?: string;
     chapterWord: string;
     actPrefix: string;
     prologueLabel: string;
@@ -118,9 +120,6 @@ const FIRST_H1_RE = /^(\s*)#\s+/m;
 /** Matches heading line for image insertion */
 const HEADING_LINE_RE = /^#[^\n]*\n/m;
 
-/** Matches book title row in translation notes */
-const BOOK_TITLE_RE = /^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*Name of the book\s*\|\s*$/m;
-
 // ─── UK Conversion (US → UK) ───────────────────────────────────────────────
 
 export interface UkReplacement {
@@ -209,7 +208,7 @@ function applyCasing(source: string, target: string): string {
 }
 
 function escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return value.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export function getBuiltInUkReplacements(): UkReplacement[] {
@@ -266,7 +265,7 @@ function convertUsToUkText(text: string, customReplacements: UkReplacement[] = [
             continue;
         }
 
-        const converted = line.replace(replacementData.pattern, (match) => {
+        const converted = line.replaceAll(replacementData.pattern, (match) => {
             const replacement = replacementData.map.get(match.toLowerCase());
             if (!replacement) {
                 return match;
@@ -366,13 +365,13 @@ function parseActFolder(name: string): ActInfo | undefined {
 
 function extractChapterNum(filename: string): number | undefined {
     const m = CHAPTER_NUM_RE.exec(filename);
-    return m ? parseInt(m[1], 10) : undefined;
+    return m ? Number.parseInt(m[1], 10) : undefined;
 }
 
 function generateSlug(text: string): string {
     return text
         .toLowerCase()
-        .replace(SLUG_CLEAN_RE, '')
+        .replaceAll(SLUG_CLEAN_RE, '')
         .trim()
         .split(/\s+/)
         .join('-');
@@ -383,7 +382,7 @@ function demoteH1ToH2(text: string): string {
 }
 
 function collapseBlankLines(text: string): string {
-    return text.replace(BLANK_LINES_RE, '\n\n');
+    return text.replaceAll(BLANK_LINES_RE, '\n\n');
 }
 
 function formatActTitle(act: ActInfo, lang: LanguageConfig): string {
@@ -577,7 +576,7 @@ function imageMarkdownFor(file: OrderedFile, options: MergeOptions): string | un
 
     const imagePath = path.join(options.root, 'images', imageName);
     if (!fs.existsSync(imagePath)) { return undefined; }
-    return `![](${imagePath.replace(/\\/g, '/')})\n\n`;
+    return `![](${imagePath.replaceAll(/\\/g, '/')})\n\n`;
 }
 
 function insertImageAfterHeading(content: string, imageMd: string): string {
@@ -592,7 +591,7 @@ function insertImageAfterHeading(content: string, imageMd: string): string {
 function coverMarkdown(options: MergeOptions): string | undefined {
     const coverPath = path.join(options.root, options.storyFolder, options.language.folderName, 'cover.jpg');
     if (!fs.existsSync(coverPath)) { return undefined; }
-    return `![](${coverPath.replace(/\\/g, '/')})\n\n`;
+    return `![](${coverPath.replaceAll(/\\/g, '/')})\n\n`;
 }
 
 function buildPandocContent(files: OrderedFile[], options: MergeOptions, outputType: OutputType): string {
@@ -647,20 +646,12 @@ function buildPandocContent(files: OrderedFile[], options: MergeOptions, outputT
 
 // ─── Pandoc Invocation ──────────────────────────────────────────────────────
 
-function getBookTitle(root: string, lang: LanguageConfig): string {
-    const notesPath = path.join(root, 'Notes', 'Details_Translation_notes.md');
-    if (!fs.existsSync(notesPath)) { return 'Book'; }
+function resolveBookTitle(options: MergeOptions): string {
+    const fromOptions = options.bookTitle?.trim();
+    if (fromOptions) { return fromOptions; }
 
-    try {
-        const content = fs.readFileSync(notesPath, 'utf-8');
-        const m = BOOK_TITLE_RE.exec(content);
-        if (m) {
-            const useEnglishTitle = lang.code.toUpperCase() === 'EN' || lang.code.toUpperCase() === 'UK';
-            const idx = useEnglishTitle ? 1 : 2;
-            const title = m[idx]?.trim();
-            if (title) { return title; }
-        }
-    } catch { /* ignore */ }
+    const fromLanguage = options.language.bookTitle?.trim();
+    if (fromLanguage) { return fromLanguage; }
 
     return 'Book';
 }
@@ -874,8 +865,8 @@ export async function mergeBook(options: MergeOptions): Promise<MergeResult> {
             await checkPandoc(options.pandocPath);
         }
 
-        // Determine book title
-        const title = options.bookTitle || getBookTitle(options.root, options.language);
+        // Determine book title from settings-driven options only
+        const title = resolveBookTitle(options);
 
         for (const outputType of options.outputTypes) {
             const outputPath = path.join(outputDir, `${baseName}.${outputType}`);

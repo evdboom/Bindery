@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "MCP server for Bindery markdown book projects — chapter navigation, search, typography formatting, and export.",
   "main": "out/index.js",
+  "files": [
+    "out"
+  ],
   "bin": {
     "bindery-mcp": "./out/index.js"
   },

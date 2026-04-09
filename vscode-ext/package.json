@@ -251,7 +251,7 @@
         "displayName": "Bindery: Build Index",
         "toolReferenceName": "binderyIndexBuild",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Build or rebuild the full-text search index for the book workspace.",
+        "modelDescription": "Build or rebuild the lexical search index and, when enabled, the semantic embedding index for the book workspace.",
         "inputSchema": {
           "type": "object",
           "properties": {}
@@ -265,7 +265,7 @@
         "displayName": "Bindery: Index Status",
         "toolReferenceName": "binderyIndexStatus",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Show current index metadata: chunk count and build time.",
+        "modelDescription": "Show lexical and semantic index metadata, including stale-status hints.",
         "inputSchema": {
           "type": "object",
           "properties": {}
@@ -355,7 +355,7 @@
         "displayName": "Bindery: Get Notes",
         "toolReferenceName": "binderyGetNotes",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Read from Notes/ and Details_*.md, optionally filtered by category or character name.",
+        "modelDescription": "Read from Notes/, optionally filtered by category or character name.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -376,7 +376,7 @@
         "displayName": "Bindery: Search",
         "toolReferenceName": "binderySearch",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Full-text BM25 search across all story and notes files. Returns ranked snippets with file path and line numbers.",
+        "modelDescription": "Search in lexical, semantic-rerank, or full-semantic mode. Semantic modes fall back to lexical results with warnings if prerequisites are unavailable.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -388,33 +388,14 @@
             },
             "maxResults": {
               "type": "number"
-            }
-          },
-          "required": [
-            "query"
-          ]
-        }
-      },
-      {
-        "name": "bindery_retrieve_context",
-        "tags": [
-          "bindery"
-        ],
-        "displayName": "Bindery: Retrieve Context",
-        "toolReferenceName": "binderyRetrieveContext",
-        "canBeReferencedInPrompt": true,
-        "modelDescription": "Retrieve the most relevant passages for a query. Best for 'where did X happen' or 'what did character Y say about Z'.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string"
             },
-            "language": {
-              "type": "string"
-            },
-            "topK": {
-              "type": "number"
+            "mode": {
+              "type": "string",
+              "enum": [
+                "lexical",
+                "semantic_rerank",
+                "full_semantic"
+              ]
             }
           },
           "required": [

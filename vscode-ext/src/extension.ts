@@ -12,21 +12,21 @@
  */
 
 import * as vscode from 'vscode';
-import * as fs     from 'fs';
-import * as path   from 'path';
-import { execSync } from 'child_process';
+import * as fs     from 'node:fs';
+import * as path   from 'node:path'
+import { execSync } from 'node:child_process'
 import { updateTypography }                    from './format';
 import {
     mergeBook, checkPandoc, getBuiltInUkReplacements,
     type LanguageConfig, type DialectConfig, type OutputType, type MergeOptions, type UkReplacement,
 } from './merge';
 import {
-    readWorkspaceSettings, readTranslations, writeTranslations,
+    readWorkspaceSettings, readTranslations,
     getBinderyFolder, getSettingsPath, getTranslationsPath,
     getBookTitleForLang, getSubstitutionRules, getIgnoredWords,
     upsertSubstitutionRule, upsertGlossaryRule, addIgnoredWords,
-    getDefaultLanguage, getDialectsForLanguage, getGlossaryRules,
-    type WorkspaceSettings, type TranslationsFile, type TranslationEntry,
+    getDefaultLanguage, getDialectsForLanguage,
+    type WorkspaceSettings, type TranslationsFile,
 } from './workspace';
 import {
     ALL_SKILLS,
@@ -112,7 +112,7 @@ function getEffectiveConfig(wsSettings: WorkspaceSettings | null): EffectiveConf
 /** True if filePath is inside <root>/<storyFolder>/. */
 function isInsideStoryFolder(filePath: string, root: string, storyFolder: string): boolean {
     // Normalize separators so Windows paths compare correctly
-    const norm  = (p: string) => p.replace(/\\/g, '/');
+    const norm  = (p: string) => p.replaceAll(/\\/g, '/');
     const story = norm(path.join(root, storyFolder));
     const file  = norm(filePath);
     return file.startsWith(story + '/');
@@ -293,7 +293,7 @@ async function initWorkspaceCommand() {
     const detectedLangs = detectLanguageFolders(path.join(root, storyFolder));
     const languages     = detectedLangs.length > 0 ? detectedLangs : [DEFAULT_LANGUAGE];
 
-    const slug: string = title.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/, '') || 'Book';
+    const slug: string = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Book';
 
     const settings: WorkspaceSettings = {
         ...(title    ? { bookTitle: title }             : {}),
@@ -441,8 +441,8 @@ async function addDialectCommand() {
     let sourceLang: LanguageConfig | undefined;
     if (editor) {
         const sf   = wsSettings?.storyFolder ?? 'Story';
-        const file = editor.document.uri.fsPath.replace(/\\/g, '/');
-        const base = path.join(root, sf).replace(/\\/g, '/');
+        const file = editor.document.uri.fsPath.replaceAll(/\\/g, '/');
+        const base = path.join(root, sf).replaceAll(/\\/g, '/');
         if (file.startsWith(base + '/')) {
             const folderName = file.slice(base.length + 1).split('/')[0];
             sourceLang = wsSettings?.languages?.find(

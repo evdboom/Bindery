@@ -85,7 +85,7 @@ function languageSection(ctx: TemplateContext): string {
 // ─── Top-level templates ──────────────────────────────────────────────────────
 
 function claudeMd(ctx: TemplateContext): string {
-    const { title, author, description, genre, storyFolder, notesFolder, arcFolder, memoriesFolder } = ctx;
+    const { title, author, description, genre, storyFolder, notesFolder, arcFolder } = ctx;
     const lines: string[] = [
         `# Claude — ${title}`,
         '',
@@ -95,9 +95,8 @@ function claudeMd(ctx: TemplateContext): string {
     if (description) { lines.push(description); }
     if (ctx.audience){ lines.push(audienceNote(ctx)); }
     if (author)      { lines.push(`Author: ${author}.`); }
-    lines.push(languageSection(ctx));
-
     lines.push(
+        languageSection(ctx),
         '## Start of session',
         '1. Use /read-in at the start of a session to load context and get your bearings.',
         '2. Run `health` from the Bindery MCP and check `ai_versions_outdated`.',
@@ -156,9 +155,8 @@ function claudeMd(ctx: TemplateContext): string {
         '| `get_text` | Read any file by relative path, with optional line range |',
         '| `get_chapter` | Full chapter content by number and language |',
         '| `get_overview` | Chapter structure — acts, chapters, titles |',
-        '| `get_notes` | Notes/ and Details_*.md files, filterable by category or name |',
-        '| `search` | BM25 full-text search with ranked snippets |',
-        '| `retrieve_context` | Semantic passage retrieval for "where did X happen" queries |',
+        '| `get_notes` | Notes/ files, filterable by category or name |',
+        '| `search` | BM25 full-text search with ranked snippets, optional semantic ranking |',
         '| `format` | Apply typography formatting to a file or folder |',
         '| `get_review_text` | Structured git diff with optional auto-staging |',
         '| `git_snapshot` | Git commit of story, notes, and arc changes |',
@@ -199,7 +197,6 @@ function copilotMd(ctx: TemplateContext): string {
         '## Writing guidelines',
         '- HTML comments `<!-- -->` in chapter files are writer notes — treat as context only.',
         '- Quotation marks and dashes are managed by the Bindery VS Code extension. Do not normalize them.',
-        '- Check `Notes/Details_Translation_notes.md` before using or translating world-specific terms.',
     );
     if (ctx.audience) {
         lines.push(`- Content targets ${ctx.audience}. Keep vocabulary accessible and themes appropriate.`);
@@ -218,10 +215,8 @@ function cursorRules(ctx: TemplateContext): string {
         '',
         '## Context files to read',
         `- \`${memoriesFolder}/global.md\` — cross-chapter decisions (read at start of session)`,
-        `- \`${arcFolder}/Overall.md\` — full story arc`,
-        `- \`${notesFolder}/Details_Characters.md\` — character profiles`,
-        `- \`${notesFolder}/Details_World_and_Magic.md\` — world rules`,
-        `- \`${notesFolder}/Details_Translation_notes.md\` — term translations`,
+        `- \`${arcFolder}/\` — story arc files for overall and per-act structure and beats`,
+        `- \`${notesFolder}/\` — story notes, like character profiles and world rules`,        
         '',
         '## Rules',
         '- HTML comments `<!-- -->` in chapter files are writer notes. Treat as context, not story content.',
@@ -242,12 +237,12 @@ function agentsMd(ctx: TemplateContext): string {
     if (description) { lines.push(description); }
     if (ctx.audience){ lines.push(audienceNote(ctx)); }
     if (author)      { lines.push(`Author: ${author}.`); }
-    lines.push(languageSection(ctx), '');
     lines.push(
+        languageSection(ctx), 
+        '',
         '## Start of session',
         `1. Read \`${memoriesFolder}/global.md\` for cross-chapter context.`,
         `2. If working on a specific chapter, read \`${memoriesFolder}/chXX.md\` if it exists.`,
-        `3. Check \`${notesFolder}/Details_Translation_notes.md\` before using or translating world-specific terms.`,
         '',
         '## Story files',
         `- Chapter files are \`.md\` files in \`${storyFolder}/\`, organized in act subfolders.`,
@@ -265,11 +260,8 @@ function agentsMd(ctx: TemplateContext): string {
         '## Key reference files',
         '| File | Contains |',
         '|---|---|',
-        `| \`${arcFolder}/Overall.md\` | Full story arc |`,
-        `| \`${arcFolder}/Act_I_*.md\`, \`Act_II_*.md\`, \`Act_III_*.md\` | Per-act arc details |`,
-        `| \`${notesFolder}/Details_Characters.md\` | Character profiles |`,
-        `| \`${notesFolder}/Details_World_and_Magic.md\` | World rules |`,
-        `| \`${notesFolder}/Details_Translation_notes.md\` | EN ↔ translation term table |`,
+        `| \`${arcFolder}/\` | Story arc files for overall and per-act structure and beats |`,        
+        `| \`${notesFolder}/\` | Story notes, like character profiles and world rules |`,
         `| \`${memoriesFolder}/global.md\` | Cross-session decisions |`,
     );
     return lines.join('\n') + '\n';
@@ -305,7 +297,7 @@ Use these Bindery MCP tools to gather context:
 - \`get_review_text(language)\` — get the git diff of uncommitted changes (for "review my changes")
 - \`get_chapter(chapterNumber, language)\` — read the full chapter text
 - \`get_notes(category, name)\` — look up character profiles (\`category: "Characters"\`) or world rules
-- \`retrieve_context(query, language)\` — find related passages across the book
+- \`search(query, language)\` — find related passages across the book
 - \`git_snapshot(message)\` — after a successful review, suggest saving a snapshot
 
 ## Steps
@@ -369,7 +361,7 @@ User says \`/brainstorm\`, "I'm stuck", "help me think of ideas", or "Am I stuck
 
 ## Tools
 Use these Bindery MCP tools to gather context:
-- \`retrieve_context(query, language)\` — find thematic parallels and related moments across the book
+- \`search(query, language)\` — find thematic parallels and related moments across the book
 - \`get_notes(category, name)\` — look up character profiles, world rules, or equipment details
 - \`get_chapter(chapterNumber, language)\` — read a specific chapter for reference
 - \`search(query, language)\` — search for specific terms or phrases across the book
@@ -379,7 +371,7 @@ Use these Bindery MCP tools to gather context:
 1. Read \`${memoriesFolder}/global.md\` and the relevant arc file from \`${arcFolder}/\`.
 2. If chapter specific, read \`${memoriesFolder}/chXX.md\` if it exists.
 3. If character-focused, use \`get_notes(category: "Characters")\` for character profiles.
-4. Use \`retrieve_context\` to find related moments or themes already in the book.
+4. Use \`search\` to find related moments or themes already in the book.
 5. Generate 3-5 concrete ideas that fit the arc and feel true to the characters.
 
 ## Output format
@@ -569,7 +561,7 @@ User says \`/continuity\`, "check continuity", or "check chapter X for errors".
 Use these Bindery MCP tools:
 - \`get_chapter(chapterNumber, language)\` — read the chapter (and previous chapter for timeline checks)
 - \`get_notes(category, name)\` — look up character profiles or world rules
-- \`retrieve_context(query, language)\` or \`search(query, language)\` — find earlier mentions of a character detail or event
+- \`search(query, language)\` — find earlier mentions of a character detail or event
 - \`search(query, language)\` — exact-match search for names, places, or specific terms
 - \`memory_list\` — check whether a chapter-specific memory file exists (\`chXX.md\`)
 
@@ -579,7 +571,7 @@ Use these Bindery MCP tools:
 2. Use \`get_text\` to read \`${memoriesFolder}/global.md\`. Use \`memory_list\` to check if a chapter-specific memory file (\`chXX.md\`) exists; if so, read it with \`get_text\` too. Use \`get_notes(category: "Characters")\` for character profiles.
 3. For world rules: use \`get_notes(category: "World")\`.
 4. For timeline: also use \`get_chapter\` to read the previous chapter.
-5. Use \`retrieve_context\` or \`search\` to verify specific details against earlier chapters.
+5. Use \`search\` to verify specific details against earlier chapters.
 
 ## Output format
 

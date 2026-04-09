@@ -11,8 +11,7 @@
   "keywords": ["writing", "search", "book", "markdown", "bindery"],
   "license": "MIT",
   "privacy_policies": [
-    "https://www.option-a.tech/projects/bindery/privacy",
-    "https://github.com/evdboom/Bindery/wiki/Privacy-policy"
+    "https://www.option-a.tech/projects/bindery/privacy"
   ],
   "server": {
     "type": "node",
@@ -22,7 +21,9 @@
       "args": ["${__dirname}/server/index.js"],
       "env": {
         "BINDERY_BOOKS": "${user_config.books}",
-        "BINDERY_OLLAMA_URL": "${user_config.ollama_url}"
+        "BINDERY_OLLAMA_URL": "${user_config.ollama_url}",
+        "BINDERY_ENABLE_SEMANTIC_INDEX": "${user_config.enable_semantic_index}",
+        "BINDERY_DEFAULT_SEARCH_MODE": "${user_config.default_search_mode}"
       }
     }
   },
@@ -40,6 +41,20 @@
       "description": "If you run Ollama locally, set this to enable semantic reranking (e.g. http://localhost:11434). Leave empty to use fast lexical-only search, which works well for most books.",
       "default": "",
       "required": false
+    },
+    "enable_semantic_index": {
+      "type": "string",
+      "title": "Build full semantic index",
+      "description": "Set to true to let index_build precompute Ollama embeddings for full semantic search. Only applies when Ollama URL is configured.",
+      "default": "false",
+      "required": false
+    },
+    "default_search_mode": {
+      "type": "string",
+      "title": "Default search mode",
+      "description": "Default search behavior: lexical, semantic_rerank, or full_semantic. Semantic modes fall back to lexical with a warning if prerequisites are unavailable.",
+      "default": "lexical",
+      "required": false
     }
   },
   "tools": [
@@ -48,14 +63,13 @@
     { "name": "health",           "description": "Check server status: active book, settings, search index, and embedding backend." },
     { "name": "init_workspace",   "description": "Create or update .bindery/settings.json and translations.json. All arguments optional — smart defaults used if omitted. Detects language folders automatically. Safe to run on an existing workspace." },
     { "name": "setup_ai_files",   "description": "Generate AI assistant instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md) and Claude skill templates from settings. Run init_workspace first. Skips existing files unless overwrite: true." },
-    { "name": "index_build",      "description": "Build or rebuild the full-text search index for a book. Run once after cloning, then as needed." },
-    { "name": "index_status",     "description": "Show current index metadata: chunk count and build time." },
-    { "name": "retrieve_context", "description": "Find the most relevant passages for a query. Use for 'where did X happen' or 'what did character Y say about Z'." },
-    { "name": "search",           "description": "Full-text BM25 search across all story and notes files. Returns ranked snippets with file paths and line numbers." },
+    { "name": "index_build",      "description": "Build or rebuild the lexical search index and, when enabled, the semantic embedding index for a book." },
+    { "name": "index_status",     "description": "Show lexical and semantic index metadata, including stale-status hints." },
+    { "name": "search",           "description": "Search using lexical BM25, semantic reranking, or full semantic mode. Semantic modes fall back to lexical with a warning if Ollama or the semantic index is unavailable." },
     { "name": "get_text",         "description": "Read a source file by relative path, optionally restricted to a line range." },
     { "name": "get_chapter",      "description": "Fetch the full content of a chapter by number and language code (e.g. EN or NL)." },
     { "name": "get_overview",     "description": "List the chapter structure (acts, chapters, titles) for one or all languages." },
-    { "name": "get_notes",        "description": "Read from Notes/ and Details_*.md, optionally filtered by category or character name." },
+    { "name": "get_notes",        "description": "Read from Notes/, optionally filtered by category or character name." },
     { "name": "format",           "description": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder." },
     { "name": "get_review_text",  "description": "Structured git diff of uncommitted changes. Filter by language (EN, NL, ALL). Set autoStage to stage reviewed files." },
     { "name": "git_snapshot",     "description": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Use after writing sessions or reviews." },

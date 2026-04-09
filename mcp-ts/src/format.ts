@@ -18,36 +18,36 @@ const CLOSE_DOUBLE_AFTER_EM_DASH_RE = /—"([\s)\].,;:!?]|$)/gm;
 export function updateTypography(text: string): string {
     let result = text;
 
-    result = result.replace(/\.\.\./g, ELLIPSIS);
+    result = result.replaceAll(/\.\.\./g, ELLIPSIS);
 
     const protectedComments: string[] = [];
-    result = result.replace(COMMENT_RE, (match) => {
+    result = result.replaceAll(COMMENT_RE, (match) => {
         const placeholder = `\x00COMMENT${protectedComments.length}\x00`;
         protectedComments.push(match);
         return placeholder;
     });
 
     const protectedTriple = '\x00TRIPLE\x00';
-    result = result.replace(/---/g, protectedTriple);
-    result = result.replace(/--/g, EM_DASH);
-    result = result.replace(new RegExp(escapeRegex(protectedTriple), 'g'), '---');
+    result = result.replaceAll(/---/g, protectedTriple);
+    result = result.replaceAll(/--/g, EM_DASH);
+    result = result.replaceAll(new RegExp(escapeRegex(protectedTriple), 'g'), '---');
 
     for (let i = 0; i < protectedComments.length; i++) {
-        result = result.replace(`\x00COMMENT${i}\x00`, protectedComments[i]);
+        result = result.replaceAll(`\x00COMMENT${i}\x00`, protectedComments[i]);
     }
 
-    result = result.replace(CLOSE_DOUBLE_AFTER_EM_DASH_RE, (_match, after) => {
+    result = result.replaceAll(CLOSE_DOUBLE_AFTER_EM_DASH_RE, (_match, after) => {
         return `${EM_DASH}${CLOSE_DOUBLE}${after}`;
     });
 
-    result = result.replace(OPEN_DOUBLE_RE, (_match, before) => `${before}${OPEN_DOUBLE}`);
-    result = result.replace(/"/g, CLOSE_DOUBLE);
-    result = result.replace(OPEN_SINGLE_RE, (_match, before) => `${before}${OPEN_SINGLE}`);
-    result = result.replace(/'/g, CLOSE_SINGLE);
+    result = result.replaceAll(OPEN_DOUBLE_RE, (_match, before) => `${before}${OPEN_DOUBLE}`);
+    result = result.replaceAll(/"/g, CLOSE_DOUBLE);
+    result = result.replaceAll(OPEN_SINGLE_RE, (_match, before) => `${before}${OPEN_SINGLE}`);
+    result = result.replaceAll(/'/g, CLOSE_SINGLE);
 
     return result;
 }
 
 function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

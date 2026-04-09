@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('mcp index contract', () => {
@@ -25,14 +25,14 @@ describe('mcp index contract', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
 
     // Find the annotation block for each Ollama-capable tool and verify openWorldHint: true
-    const ollamaTools = ['search', 'retrieve_context'];
+    const ollamaTools = ['index_build', 'search'];
     for (const toolName of ollamaTools) {
       // Match registerTool('search', { ... annotations: { ... } ... })
       const toolBlockMatch = new RegExp(
-        `server\\.registerTool\\('${toolName}',[\\s\\S]*?annotations:\\s*\\{([^}]*)\\}`,
+        String.raw`server\.registerTool\('${toolName}',[\s\S]*?annotations:\s*\{([^}]*)\}`,
       ).exec(source);
       expect(toolBlockMatch, `Tool '${toolName}' not found in index.ts`).not.toBeNull();
-      const annotationsBody = toolBlockMatch![1];
+      const annotationsBody = toolBlockMatch?.[1] ?? '';
       expect(annotationsBody, `Tool '${toolName}' should have openWorldHint: true`).toMatch(/openWorldHint:\s*true/);
     }
   });
@@ -40,7 +40,7 @@ describe('mcp index contract', () => {
   it('tools that do not use Ollama do not declare openWorldHint: true', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
 
-    const ollamaToolNames = ['search', 'retrieve_context'];
+    const ollamaToolNames = new Set(['index_build', 'search']);
 
     // Extract all registerTool blocks and check non-Ollama tools lack openWorldHint
     const toolBlockRegex = /server\.registerTool\('([^']+)'[\s\S]*?annotations:\s*\{([^}]*)\}/g;
@@ -48,7 +48,7 @@ describe('mcp index contract', () => {
     while ((match = toolBlockRegex.exec(source)) !== null) {
       const name = match[1];
       const annotationsBody = match[2];
-      if (!ollamaToolNames.includes(name)) {
+      if (!ollamaToolNames.has(name)) {
         expect(
           /openWorldHint:\s*true/.test(annotationsBody),
           `Tool '${name}' should NOT have openWorldHint: true`,

@@ -39,8 +39,8 @@ See [vscode-ext/README.md](vscode-ext/README.md) for full documentation.
 A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes your book project to AI assistants. Pure Node.js — no Rust, no WSL, no extra installs.
 
 - **BM25 full-text search** — fast lexical search across all chapters and notes via [MiniSearch](https://lucaong.github.io/minisearch/)
-- **Optional Ollama reranking** — set `BINDERY_OLLAMA_URL` to enable semantic reranking on top of BM25
-- **Tools** — `list_books`, `identify_book`, `retrieve_context`, `search`, `get_chapter`, `get_overview`, `get_notes`, `get_text`, `get_review_text`, `git_snapshot`, `format`, `index_build`, `index_status`, `health`
+- **Optional semantic search** — set `BINDERY_OLLAMA_URL` for semantic reranking, or enable a full semantic index for precomputed embedding search
+- **Tools** — `list_books`, `identify_book`, `search`, `get_chapter`, `get_overview`, `get_notes`, `get_text`, `get_review_text`, `git_snapshot`, `format`, `index_build`, `index_status`, `health`
 - **Version tracking** — `get_review_text` shows uncommitted changes as a structured diff; `git_snapshot` saves progress as a git commit scoped to story/notes/arc folders. Git is auto-initialised during workspace setup if available
 - **Multi-book support** — configure one or more books via `--book Name=path` CLI args or `BINDERY_BOOKS` env var; every tool call specifies which book to use by name (agents never see raw paths)
 - **Container/mount aware** — agents in sandboxed environments (e.g. Cowork) can call `identify_book` with their working directory to discover their book name, even when mount paths differ from the configured paths
@@ -68,7 +68,9 @@ Packages the MCP server as a `.mcpb` file for one-click installation in Claude D
 3. Fill in the **Books** field with semicolon-separated `Name=path` pairs:
    `ScaryBook=C:\Users\My\Projects\ScaryBook;MyNovel=D:\Writing\MyNovel`
 4. Optionally set the **Ollama URL** if you want semantic reranking
-5. Tools are now available — the agent calls `list_books` to discover book names
+5. Optionally enable the semantic index and choose a default search mode if you want `full_semantic` search with rebuild warnings when the embedding index becomes stale.
+ - Note full embedding can be a heavy operation, depending on your hardware when running a local Ollama instance.
+6. Tools are now available — the agent calls `list_books` to discover book names
 
 ### Formatting & Export only (no MCP)
 
@@ -96,6 +98,11 @@ The VS Code extension works standalone — no server setup needed for typography
 - **Git** (recommended) — needed for version tracking, `get_review_text`, and `git_snapshot`. Auto-initialised during workspace setup. [Install](https://git-scm.com)
 - **Pandoc** (optional) — needed for DOCX/EPUB/PDF export. [Install](https://pandoc.org/installing.html)
 - **LibreOffice** (optional) — needed for PDF export only. [Install](https://www.libreoffice.org)
+- **Ollama** (optional) - needed for semantic reranking and search. [Install](https://ollama.com/)
+
+## Privacy
+
+Bindery stays within your workspace, only if the optional Ollama URL is filled for the MCP server will texts be sent to Ollama for embedding / semantic search. The full privacy policy can be viewed at [https://www.option-a.tech/projects/bindery/privacy](https://www.option-a.tech/projects/bindery/privacy)
 
 ## License
 
