@@ -194,16 +194,16 @@ function suggestUkSpelling(usWord: string): string | undefined {
     const lower = usWord.toLowerCase();
     const builtInMap = new Map(getBuiltInUkReplacements().map(r => [r.us.toLowerCase(), r.uk]));
     if (builtInMap.has(lower)) { return builtInMap.get(lower); }
-    if (lower.endsWith('izations')) { return lower.replaceAll(/izations$/, 'isations'); }
-    if (lower.endsWith('ization'))  { return lower.replaceAll(/ization$/,  'isation');  }
-    if (lower.endsWith('izing'))    { return lower.replaceAll(/izing$/,    'ising');    }
-    if (lower.endsWith('izes'))     { return lower.replaceAll(/izes$/,     'ises');     }
-    if (lower.endsWith('ized'))     { return lower.replaceAll(/ized$/,     'ised');     }
-    if (lower.endsWith('ize'))      { return lower.replaceAll(/ize$/,      'ise');      }
-    if (lower.endsWith('yzing'))    { return lower.replaceAll(/yzing$/,    'ysing');    }
-    if (lower.endsWith('yzes'))     { return lower.replaceAll(/yzes$/,     'yses');     }
-    if (lower.endsWith('yzed'))     { return lower.replaceAll(/yzed$/,     'ysed');     }
-    if (lower.endsWith('yze'))      { return lower.replaceAll(/yze$/,      'yse');      }
+    if (lower.endsWith('izations')) { return lower.replace(/izations$/, 'isations'); }
+    if (lower.endsWith('ization'))  { return lower.replace(/ization$/,  'isation');  }
+    if (lower.endsWith('izing'))    { return lower.replace(/izing$/,    'ising');    }
+    if (lower.endsWith('izes'))     { return lower.replace(/izes$/,     'ises');     }
+    if (lower.endsWith('ized'))     { return lower.replace(/ized$/,     'ised');     }
+    if (lower.endsWith('ize'))      { return lower.replace(/ize$/,      'ise');      }
+    if (lower.endsWith('yzing'))    { return lower.replace(/yzing$/,    'ysing');    }
+    if (lower.endsWith('yzes'))     { return lower.replace(/yzes$/,     'yses');     }
+    if (lower.endsWith('yzed'))     { return lower.replace(/yzed$/,     'ysed');     }
+    if (lower.endsWith('yze'))      { return lower.replace(/yze$/,      'yse');      }
     return undefined;
 }
 
