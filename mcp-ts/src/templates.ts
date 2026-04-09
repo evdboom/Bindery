@@ -34,14 +34,14 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.github/copilot-instructions.md':      { version: 7,   label: 'copilot instructions',    zip: null },
     '.cursor/rules':                        { version: 7,   label: 'cursor rules',            zip: null },
     'AGENTS.md':                            { version: 7,   label: 'agents instructions',     zip: null },
-    '.claude/skills/review/SKILL.md':       { version: 8,   label: 'review skill',            zip: '.claude/skills/review.zip' },
-    '.claude/skills/brainstorm/SKILL.md':   { version: 8,   label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
-    '.claude/skills/memory/SKILL.md':       { version: 8,   label: 'memory skill',            zip: '.claude/skills/memory.zip' },
-    '.claude/skills/translate/SKILL.md':    { version: 8,   label: 'translate skill',         zip: '.claude/skills/translate.zip' },
-    '.claude/skills/status/SKILL.md':       { version: 8,   label: 'status skill',            zip: '.claude/skills/status.zip' },
-    '.claude/skills/continuity/SKILL.md':   { version: 8,   label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
-    '.claude/skills/read_aloud/SKILL.md':   { version: 8,   label: 'read-aloud skill',        zip: '.claude/skills/read_aloud.zip' },
-    '.claude/skills/read_in/SKILL.md':      { version: 8,   label: 'read-in skill',           zip: '.claude/skills/read_in.zip' },
+    '.claude/skills/review/SKILL.md':       { version: 9,   label: 'review skill',            zip: '.claude/skills/review.zip' },
+    '.claude/skills/brainstorm/SKILL.md':   { version: 9,   label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
+    '.claude/skills/memory/SKILL.md':       { version: 9,   label: 'memory skill',            zip: '.claude/skills/memory.zip' },
+    '.claude/skills/translate/SKILL.md':    { version: 9,   label: 'translate skill',         zip: '.claude/skills/translate.zip' },
+    '.claude/skills/status/SKILL.md':       { version: 9,   label: 'status skill',            zip: '.claude/skills/status.zip' },
+    '.claude/skills/continuity/SKILL.md':   { version: 9,   label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
+    '.claude/skills/read-aloud/SKILL.md':   { version: 9,   label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
+    '.claude/skills/read-in/SKILL.md':      { version: 9,   label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
 };
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
  *
  * Top-level file templates: 'claude', 'copilot', 'cursor', 'agents'
  * Skill templates: 'review', 'brainstorm', 'memory', 'translate',
- *                  'status', 'continuity', 'read_aloud', 'read_in'
+ *                  'status', 'continuity', 'read-aloud', 'read-in'
  */
 export function renderTemplate(name: string, ctx: TemplateContext): string {
     switch (name) {
@@ -65,8 +65,8 @@ export function renderTemplate(name: string, ctx: TemplateContext): string {
         case 'translate':  return skillTranslate(ctx);
         case 'status':     return skillStatus(ctx);
         case 'continuity': return skillContinuity(ctx);
-        case 'read_aloud': return skillReadAloud(ctx);
-        case 'read_in':    return skillReadIn(ctx);
+        case 'read-aloud': return skillReadAloud(ctx);
+        case 'read-in':    return skillReadIn(ctx);
         default:           return `Unknown template: ${name}`;
     }
 }
@@ -275,7 +275,7 @@ function skillReview(ctx: TemplateContext): string {
     const { title, arcFolder, memoriesFolder } = ctx;
     const audienceStr = ctx.audience || 'the target audience';
     return `---
-name: Review
+name: review
 description: Bindery workspace: Review a chapter of "${title}" for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
 ---
 # Skill: /review
@@ -341,7 +341,7 @@ function skillBrainstorm(ctx: TemplateContext): string {
     const { title, arcFolder, memoriesFolder } = ctx;
     const audienceStr = ctx.audience || 'the target audience';
     return `---
-name: Brainstorm
+name: brainstorm
 description: Bindery workspace: Brainstorm story ideas, plot beats, character moments, or scene concepts for "${title}". Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
 ---
 # Skill: /brainstorm
@@ -391,7 +391,7 @@ End with a brief note on which options feel most aligned with the arc.
 
 function skillMemory(ctx: TemplateContext): string {
     return `---
-name: Memory
+name: memory
 description: Bindery workspace: Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
 ---
 # Skill: /memory
@@ -448,7 +448,7 @@ Offer to save a snapshot with \`git_snapshot\`.
 
 function skillTranslate(ctx: TemplateContext): string {
     return `---
-name: Translate
+name: translate
 description: Bindery workspace: Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
 ---
 # Skill: /translate
@@ -502,7 +502,7 @@ When the user confirms a new or corrected term translation, call \`add_translati
 function skillStatus(ctx: TemplateContext): string {
     const { arcFolder, memoriesFolder } = ctx;
     return `---
-name: Status
+name: status
 description: Bindery workspace: Give a book progress snapshot — chapters done, in progress, and coming up. Use for /status, "what's the book status", or "where are we".
 ---
 # Skill: /status
@@ -540,7 +540,7 @@ Keep it scannable — bold headers, short lines. This is a working tool, not a n
 function skillContinuity(ctx: TemplateContext): string {
     const { memoriesFolder } = ctx;
     return `---
-name: Continuity
+name: continuity
 description: Bindery workspace: Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
 ---
 # Skill: /continuity
@@ -590,7 +590,7 @@ End with a one-line overall assessment. If no issues found, say so clearly.
 function skillReadAloud(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
-name: Read Aloud
+name: read-aloud
 description: Bindery workspace: Test how a chapter or passage sounds when read aloud — flags long sentences, staccato rhythm, complex vocabulary, and said-bookisms. Use for /read-aloud, "reading test", or "how does this sound".
 ---
 # Skill: /read-aloud
@@ -636,7 +636,7 @@ Brief overall impression (2-3 sentences) after the table.
 function skillReadIn(ctx: TemplateContext): string {
     const { memoriesFolder } = ctx;
     return `---
-name: Read-in
+name: read-in
 description: Bindery workspace: Load project context at the start of a session — memory, progress tracker, and chapter notes. Use for /read-in, "get your bearings", "what were we doing", or at the start of any working session.
 ---
 # Skill: /read-in

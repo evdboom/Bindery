@@ -826,8 +826,8 @@ const SKILL_ITEMS: Array<{ label: string; description: string; value: SkillTempl
     { label: '/translate',  description: 'Assisted chapter translation',                                 value: 'translate'  },
     { label: '/status',     description: 'Book progress snapshot',                                       value: 'status'     },
     { label: '/continuity', description: 'Cross-check chapter for consistency errors',                   value: 'continuity' },
-    { label: '/read-aloud', description: 'Reading-aloud test for a chapter or passage',                  value: 'read_aloud' },
-    { label: '/read-in',    description: 'Load context and get your bearings at the start of a session', value: 'read_in'    },
+    { label: '/read-aloud', description: 'Reading-aloud test for a chapter or passage',                  value: 'read-aloud' },
+    { label: '/read-in',    description: 'Load context and get your bearings at the start of a session', value: 'read-in'    },
 ];
 
 async function setupAiCommand(context?: vscode.ExtensionContext) {

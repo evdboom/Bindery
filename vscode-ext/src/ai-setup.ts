@@ -92,11 +92,11 @@ export type SkillTemplate =
     | 'translate'
     | 'status'
     | 'continuity'
-    | 'read_aloud'
-    | 'read_in';
+    | 'read-aloud'
+    | 'read-in';
 
 export const ALL_SKILLS: SkillTemplate[] = [
-    'review', 'brainstorm', 'memory', 'translate', 'status', 'continuity', 'read_aloud', 'read_in',
+    'review', 'brainstorm', 'memory', 'translate', 'status', 'continuity', 'read-aloud', 'read-in',
 ];
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
