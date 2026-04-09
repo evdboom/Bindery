@@ -11,7 +11,7 @@
   "keywords": ["writing", "search", "book", "markdown", "bindery"],
   "license": "MIT",
   "privacy_policies": [
-    "evdboom.nl/projects/bindery/privacy"
+    "https://evdboom.nl/projects/bindery/privacy"
   ],
   "server": {
     "type": "node",
