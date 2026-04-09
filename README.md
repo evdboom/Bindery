@@ -104,7 +104,7 @@ The VS Code extension works standalone — no server setup needed for typography
 
 ## Privacy
 
-Bindery stays within your workspace, only if the optional Ollama URL is filled for the MCP server will texts be sent to Ollama for embedding / semantic search. The full privacy policy can be viewed at [https://www.option-a.tech/projects/bindery/privacy](https://www.option-a.tech/projects/bindery/privacy)
+Bindery stays within your workspace, only if the optional Ollama URL is filled for the MCP server will texts be sent to Ollama for embedding / semantic search. The full privacy policy can be viewed at [https://evdboom.nl/projects/bindery/privacy](https://evdboom.nl/projects/bindery/privacy)
 
 ## License
 
