@@ -293,7 +293,7 @@ async function initWorkspaceCommand() {
     const detectedLangs = detectLanguageFolders(path.join(root, storyFolder));
     const languages     = detectedLangs.length > 0 ? detectedLangs : [DEFAULT_LANGUAGE];
 
-    const slug: string = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/, '') || 'Book';
+    const slug: string = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Book';
 
     const settings: WorkspaceSettings = {
         ...(title    ? { bookTitle: title }             : {}),
