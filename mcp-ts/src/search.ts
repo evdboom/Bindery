@@ -127,6 +127,11 @@ export async function buildSemanticIndex(root: string): Promise<LoadedSemanticIn
         throw new Error('Semantic indexing requires BINDERY_OLLAMA_URL.');
     }
 
+    const endpointIssue = await validateOllamaEndpoint(ollama.url);
+    if (endpointIssue) {
+        throw new Error(`Semantic indexing requires an Ollama server. ${endpointIssue}`);
+    }
+
     const chunks = chunkWorkspace(root, semanticDiscoverOptions());
     const embeddings: SemanticIndexEntry[] = [];
 
@@ -225,6 +230,15 @@ export async function rerank(
         return { results, usedSemantic: false };
     }
 
+    const endpointIssue = await validateOllamaEndpoint(ollama.url);
+    if (endpointIssue) {
+        return {
+            results,
+            usedSemantic: false,
+            warning: `semantic_rerank requested but BINDERY_OLLAMA_URL is not an Ollama endpoint; using lexical results. ${endpointIssue}`,
+        };
+    }
+
     try {
         const queryVec = await fetchEmbedding(ollama.url, ollama.model, query);
         if (!queryVec) {
@@ -277,6 +291,15 @@ export async function fullSemanticSearch(
             results: [],
             usedSemantic: false,
             warning: 'full_semantic requested but the semantic index is unavailable; using lexical results.',
+        };
+    }
+
+    const endpointIssue = await validateOllamaEndpoint(ollama.url);
+    if (endpointIssue) {
+        return {
+            results: [],
+            usedSemantic: false,
+            warning: `full_semantic requested but BINDERY_OLLAMA_URL is not an Ollama endpoint; using lexical results. ${endpointIssue}`,
         };
     }
 
@@ -415,6 +438,26 @@ async function fetchEmbedding(
     if (!res.ok) { return null; }
     const json = await res.json() as { embedding?: number[] };
     return json.embedding ?? null;
+}
+
+async function validateOllamaEndpoint(baseUrl: string): Promise<string | null> {
+    const url = baseUrl.replace(/\/$/, '') + '/api/tags';
+    try {
+        const res = await fetch(url, {
+            method: 'GET',
+            signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) {
+            return `Endpoint check failed (GET /api/tags returned HTTP ${res.status}).`;
+        }
+        const json = await res.json() as { models?: unknown };
+        if (!Array.isArray(json.models)) {
+            return 'Endpoint check failed (/api/tags response did not contain a models array).';
+        }
+        return null;
+    } catch {
+        return 'Endpoint check failed (could not reach GET /api/tags).';
+    }
 }
 
 function cosine(a: number[], b: number[]): number {

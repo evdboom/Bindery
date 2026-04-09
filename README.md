@@ -97,6 +97,11 @@ The VS Code extension works standalone — no server setup needed for typography
 - **Git** (recommended) — needed for version tracking, `get_review_text`, and `git_snapshot`. Auto-initialised during workspace setup. [Install](https://git-scm.com)
 - **Pandoc** (optional) — needed for DOCX/EPUB/PDF export. [Install](https://pandoc.org/installing.html)
 - **LibreOffice** (optional) — needed for PDF export only. [Install](https://www.libreoffice.org)
+- **Ollama** (optional) - needed for semantic reranking and search. [Install](https://ollama.com/)
+
+## Privacy
+
+Bindery stays within your workspace, only if the optional Ollama URL is filled for the MCP server will texts be sent to Ollama for embedding / semantic search. The full privacy policy can be viewed at [https://www.option-a.tech/projects/bindery/privacy](https://www.option-a.tech/projects/bindery/privacy)
 
 ## License
 

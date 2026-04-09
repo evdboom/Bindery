@@ -180,6 +180,22 @@ describe('Arc folder in lexical index', () => {
 describe('mocked Ollama — semantic_rerank', () => {
     const mockEmbedding = Array.from({ length: 8 }, (_, i) => (i + 1) / 10);
 
+    function ollamaFetchMock() {
+        return vi.fn().mockImplementation(async (input: unknown) => {
+            const url = String(input);
+            if (url.endsWith('/api/tags')) {
+                return {
+                    ok: true,
+                    json: async () => ({ models: [{ name: 'nomic-embed-text' }] }),
+                };
+            }
+            return {
+                ok: true,
+                json: async () => ({ embedding: mockEmbedding }),
+            };
+        });
+    }
+
     afterEach(() => {
         vi.restoreAllMocks();
         delete process.env['BINDERY_OLLAMA_URL'];
@@ -192,10 +208,7 @@ describe('mocked Ollama — semantic_rerank', () => {
 
         process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
 
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({ embedding: mockEmbedding }),
-        }));
+        vi.stubGlobal('fetch', ollamaFetchMock());
 
         const result = await toolSearch(root, { query: 'captain sailed', mode: 'semantic_rerank' });
         expect(result).not.toContain('Warning:');
@@ -218,12 +231,54 @@ describe('mocked Ollama — semantic_rerank', () => {
         expect(result).toContain('Warning:');
         expect(result).toContain('Chapter 1.md');
     });
+
+    it('warns when URL is reachable but not an Ollama API', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Harbor\nThe ship docked at midnight in a hidden harbor.\n');
+        await toolIndexBuild(root);
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+
+        vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: unknown) => {
+            const url = String(input);
+            if (url.endsWith('/api/tags')) {
+                return {
+                    ok: true,
+                    json: async () => ({ status: 'ok' }),
+                };
+            }
+            return {
+                ok: true,
+                json: async () => ({ embedding: mockEmbedding }),
+            };
+        }));
+
+        const result = await toolSearch(root, { query: 'ship harbor midnight', mode: 'semantic_rerank' });
+        expect(result).toContain('Warning: semantic_rerank requested but BINDERY_OLLAMA_URL is not an Ollama endpoint; using lexical results.');
+        expect(result).toContain('/api/tags response did not contain a models array');
+    });
 });
 
 // ─── Mocked Ollama — buildSemanticIndex + full_semantic ──────────────────────
 
 describe('mocked Ollama — full_semantic', () => {
     const mockEmbedding = Array.from({ length: 8 }, (_, i) => (i + 1) / 10);
+
+    function ollamaFetchMock() {
+        return vi.fn().mockImplementation(async (input: unknown) => {
+            const url = String(input);
+            if (url.endsWith('/api/tags')) {
+                return {
+                    ok: true,
+                    json: async () => ({ models: [{ name: 'nomic-embed-text' }] }),
+                };
+            }
+            return {
+                ok: true,
+                json: async () => ({ embedding: mockEmbedding }),
+            };
+        });
+    }
 
     afterEach(() => {
         vi.restoreAllMocks();
@@ -238,10 +293,7 @@ describe('mocked Ollama — full_semantic', () => {
         process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
         process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
 
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({ embedding: mockEmbedding }),
-        }));
+        vi.stubGlobal('fetch', ollamaFetchMock());
 
         const result = await toolIndexBuild(root);
         expect(result).toContain('Lexical index built:');
@@ -256,10 +308,7 @@ describe('mocked Ollama — full_semantic', () => {
         process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
         process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
 
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({ embedding: mockEmbedding }),
-        }));
+        vi.stubGlobal('fetch', ollamaFetchMock());
 
         // Build the semantic index
         await toolIndexBuild(root);
@@ -278,10 +327,7 @@ describe('mocked Ollama — full_semantic', () => {
         process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
 
         // Build succeeds
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({ embedding: mockEmbedding }),
-        }));
+        vi.stubGlobal('fetch', ollamaFetchMock());
         await toolIndexBuild(root);
 
         // Query fails
@@ -290,5 +336,31 @@ describe('mocked Ollama — full_semantic', () => {
         const result = await toolSearch(root, { query: 'nomad desert', mode: 'full_semantic' });
         expect(result).toContain('Warning:');
         expect(result).toContain('using lexical results');
+    });
+
+    it('index_build reports non-Ollama endpoint clearly', async () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Forest\nThe ancient forest held many secrets.\n');
+
+        process.env['BINDERY_OLLAMA_URL'] = 'http://localhost:11434';
+        process.env['BINDERY_ENABLE_SEMANTIC_INDEX'] = 'true';
+
+        vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: unknown) => {
+            const url = String(input);
+            if (url.endsWith('/api/tags')) {
+                return {
+                    ok: true,
+                    json: async () => ({ status: 'ok' }),
+                };
+            }
+            return {
+                ok: true,
+                json: async () => ({ embedding: mockEmbedding }),
+            };
+        }));
+
+        const result = await toolIndexBuild(root);
+        expect(result).toContain('Semantic index failed: Semantic indexing requires an Ollama server.');
+        expect(result).toContain('/api/tags response did not contain a models array');
     });
 });
