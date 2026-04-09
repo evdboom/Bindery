@@ -440,7 +440,7 @@ async function fetchEmbedding(
     model:   string,
     text:    string,
 ): Promise<number[] | null> {
-    const url = baseUrl.replaceAll(/\/$/, '') + '/api/embeddings';
+    const url = baseUrl.replace(/\/$/, '') + '/api/embeddings';
     const prompt = normalizeEmbeddingInput(text);
     const res = await fetch(url, {
         method: 'POST',
@@ -454,7 +454,7 @@ async function fetchEmbedding(
 }
 
 async function validateOllamaEndpoint(baseUrl: string): Promise<string | null> {
-    const url = baseUrl.replaceAll(/\/$/, '') + '/api/tags';
+    const url = baseUrl.replace(/\/$/, '') + '/api/tags';
     try {
         const res = await fetch(url, {
             method: 'GET',

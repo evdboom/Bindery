@@ -1202,7 +1202,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
     const existingLangs   = ((existing['languages'] as unknown[] | undefined) ?? []) as Array<Record<string, unknown>>;
     const languages       = detectWorkspaceLangs(path.join(root, storyFolderName), existingLangs);
 
-    const slug = bookTitle.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/, '') || 'Book';
+    const slug = bookTitle.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/g, '') || 'Book';
     const settings: Record<string, unknown> = {
         ...existing,
         bookTitle,
