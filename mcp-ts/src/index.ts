@@ -195,7 +195,7 @@ server.registerTool('search', {
         language:   z.string().optional().describe('Language filter: EN, NL, or ALL'),
         maxResults: z.number().optional().describe('Max results to return (default 10)'),
     },
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
 }, async ({ book, query, language, maxResults }) => {
     try { return ok(await toolSearch(resolveBook(book).root, { query, language, maxResults })); } catch (e) { return err(e); }
 });
@@ -209,7 +209,7 @@ server.registerTool('retrieve_context', {
         language: z.string().optional().describe('Language filter: EN, NL, or ALL'),
         topK:     z.number().optional().describe('Number of results (default 6)'),
     },
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, openWorldHint: true },
 }, async ({ book, query, language, topK }) => {
     try { return ok(await toolRetrieveContext(resolveBook(book).root, { query, language, topK })); } catch (e) { return err(e); }
 });
