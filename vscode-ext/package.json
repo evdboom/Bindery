@@ -355,7 +355,7 @@
         "displayName": "Bindery: Get Notes",
         "toolReferenceName": "binderyGetNotes",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Read from Notes/ and Details_*.md, optionally filtered by category or character name.",
+        "modelDescription": "Read from Notes/, optionally filtered by category or character name.",
         "inputSchema": {
           "type": "object",
           "properties": {

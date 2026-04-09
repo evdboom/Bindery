@@ -435,11 +435,6 @@ export function toolGetNotes(root: string, args: GetNotesArgs): string {
     if (fs.existsSync(notesDir)) {
         collectAllMd(notesDir, candidates);
     }
-    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-        if (entry.isFile() && /^Details_.*\.md$/i.test(entry.name)) {
-            candidates.push(path.join(root, entry.name));
-        }
-    }
 
     if (candidates.length === 0) { return 'No notes files found.'; }
 
