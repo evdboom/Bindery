@@ -44,19 +44,19 @@ describe('setupAiFiles zip generation', () => {
     const result = setupAiFiles({
       root,
       targets: ['claude'],
-      skills: ['read_aloud'],
+      skills: ['read-aloud'],
       overwrite: true,
     });
 
-    expect(result.skillZipManifest.created).toContain('.claude/skills/read_aloud.zip');
+    expect(result.skillZipManifest.created).toContain('.claude/skills/read-aloud.zip');
     expect(result.skillZipManifest.failed).toEqual([]);
 
-    const zipPath = path.join(root, '.claude', 'skills', 'read_aloud.zip');
+    const zipPath = path.join(root, '.claude', 'skills', 'read-aloud.zip');
     expect(fs.existsSync(zipPath)).toBe(true);
 
     const zipText = fs.readFileSync(zipPath, 'latin1');
-    expect(zipText).toContain('read_aloud/SKILL.md');
-    expect(zipText).not.toContain('read_aloud\\SKILL.md');
+    expect(zipText).toContain('read-aloud/SKILL.md');
+    expect(zipText).not.toContain('read-aloud\\SKILL.md');
   });
 
   it('reports a failed skill zip when archive generation throws', async () => {
@@ -81,12 +81,12 @@ describe('setupAiFiles zip generation', () => {
     const result = setupAiFiles({
       root,
       targets: ['claude'],
-      skills: ['read_aloud'],
+      skills: ['read-aloud'],
       overwrite: true,
     });
 
-    expect(result.skillZipManifest.failed).toContain('.claude/skills/read_aloud.zip');
+    expect(result.skillZipManifest.failed).toContain('.claude/skills/read-aloud.zip');
     expect(result.skillZipManifest.created).toEqual([]);
-    expect(fs.existsSync(path.join(root, '.claude', 'skills', 'read_aloud.zip'))).toBe(false);
+    expect(fs.existsSync(path.join(root, '.claude', 'skills', 'read-aloud.zip'))).toBe(false);
   });
 });

@@ -97,14 +97,14 @@ describe('mcp tools', () => {
       languages: [{ code: 'EN', folderName: 'EN' }],
     }, null, 2) + '\n');
 
-    toolSetupAiFiles(root, { targets: ['claude'], skills: ['read_aloud'], overwrite: true });
+    toolSetupAiFiles(root, { targets: ['claude'], skills: ['read-aloud'], overwrite: true });
 
-    const zipPath = path.join(root, '.claude', 'skills', 'read_aloud.zip');
+    const zipPath = path.join(root, '.claude', 'skills', 'read-aloud.zip');
     expect(fs.existsSync(zipPath)).toBe(true);
 
     const zipText = fs.readFileSync(zipPath).toString('latin1');
-    expect(zipText).toContain('read_aloud/SKILL.md');
-    expect(zipText).not.toContain(String.raw`read_aloud\SKILL.md`);
+    expect(zipText).toContain('read-aloud/SKILL.md');
+    expect(zipText).not.toContain(String.raw`read-aloud\SKILL.md`);
   });
 
   it('health skips claude files when aiTargets excludes claude', () => {

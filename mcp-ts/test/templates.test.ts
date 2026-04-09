@@ -189,7 +189,7 @@ describe('renderTemplate — agents', () => {
 describe('renderTemplate — review skill', () => {
   it('contains YAML front-matter, title, trigger, and steps', () => {
     const result = renderTemplate('review', makeCtx());
-    expect(result).toContain('name: Review');
+    expect(result).toContain('name: review');
     expect(result).toContain('# Skill: /review');
     expect(result).toContain('## Trigger');
     expect(result).toContain('## Steps');
@@ -222,7 +222,7 @@ describe('renderTemplate — review skill', () => {
 describe('renderTemplate — brainstorm skill', () => {
   it('contains YAML front-matter, title, trigger, and steps', () => {
     const result = renderTemplate('brainstorm', makeCtx());
-    expect(result).toContain('name: Brainstorm');
+    expect(result).toContain('name: brainstorm');
     expect(result).toContain('# Skill: /brainstorm');
     expect(result).toContain('## Trigger');
     expect(result).toContain('## Steps');
@@ -239,7 +239,7 @@ describe('renderTemplate — brainstorm skill', () => {
 describe('renderTemplate — memory skill', () => {
   it('contains YAML front-matter, title, trigger, tools, and steps', () => {
     const result = renderTemplate('memory', makeCtx());
-    expect(result).toContain('name: Memory');
+    expect(result).toContain('name: memory');
     expect(result).toContain('# Skill: /memory');
     expect(result).toContain('## Trigger');
     expect(result).toContain('## Tools');
@@ -258,7 +258,7 @@ describe('renderTemplate — memory skill', () => {
 describe('renderTemplate — translate skill', () => {
   it('contains YAML front-matter, title, trigger, tools, and steps', () => {
     const result = renderTemplate('translate', makeCtx());
-    expect(result).toContain('name: Translate');
+    expect(result).toContain('name: translate');
     expect(result).toContain('# Skill: /translate');
     expect(result).toContain('## Trigger');
     expect(result).toContain('## Tools');
@@ -276,7 +276,7 @@ describe('renderTemplate — translate skill', () => {
 describe('renderTemplate — status skill', () => {
   it('contains YAML front-matter, title, trigger, tools, and steps', () => {
     const result = renderTemplate('status', makeCtx());
-    expect(result).toContain('name: Status');
+    expect(result).toContain('name: status');
     expect(result).toContain('# Skill: /status');
     expect(result).toContain('## Trigger');
     expect(result).toContain('## Tools');
@@ -293,7 +293,7 @@ describe('renderTemplate — status skill', () => {
 describe('renderTemplate — continuity skill', () => {
   it('contains YAML front-matter, title, trigger, tools, steps, and output format', () => {
     const result = renderTemplate('continuity', makeCtx());
-    expect(result).toContain('name: Continuity');
+    expect(result).toContain('name: continuity');
     expect(result).toContain('# Skill: /continuity');
     expect(result).toContain('## Trigger');
     expect(result).toContain('## Tools');
@@ -309,10 +309,10 @@ describe('renderTemplate — continuity skill', () => {
   });
 });
 
-describe('renderTemplate — read_aloud skill', () => {
+describe('renderTemplate — read-aloud skill', () => {
   it('contains YAML front-matter, title, trigger, tools, and rules', () => {
-    const result = renderTemplate('read_aloud', makeCtx());
-    expect(result).toContain('name: Read Aloud');
+    const result = renderTemplate('read-aloud', makeCtx());
+    expect(result).toContain('name: read-aloud');
     expect(result).toContain('# Skill: /read-aloud');
     expect(result).toContain('## Trigger');
     expect(result).toContain('## Tools');
@@ -320,20 +320,20 @@ describe('renderTemplate — read_aloud skill', () => {
   });
 
   it('includes audience in output description', () => {
-    const result = renderTemplate('read_aloud', makeCtx());
+    const result = renderTemplate('read-aloud', makeCtx());
     expect(result).toContain('middle-grade');
   });
 
   it('uses fallback when audience is empty', () => {
-    const result = renderTemplate('read_aloud', makeMinimalCtx());
+    const result = renderTemplate('read-aloud', makeMinimalCtx());
     expect(result).toContain('the target audience');
   });
 });
 
-describe('renderTemplate — read_in skill', () => {
+describe('renderTemplate — read-in skill', () => {
   it('contains YAML front-matter, title, trigger, tools, steps, and rules', () => {
-    const result = renderTemplate('read_in', makeCtx());
-    expect(result).toContain('name: Read-in');
+    const result = renderTemplate('read-in', makeCtx());
+    expect(result).toContain('name: read-in');
     expect(result).toContain('# Skill: /read-in');
     expect(result).toContain('## Trigger');
     expect(result).toContain('## Tools');
@@ -342,14 +342,14 @@ describe('renderTemplate — read_in skill', () => {
   });
 
   it('references memory_list, chapter_status_get, and get_overview tools', () => {
-    const result = renderTemplate('read_in', makeCtx());
+    const result = renderTemplate('read-in', makeCtx());
     expect(result).toContain('memory_list');
     expect(result).toContain('chapter_status_get');
     expect(result).toContain('get_overview');
   });
 
   it('references the memories folder', () => {
-    const result = renderTemplate('read_in', makeCtx());
+    const result = renderTemplate('read-in', makeCtx());
     expect(result).toContain('.bindery/memories');
   });
 });

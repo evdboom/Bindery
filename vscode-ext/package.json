@@ -555,7 +555,7 @@
               "items": {
                 "type": "string"
               },
-              "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read_aloud, read_in. Default: all."
+              "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read-aloud, read-in. Default: all."
             },
             "overwrite": {
               "type": "boolean",

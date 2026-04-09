@@ -365,7 +365,7 @@ server.registerTool('setup_ai_files', {
     inputSchema: {
         book:      bookSchema,
         targets:   z.array(z.string()).optional().describe('Which files to generate: claude, copilot, cursor, agents. Default: all.'),
-        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, status, continuity, read_aloud, read_in. Default: all.'),
+        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, status, continuity, read-aloud, read-in. Default: all.'),
         overwrite: z.boolean().optional().describe('Overwrite existing files? Default false (skip existing).'),
     },
     annotations: { destructiveHint: true },
