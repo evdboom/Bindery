@@ -22,7 +22,7 @@ function write(filePath: string, content: string): void {
     fs.writeFileSync(filePath, content, 'utf-8');
 }
 
-/** Initialise a real git repository with an initial empty commit. */
+/** Initialize a real git repository with an initial empty commit. */
 function makeGitRepo(): string {
     const root = makeRoot();
     spawnSync('git', ['init'], { cwd: root });
