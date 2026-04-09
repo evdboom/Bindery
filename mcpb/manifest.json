@@ -11,7 +11,7 @@
   "keywords": ["writing", "search", "book", "markdown", "bindery"],
   "license": "MIT",
   "privacy_policies": [
-    "https://www.option-a.tech/projects/bindery/privacy"
+    "https://github.com/evdboom/Bindery/wiki/Privacy-policy"
   ],
   "server": {
     "type": "node",
