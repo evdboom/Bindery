@@ -6,7 +6,7 @@ Markdown book authoring toolkit: a **VS Code extension** for typography formatti
 
 This project started as a personal writing tool, born out of frustration with the copy-paste loop that most AI-assisted writing ends up as.
 
-It started with Word and ChatGPT: writing a chapter, copying it into the browser, getting feedback, pasting it back. Versioning was an issue and keeping the ChatGPT project up with recent .docx files was a lot of work. Moving to VS Code and markdown files seemed like the natural next step: plain text, version control, and the ability to plug in an MCP server so an agent like Codex could read the book directly. 
+It started with Word and ChatGPT: writing a chapter, copying it into the browser, getting feedback, pasting it back. Versioning was an issue and keeping the ChatGPT project up to date with recent .docx files was a lot of work. Moving to VS Code and Markdown files seemed like the natural next step: plain text, version control, and the ability to plug in an MCP server so an agent like Codex could read the book directly.
 
 In practice though, I still fell back to copy-pasting for feedback and only really used the tooling for typography formatting. Most VS code extensions are build for coding: short iterations, the code is the truth. Not the longer session memories web chats have that are more chat based. That frustration is what pushed the VS Code extension into existence. At minimum, the formatting and exporting should just work without any ceremony.
 
