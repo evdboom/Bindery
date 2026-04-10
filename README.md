@@ -105,7 +105,7 @@ The VS Code extension works standalone — no server setup needed for typography
   - Install via package manager or from [https://pandoc.org/installing.html](https://pandoc.org/installing.html)
 - **LibreOffice** (optional) — needed for PDF export only.
   - Install via package manager or from [https://www.libreoffice.org](https://www.libreoffice.org)
-- **Ollama** (optional) - needed for semantic reranking and search.
+- **Ollama** (optional) — needed for semantic reranking and search.
   - Install via package manager or from [https://ollama.com/](https://ollama.com/)
 
 ## Privacy
