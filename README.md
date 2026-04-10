@@ -62,7 +62,7 @@ Packages the MCP server as a `.mcpb` file for one-click installation in Claude D
 1. Install the [Bindery extension](https://marketplace.visualstudio.com/items?itemName=option-a.bindery) from the Marketplace
 2. Open your book folder in VS Code
 3. Run `Bindery: Initialize Workspace` to create `.bindery/settings.json` (also initializes a git repo if not present)
-4. Run `Bindery: Register MCP Server` to create `.vscode/mcp.json` (not needed for copilot, bindery mcp is picked up automatically)
+4. Run `Bindery: Register MCP Server` to create `.vscode/mcp.json` (primarily for Claude/Codex discovery; not needed for GitHub Copilot Chat because the extension registers the tools automatically)
 5. Tools are now available in GitHub Copilot Chat, Claude for VS Code, and Codex
 
 ### Claude Desktop / Cowork
