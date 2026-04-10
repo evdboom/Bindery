@@ -6,9 +6,11 @@ Markdown book authoring toolkit: a **VS Code extension** for typography formatti
 
 This project started as a personal writing tool, born out of frustration with the copy-paste loop that most AI-assisted writing ends up as.
 
-It started with Word and ChatGPT — writing a chapter, copying it into the browser, getting feedback, pasting it back. That got old fast. Moving to VS Code and markdown files seemed like the natural next step: plain text, version control, and the ability to plug in an MCP server so an agent like Codex could read the book directly. In practice though, I still fell back to copy-pasting for feedback and only really used the tooling for typography formatting. That frustration is what pushed the VS Code extension into existence — at minimum, the formatting should just work without any ceremony.
+It started with Word and ChatGPT: writing a chapter, copying it into the browser, getting feedback, pasting it back. Versioning was an issue and keeping the ChatGPT project up with recent .docx files was a lot of work. Moving to VS Code and markdown files seemed like the natural next step: plain text, version control, and the ability to plug in an MCP server so an agent like Codex could read the book directly. 
 
-The bigger shift came with Claude Cowork, which combines the session memory of a long-running agent with direct file access. That made the MCP server genuinely useful: the agent could navigate chapters, search for context, and keep track of the story across a session without being handed everything manually. The extension and MCP server now support both workflows — VS Code agents (Copilot, Codex, Claude for VS Code) and standalone Claude Desktop / Cowork.
+In practice though, I still fell back to copy-pasting for feedback and only really used the tooling for typography formatting. Most VS code extensions are build for coding: short iterations, the code is the truth. Not the longer session memories web chats have that are more chat based. That frustration is what pushed the VS Code extension into existence. At minimum, the formatting and exporting should just work without any ceremony.
+
+The bigger shift came with Claude Cowork, which combines the session memory of a long-running agent with direct file access. That made the MCP server genuinely useful: the agent could navigate chapters, search for context, and keep track of the story across a session without being handed everything manually. The extension and MCP server now support both workflows: VS Code agents (Copilot, Codex, Claude for VS Code) and standalone Claude Desktop / Cowork.
 
 ## Components
 
@@ -60,7 +62,7 @@ Packages the MCP server as a `.mcpb` file for one-click installation in Claude D
 1. Install the [Bindery extension](https://marketplace.visualstudio.com/items?itemName=option-a.bindery) from the Marketplace
 2. Open your book folder in VS Code
 3. Run `Bindery: Initialize Workspace` to create `.bindery/settings.json` (also initializes a git repo if not present)
-4. Run `Bindery: Register MCP Server` to create `.vscode/mcp.json`
+4. Run `Bindery: Register MCP Server` to create `.vscode/mcp.json` (not needed for copilot, bindery mcp is picked up automatically)
 5. Tools are now available in GitHub Copilot Chat, Claude for VS Code, and Codex
 
 ### Claude Desktop / Cowork
@@ -71,7 +73,7 @@ Packages the MCP server as a `.mcpb` file for one-click installation in Claude D
    `ScaryBook=C:\Users\My\Projects\ScaryBook;MyNovel=D:\Writing\MyNovel`
 4. Optionally set the **Ollama URL** if you want semantic reranking
 5. Optionally enable the semantic index and choose a default search mode if you want `full_semantic` search with rebuild warnings when the embedding index becomes stale.
- - Note full embedding can be a heavy operation, depending on your hardware when running a local Ollama instance.
+   - **Note:** full embedding can be a heavy operation, depending on your hardware, when running a local Ollama instance.
 6. Tools are now available — the agent calls `list_books` to discover book names
 
 ### Formatting & Export only (no MCP)
@@ -97,10 +99,14 @@ The VS Code extension works standalone — no server setup needed for typography
 ## Prerequisites
 
 - **VS Code** 1.85+
-- **Git** (recommended) — needed for version tracking, `get_review_text`, and `git_snapshot`. Auto-initialized during workspace setup. [Install](https://git-scm.com)
-- **Pandoc** (optional) — needed for DOCX/EPUB/PDF export. [Install](https://pandoc.org/installing.html)
-- **LibreOffice** (optional) — needed for PDF export only. [Install](https://www.libreoffice.org)
-- **Ollama** (optional) - needed for semantic reranking and search. [Install](https://ollama.com/)
+- **Git** (recommended) — needed for version tracking, `get_review_text`, and `git_snapshot`. Auto-initialized during workspace setup.
+  - Install via package manager or from [https://git-scm.com](https://git-scm.com)
+- **Pandoc** (optional) — needed for DOCX/EPUB/PDF export.
+  - Install via package manager or from [https://pandoc.org/installing.html](https://pandoc.org/installing.html)
+- **LibreOffice** (optional) — needed for PDF export only.
+  - Install via package manager or from [https://www.libreoffice.org](https://www.libreoffice.org)
+- **Ollama** (optional) - needed for semantic reranking and search.
+  - Install via package manager or from [https://ollama.com/](https://ollama.com/)
 
 ## Privacy
 
