@@ -123,11 +123,11 @@ Skills: `review`, `brainstorm`, `memory`, `translate`, `status`, `continuity`, `
 The **memory skill** uses `memory_list` → `memory_append` → `memory_compact`. Do not fall back to `get_text` + Edit tool for memory writes.
 
 ### AI setup versioning
-`AI_SETUP_VERSION` (integer constant in `ai-setup.ts`) controls staleness detection.
+`FILE_VERSION_INFO` (integer constant in `templates.ts`) controls staleness detection.
 
-- `setupAiFiles()` stamps `.bindery/ai-version.json` with the current version after every run.
-- On extension activation, if `.bindery/settings.json` exists and the stamped version is older than `AI_SETUP_VERSION`, the user is notified and offered an "Update now" button that opens `bindery.setupAI`.
-- **Bump `AI_SETUP_VERSION` by 1 whenever skill templates or instruction file templates change significantly** (i.e. existing users should regenerate). Small copy fixes do not require a bump.
+- `setupAiFiles()` stamps `.bindery/ai-version.json` with the current version of each file after every run.
+- On extension activation, if `.bindery/settings.json` exists and a stamped version is older than the one in `FILE_VERSION_INFO`, the user is notified and offered an "Update now" button that opens `bindery.setupAI`.
+- **Bump `FILE_VERSION_INFO` for the changed template by 1 whenever it changed significantly** (i.e. existing users should regenerate). Small copy fixes do not require a bump.
 
 ---
 
