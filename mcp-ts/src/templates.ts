@@ -276,7 +276,7 @@ function skillReview(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: review
-description: Bindery workspace: Review a chapter of "${title}" for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
+description: Bindery workspace - Review a chapter of "${title}" for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
 ---
 # Skill: /review
 
@@ -342,7 +342,7 @@ function skillBrainstorm(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: brainstorm
-description: Bindery workspace: Brainstorm story ideas, plot beats, character moments, or scene concepts for "${title}". Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
+description: Bindery workspace - Brainstorm story ideas, plot beats, character moments, or scene concepts for "${title}". Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
 ---
 # Skill: /brainstorm
 
@@ -392,7 +392,7 @@ End with a brief note on which options feel most aligned with the arc.
 function skillMemory(ctx: TemplateContext): string {
     return `---
 name: memory
-description: Bindery workspace: Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
+description: Bindery workspace - Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
 ---
 # Skill: /memory
 
@@ -449,7 +449,7 @@ Offer to save a snapshot with \`git_snapshot\`.
 function skillTranslate(ctx: TemplateContext): string {
     return `---
 name: translate
-description: Bindery workspace: Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
+description: Bindery workspace - Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
 ---
 # Skill: /translate
 
@@ -503,7 +503,7 @@ function skillStatus(ctx: TemplateContext): string {
     const { arcFolder, memoriesFolder } = ctx;
     return `---
 name: status
-description: Bindery workspace: Give a book progress snapshot — chapters done, in progress, and coming up. Use for /status, "what's the book status", or "where are we".
+description: Bindery workspace - Give a book progress snapshot — chapters done, in progress, and coming up. Use for /status, "what's the book status", or "where are we".
 ---
 # Skill: /status
 
@@ -541,7 +541,7 @@ function skillContinuity(ctx: TemplateContext): string {
     const { memoriesFolder } = ctx;
     return `---
 name: continuity
-description: Bindery workspace: Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
+description: Bindery workspace - Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
 ---
 # Skill: /continuity
 
@@ -591,7 +591,7 @@ function skillReadAloud(ctx: TemplateContext): string {
     const audienceStr = ctx.audience || 'the target audience';
     return `---
 name: read-aloud
-description: Bindery workspace: Test how a chapter or passage sounds when read aloud — flags long sentences, staccato rhythm, complex vocabulary, and said-bookisms. Use for /read-aloud, "reading test", or "how does this sound".
+description: Bindery workspace - Test how a chapter or passage sounds when read aloud — flags long sentences, staccato rhythm, complex vocabulary, and said-bookisms. Use for /read-aloud, "reading test", or "how does this sound".
 ---
 # Skill: /read-aloud
 
@@ -637,7 +637,7 @@ function skillReadIn(ctx: TemplateContext): string {
     const { memoriesFolder } = ctx;
     return `---
 name: read-in
-description: Bindery workspace: Load project context at the start of a session — memory, progress tracker, and chapter notes. Use for /read-in, "get your bearings", "what were we doing", or at the start of any working session.
+description: Bindery workspace - Load project context at the start of a session — memory, progress tracker, and chapter notes. Use for /read-in, "get your bearings", "what were we doing", or at the start of any working session.
 ---
 # Skill: /read-in
 

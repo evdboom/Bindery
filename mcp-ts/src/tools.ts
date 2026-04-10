@@ -1231,7 +1231,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
 
     const engbSeeded = seedTranslations(translationsPath, languages);
 
-    const action   = isNew ? 'Initialised' : 'Updated';
+    const action   = isNew ? 'Initialized' : 'Updated';
     const langNote = languages.map(l => (l as { code: string }).code).join(', ');
     const hint     = isNew
         ? '\n\nTip: AI instruction files (CLAUDE.md, skills, copilot-instructions.md) are not yet set up. Run setup_ai_files to generate them, or use "Bindery: Set Up AI Files" in VS Code.'

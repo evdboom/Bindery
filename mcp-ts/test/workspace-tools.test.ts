@@ -40,7 +40,7 @@ describe('toolInitWorkspace', () => {
         const root = makeRoot();
         const result = toolInitWorkspace(root, { bookTitle: 'My Novel' });
 
-        expect(result).toContain('Initialised');
+        expect(result).toContain('Initialized');
         expect(result).toContain('.bindery/settings.json');
         expect(result).toContain('.bindery/translations.json');
 

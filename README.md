@@ -36,7 +36,7 @@ See [vscode-ext/README.md](vscode-ext/README.md) for full documentation.
 
 ### [mcp-ts/](mcp-ts/) — MCP Server (Node.js / TypeScript)
 
-A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes your book project to AI assistants. Pure Node.js..
+A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes your book project to AI assistants. Pure Node.js.
 
 - **BM25 full-text search** — fast lexical search across all chapters and notes via [MiniSearch](https://lucaong.github.io/minisearch/)
 - **Optional semantic search** — set `BINDERY_OLLAMA_URL` for semantic reranking, or enable a full semantic index for precomputed embedding search
@@ -44,7 +44,7 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes
 - **Multi-book support** — configure one or more books via `--book Name=path` CLI args or `BINDERY_BOOKS` env var; every tool call specifies which book to use by name (agents never see raw paths)
 - **Container/mount aware** — agents in sandboxed environments (e.g. Cowork) can call `identify_book` with their working directory to discover their book name, even when mount paths differ from the configured paths
 
-See [mcpb/README.md](vscode-ext/README.md) for full documentation and tool list.
+See [mcpb/README.md](mcpb/README.md) for full documentation and tool list.
 
 
 ### [mcpb/](mcpb/) — Claude Desktop Extension
@@ -59,7 +59,7 @@ Packages the MCP server as a `.mcpb` file for one-click installation in Claude D
 
 1. Install the [Bindery extension](https://marketplace.visualstudio.com/items?itemName=option-a.bindery) from the Marketplace
 2. Open your book folder in VS Code
-3. Run `Bindery: Initialise Workspace` to create `.bindery/settings.json` (also initialises a git repo if not present)
+3. Run `Bindery: Initialize Workspace` to create `.bindery/settings.json` (also initializes a git repo if not present)
 4. Run `Bindery: Register MCP Server` to create `.vscode/mcp.json`
 5. Tools are now available in GitHub Copilot Chat, Claude for VS Code, and Codex
 
@@ -97,7 +97,7 @@ The VS Code extension works standalone — no server setup needed for typography
 ## Prerequisites
 
 - **VS Code** 1.85+
-- **Git** (recommended) — needed for version tracking, `get_review_text`, and `git_snapshot`. Auto-initialised during workspace setup. [Install](https://git-scm.com)
+- **Git** (recommended) — needed for version tracking, `get_review_text`, and `git_snapshot`. Auto-initialized during workspace setup. [Install](https://git-scm.com)
 - **Pandoc** (optional) — needed for DOCX/EPUB/PDF export. [Install](https://pandoc.org/installing.html)
 - **LibreOffice** (optional) — needed for PDF export only. [Install](https://www.libreoffice.org)
 - **Ollama** (optional) - needed for semantic reranking and search. [Install](https://ollama.com/)
