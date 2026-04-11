@@ -661,6 +661,12 @@ Use these Bindery MCP tools:
 
 ## Steps
 
+### 0. Sync repository
+Run \`git fetch && git pull\` via bash to ensure the workspace is up to date before loading any context.
+- If the pull succeeds with changes, note it briefly: "Pulled X commits from remote."
+- If already up to date, say nothing.
+- If the pull fails (e.g. merge conflict, no remote), flag it to the user and stop — do not proceed with stale context.
+
 ### 1. Check for current focus
 Use \`get_text("COWORK.md")\` to read the current focus file (ignore if missing).
 
@@ -677,9 +683,12 @@ Otherwise — **ask the user**: "Which chapter do you want to work on?"
 
 ### 5. Load chapter memory
 - Once the chapter is known (e.g. chapter 10), check \`memory_list\` output for a matching file (\`ch10.md\`). If it exists, read it with \`get_text("${memoriesFolder}/ch10.md")\`.
-- User might have worked on the chapter without saving to memory, so \`get_chapter(chapterNumber, language)\` can be used to verify the chapter text and fill any gaps.
+- Also read the full chapter text with \`get_chapter\` to have it fresh in context, and to check for any discrepancies with the memory file.
 
-### 6. Summarize
+### 6. Story / Arc focus
+Depending on the focus and open questions, use \`get_notes\` or \`search\` to load any additional relevant context.
+
+### 7. Summarize
 Output a short orientation (3-6 lines):
 - Which chapter / scene we're in
 - Status from the tracker (draft / in-progress / needs-review)
