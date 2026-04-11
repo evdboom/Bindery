@@ -41,7 +41,7 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.claude/skills/status/SKILL.md':       { version: 9,   label: 'status skill',            zip: '.claude/skills/status.zip' },
     '.claude/skills/continuity/SKILL.md':   { version: 9,   label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
     '.claude/skills/read-aloud/SKILL.md':   { version: 9,   label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
-    '.claude/skills/read-in/SKILL.md':      { version: 9,   label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
+    '.claude/skills/read-in/SKILL.md':      { version: 10,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
 };
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -655,8 +655,17 @@ Use these Bindery MCP tools:
 - \`get_text(identifier)\` — read COWORK.md and memory files
 - \`chapter_status_get(book)\` — read the structured progress tracker
 - \`get_overview(language)\` — list all acts and chapters (only if tracker is empty or sparse)
+- \`get_notes(category, name)\` — look up key character or world notes if relevant to current focus
+- \`search(query, language)\` — find relevant passages across the book based on current focus or open questions
+- \`get_chapter(chapterNumber, language)\` — read a chapter if that's the current focus
 
 ## Steps
+
+### 0. Sync repository
+Run \`git fetch && git pull\` via bash to ensure the workspace is up to date before loading any context.
+- If the pull succeeds with changes, note it briefly: "Pulled X commits from remote."
+- If already up to date, say nothing.
+- If the pull fails (e.g. merge conflict, no remote), flag it to the user and stop — do not proceed with stale context.
 
 ### 1. Check for current focus
 Use \`get_text("COWORK.md")\` to read the current focus file (ignore if missing).
@@ -673,9 +682,13 @@ Otherwise if the tracker has a single \`in-progress\` chapter, use that.
 Otherwise — **ask the user**: "Which chapter do you want to work on?"
 
 ### 5. Load chapter memory
-Once the chapter is known (e.g. chapter 10), check \`memory_list\` output for a matching file (\`ch10.md\`). If it exists, read it with \`get_text("${memoriesFolder}/ch10.md")\`.
+- Once the chapter is known (e.g. chapter 10), check \`memory_list\` output for a matching file (\`ch10.md\`). If it exists, read it with \`get_text("${memoriesFolder}/ch10.md")\`.
+- Also read the full chapter text with \`get_chapter\` to have it fresh in context, and to check for any discrepancies with the memory file.
 
-### 6. Summarize
+### 6. Story / Arc focus
+Depending on the focus and open questions, use \`get_notes\` or \`search\` to load any additional relevant context.
+
+### 7. Summarize
 Output a short orientation (3-6 lines):
 - Which chapter / scene we're in
 - Status from the tracker (draft / in-progress / needs-review)
