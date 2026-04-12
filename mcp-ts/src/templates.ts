@@ -34,7 +34,7 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.github/copilot-instructions.md':      { version: 7,   label: 'copilot instructions',    zip: null },
     '.cursor/rules':                        { version: 7,   label: 'cursor rules',            zip: null },
     'AGENTS.md':                            { version: 7,   label: 'agents instructions',     zip: null },
-    '.claude/skills/review/SKILL.md':       { version: 9,   label: 'review skill',            zip: '.claude/skills/review.zip' },
+    '.claude/skills/review/SKILL.md':       { version: 10,  label: 'review skill',            zip: '.claude/skills/review.zip' },
     '.claude/skills/brainstorm/SKILL.md':   { version: 9,   label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
     '.claude/skills/memory/SKILL.md':       { version: 9,   label: 'memory skill',            zip: '.claude/skills/memory.zip' },
     '.claude/skills/translate/SKILL.md':    { version: 9,   label: 'translate skill',         zip: '.claude/skills/translate.zip' },
@@ -294,7 +294,7 @@ User says \`/review\`, "review chapter X", "quick review", or "review my changes
 
 ## Tools
 Use these Bindery MCP tools to gather context:
-- \`get_review_text(language)\` — get the git diff of uncommitted changes (for "review my changes")
+- \`get_review_text(autoStage: true, contextLines: 3)\` — get the git diff of uncommitted changes, auto-staged for review. Pass more contextLines when join points to existing prose need checking
 - \`get_chapter(chapterNumber, language)\` — read the full chapter text
 - \`get_notes(category, name)\` — look up character profiles (\`category: "Characters"\`) or world rules
 - \`search(query, language)\` — find related passages across the book
