@@ -1285,12 +1285,19 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Disallow keys that can mutate object prototypes when merged from untrusted input.
+ */
 function isUnsafeMergeKey(key: string): boolean {
     return key === '__proto__' || key === 'constructor' || key === 'prototype';
 }
 
+/**
+ * Deep-clone plain objects while filtering unsafe merge keys. Primitive and array values
+ * are copied by reference for settings payload compatibility.
+ */
 function cloneSettingsObject(value: Record<string, unknown>): Record<string, unknown> {
-    const out = Object.create(null) as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
     for (const key of Object.keys(value)) {
         if (isUnsafeMergeKey(key)) {
             continue;
@@ -1302,7 +1309,7 @@ function cloneSettingsObject(value: Record<string, unknown>): Record<string, unk
 }
 
 function deepMergeSettings(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
-    const out = Object.create(null) as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
 
     for (const key of Object.keys(base)) {
         if (isUnsafeMergeKey(key)) {

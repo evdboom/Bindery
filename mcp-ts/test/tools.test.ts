@@ -77,6 +77,16 @@ describe('mcp tools', () => {
     expect(result).not.toContain('BEGIN CHAPTER 1');
   });
 
+  it('clamps negative non-integer startChapter values to chapter 1', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 2.md'), '# Two\nBeta\n');
+
+    const result = toolGetBookUntil(root, { chapterNumber: 2, startChapter: -1.5, language: 'en' });
+    expect(result).toContain('BEGIN CHAPTER 1');
+    expect(result).toContain('BEGIN CHAPTER 2');
+  });
+
   it('deep-merges partial settings patches without replacing unrelated keys', () => {
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
@@ -134,6 +144,28 @@ describe('mcp tools', () => {
     expect(settings.proof_read?.enabled).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(settings, '__proto__')).toBe(false);
     expect(({} as { polluted?: string }).polluted).toBeUndefined();
+  });
+
+  it('ignores constructor and prototype keys in settings_update patches', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      proof_read: { enabled: true },
+    }, null, 2) + '\n');
+
+    const patch = JSON.parse('{"proof_read":{"enabled":false},"constructor":{"evil":1},"prototype":{"evil":2}}') as Record<string, unknown>;
+    const update = toolSettingsUpdate(root, { patch });
+    expect(update).toContain('Updated .bindery/settings.json');
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      proof_read?: { enabled?: boolean };
+      constructor?: unknown;
+      prototype?: unknown;
+    };
+    expect(settings.proof_read?.enabled).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(settings, 'constructor')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(settings, 'prototype')).toBe(false);
   });
 
   it('builds index and returns search results', async () => {
