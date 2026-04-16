@@ -87,6 +87,15 @@ describe('mcp tools', () => {
     expect(result).toContain('BEGIN CHAPTER 2');
   });
 
+  it('returns a clear error when a chapter in range is missing', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 3.md'), '# Three\nGamma\n');
+
+    const result = toolGetBookUntil(root, { chapterNumber: 3, language: 'en' });
+    expect(result).toBe('Chapter 2 not found in EN');
+  });
+
   it('deep-merges partial settings patches without replacing unrelated keys', () => {
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
