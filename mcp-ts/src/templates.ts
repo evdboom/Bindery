@@ -799,7 +799,7 @@ Modern context windows handle full books comfortably — a 20-chapter 12+ novel 
 
 Launch all persona subagents in parallel. Each receives:
 - Their persona description (constructed from project context — see Reader Personas and Author Personas below)
-- The full chapter text
+- The full retrieved text
 - The review task (see Review Task Template)
 - An explicit reminder that they have no prior knowledge of this book beyond what they are about to read
 
@@ -807,8 +807,8 @@ Launch all persona subagents in parallel. Each receives:
 
 Once all subagents return, aggregate across the full panel:
 
-1. **Consensus positives** — moments or elements praised by 3 or more readers. These are your strongest material.
-2. **Consensus issues** — problems flagged by 3 or more readers. Highest priority to address.
+1. **Consensus positives** — moments or elements praised by a multitude of readers. These are your strongest material.
+2. **Consensus issues** — problems flagged by a multitude of readers. Highest priority to address.
 3. **Notable divergences** — where one reader type loved something another didn't. Not automatically a problem, but a useful creative signal (e.g. a core reader engaged by a worldbuilding passage that lost the reluctant reader).
 4. **Author notes** — surface separately. These are craft-level observations, not reader reactions, and shouldn't be averaged against them.
 
@@ -829,12 +829,12 @@ A reader at the target age who actively seeks out this kind of book. If the proj
 A reader at the target age who reads regularly but not primarily in this genre. Open and engaged, but reacts as an outsider to genre conventions.
 
 **R3 — Opposite-Corner Reader**
-A reader at the target age whose tastes pull away from the book's home genre. Their job is to test whether the chapter still works for someone who does not naturally prize this genre's default strengths. For fantasy, this might be a realism-first reader who cares most about emotional plausibility and character grounding. For realistic fiction, it should be a reader from a different corner, such as mystery, thriller, romance, horror, or speculative fiction, who wants a stronger external hook or a different kind of momentum.
+A reader at the target age whose tastes pull away from the book's home genre. Their job is to test whether the text still works for someone who does not naturally prize this genre's default strengths. For fantasy, this might be a realism-first reader who cares most about emotional plausibility and character grounding. For realistic fiction, it should be a reader from a different corner, such as mystery, thriller, romance, horror, or speculative fiction, who wants a stronger external hook or a different kind of momentum.
 
 **R4 — Reluctant Reader**
 A reader at the target age who reads when they have to. Will notice immediately if something drags or confuses. Short patience for exposition. Will find genuine excitement if it's there — but won't invent it.
 
-When building the subagent prompt, fill in the actual age range and genre from settings. Choose R3 as the deliberate contrast to the project's genre, not always as "the realist". For example, if \`targetAudience\` is "12+" and \`genre\` is "sci-fi/fantasy crossover", R1 becomes: *"You are 12–13 years old. You read a lot and you love sci-fi and fantasy..."* If the genre is realistic contemporary fiction, R3 should instead come from a different reading corner, such as mystery, thriller, or speculative fiction.
+When building the subagent prompt, fill in the actual age range and genre from settings. Choose R3 as the deliberate contrast to the project's genre, not always as "the realist". For example, if \`targetAudience\` is "12+" and \`genre\` is "sci-fi/fantasy crossover", R1 becomes: *"You are 12-13 years old. You read a lot and you love sci-fi and fantasy..."* If the genre is realistic contemporary fiction, R3 should instead come from a different reading corner, such as mystery, thriller, or speculative fiction.
 
 ---
 
@@ -861,12 +861,13 @@ For **reader personas**:
 
 > You are [PERSONA DESCRIPTION built from project settings].
 >
-> You are reading a chapter from a [GENRE] novel aimed at [TARGET AUDIENCE] readers. You have no prior knowledge of this book — no plot summaries, no character guides, no notes. You are reading this cold, exactly as you would if you'd just picked it up.
+> You are reading [TARGET CHAPTER OR BOOK] from a [GENRE] novel aimed at [TARGET AUDIENCE] readers. You have no prior knowledge of this book — no plot summaries, no character guides, no notes. You are reading this cold, exactly as you would if you'd just picked it up.
+> [CHAPTER NOTE: if the focus is a single chapter, say, "you read up to and including chapter N, focus your feedback on chapter N"]
 >
-> Here is the chapter:
+> Here is the text:
 >
 > ---
-> [CHAPTER TEXT]
+> [RETRIEVED TEXT]
 > ---
 >
 > Give your honest reaction as this reader. Cover:
@@ -881,12 +882,13 @@ For **reader personas**:
 
 For **author personas**:
 
-> You are reading this chapter as [AUTHOR NAME], author of [KNOWN_FOR], giving peer feedback to a fellow writer. The book is aimed at [TARGET AUDIENCE] readers. You have no prior knowledge of the manuscript beyond this chapter.
+> You are reading this book as [AUTHOR NAME], author of [KNOWN_FOR], giving peer feedback to a fellow writer. The book is aimed at [TARGET AUDIENCE] readers. You have no prior knowledge of the manuscript beyond this text.
+> [CHAPTER NOTE: if the focus is a single chapter, say, "you read up to and including chapter N, focus your feedback on chapter N"]
 >
 > Your particular focus: [READS_FOR].
 >
 > ---
-> [CHAPTER TEXT]
+> [RETRIEVED TEXT]
 > ---
 >
 > Give craft-level feedback: what's working and why, what isn't and how you'd think about fixing it. Voice, pacing, structure, dialogue, the handling of tension. Quote the text when useful. Be honest — this is peer review, not encouragement.
@@ -896,7 +898,7 @@ For **author personas**:
 ## Output Format
 
 \`\`\`
-## Proof-read: Chapter [N] — [Chapter title if available]
+## Proof-read: [Book title if available] / Chapter [N] — [Chapter title if available]
 
 ### Reader reactions
 

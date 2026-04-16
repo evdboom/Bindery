@@ -197,9 +197,9 @@ describe('renderTemplate — review skill', () => {
     expect(result).toContain('## Rules');
   });
 
-  it('includes the book title in description', () => {
+  it('does not embed book title at generation time', () => {
     const result = renderTemplate('review', makeCtx());
-    expect(result).toContain('"Test Book"');
+    expect(result).not.toContain('"Test Book"');
   });
 
   it('references the arc and memories folder', () => {
@@ -208,14 +208,14 @@ describe('renderTemplate — review skill', () => {
     expect(result).toContain('Arc/');
   });
 
-  it('includes audience when set', () => {
+  it('includes runtime instruction to read settings', () => {
     const result = renderTemplate('review', makeCtx());
-    expect(result).toContain('middle-grade');
+    expect(result).toContain('.bindery/settings.json');
   });
 
-  it('uses fallback audience string when empty', () => {
+  it('does not embed audience at generation time', () => {
     const result = renderTemplate('review', makeMinimalCtx());
-    expect(result).toContain('the target audience');
+    expect(result).not.toContain('middle-grade');
   });
 });
 
@@ -230,9 +230,9 @@ describe('renderTemplate — brainstorm skill', () => {
     expect(result).toContain('## Rules');
   });
 
-  it('includes the book title', () => {
+  it('does not embed book title at generation time', () => {
     const result = renderTemplate('brainstorm', makeCtx());
-    expect(result).toContain('"Test Book"');
+    expect(result).not.toContain('"Test Book"');
   });
 });
 
@@ -319,14 +319,14 @@ describe('renderTemplate — read-aloud skill', () => {
     expect(result).toContain('## Rules');
   });
 
-  it('includes audience in output description', () => {
+  it('includes runtime context instruction to read settings', () => {
     const result = renderTemplate('read-aloud', makeCtx());
-    expect(result).toContain('middle-grade');
+    expect(result).toContain('.bindery/settings.json');
   });
 
-  it('uses fallback when audience is empty', () => {
+  it('does not embed audience at generation time', () => {
     const result = renderTemplate('read-aloud', makeMinimalCtx());
-    expect(result).toContain('the target audience');
+    expect(result).not.toContain('middle-grade');
   });
 });
 
