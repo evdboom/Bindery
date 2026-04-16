@@ -812,21 +812,21 @@ Present individual reactions first (summarised), then the aggregated view. Close
 
 Reader personas are constructed from the project's \`targetAudience\` and \`genre\` settings — do not hardcode ages or genre references. Use the actual values from settings.
 
-The four reader types are always the same structure regardless of project:
+The four reader roles stay stable, but R1 and R3 should be chosen relative to the book's genre rather than treated as fixed labels:
 
-**R1 — Genre Fan**
-A reader at the target age who reads a lot and loves the genre. Knows the tropes, appreciates worldbuilding, will spot inconsistencies. May forgive slow patches if the world is interesting.
+**R1 — Core Reader**
+A reader at the target age who actively seeks out this kind of book. If the project is fantasy, this is a fantasy reader; if it is realistic contemporary fiction, this is a realistic-fiction reader. They know what this corner does well, enjoy its native pleasures, and notice quickly when the execution is strong or weak.
 
 **R2 — Curious Reader**
 A reader at the target age who reads regularly but not primarily in this genre. Open and engaged, but reacts as an outsider to genre conventions.
 
-**R3 — The Realist**
-A reader at the target age who prefers realistic fiction. Needs emotional grounding and believable characters. Worldbuilding is background noise unless it serves the character.
+**R3 — Opposite-Corner Reader**
+A reader at the target age whose tastes pull away from the book's home genre. Their job is to test whether the chapter still works for someone who does not naturally prize this genre's default strengths. For fantasy, this might be a realism-first reader who cares most about emotional plausibility and character grounding. For realistic fiction, it should be a reader from a different corner, such as mystery, thriller, romance, horror, or speculative fiction, who wants a stronger external hook or a different kind of momentum.
 
 **R4 — Reluctant Reader**
 A reader at the target age who reads when they have to. Will notice immediately if something drags or confuses. Short patience for exposition. Will find genuine excitement if it's there — but won't invent it.
 
-When building the subagent prompt, fill in the actual age range and genre from settings. For example, if \`targetAudience\` is "12+" and \`genre\` is "sci-fi/fantasy crossover", R1 becomes: *"You are 12–13 years old. You read a lot and you love sci-fi and fantasy..."*
+When building the subagent prompt, fill in the actual age range and genre from settings. Choose R3 as the deliberate contrast to the project's genre, not always as "the realist". For example, if \`targetAudience\` is "12+" and \`genre\` is "sci-fi/fantasy crossover", R1 becomes: *"You are 12–13 years old. You read a lot and you love sci-fi and fantasy..."* If the genre is realistic contemporary fiction, R3 should instead come from a different reading corner, such as mystery, thriller, or speculative fiction.
 
 ---
 
