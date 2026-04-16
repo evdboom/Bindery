@@ -330,9 +330,10 @@ export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
         return `Invalid range: startChapter (${start}) is greater than chapterNumber (${end}).`;
     }
 
+    const chapterFileMap = findChapterFiles(langDir);
     const sections: string[] = [];
     for (let i = start; i <= end; i++) {
-        const file = findChapterFile(langDir, i);
+        const file = chapterFileMap.get(i);
         if (!file) {
             return `Chapter ${i} not found in ${lang}`;
         }
@@ -355,6 +356,24 @@ function findChapterFile(dir: string, num: number): string | null {
         }
     }
     return null;
+}
+
+function findChapterFiles(dir: string, acc = new Map<number, string>()): Map<number, string> {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            findChapterFiles(fullPath, acc);
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+            const m = /(?:chapter|hoofdstuk|chapter_?)\s*(\d+)/i.exec(entry.name);
+            if (m) {
+                const chapterNumber = Number.parseInt(m[1], 10);
+                if (!acc.has(chapterNumber)) {
+                    acc.set(chapterNumber, fullPath);
+                }
+            }
+        }
+    }
+    return acc;
 }
 
 // ─── get_overview ─────────────────────────────────────────────────────────────
