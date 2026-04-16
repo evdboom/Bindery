@@ -34,15 +34,15 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.github/copilot-instructions.md':      { version: 7,   label: 'copilot instructions',    zip: null },
     '.cursor/rules':                        { version: 7,   label: 'cursor rules',            zip: null },
     'AGENTS.md':                            { version: 7,   label: 'agents instructions',     zip: null },
-    '.claude/skills/review/SKILL.md':       { version: 10,  label: 'review skill',            zip: '.claude/skills/review.zip' },
-    '.claude/skills/brainstorm/SKILL.md':   { version: 9,   label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
+    '.claude/skills/review/SKILL.md':       { version: 11,  label: 'review skill',            zip: '.claude/skills/review.zip' },
+    '.claude/skills/brainstorm/SKILL.md':   { version: 10,  label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
     '.claude/skills/memory/SKILL.md':       { version: 9,   label: 'memory skill',            zip: '.claude/skills/memory.zip' },
     '.claude/skills/translate/SKILL.md':    { version: 9,   label: 'translate skill',         zip: '.claude/skills/translate.zip' },
-    '.claude/skills/status/SKILL.md':       { version: 9,   label: 'status skill',            zip: '.claude/skills/status.zip' },
-    '.claude/skills/continuity/SKILL.md':   { version: 10,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
-    '.claude/skills/read-aloud/SKILL.md':   { version: 9,   label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
-    '.claude/skills/read-in/SKILL.md':      { version: 10,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
-    '.claude/skills/proof-read/SKILL.md':   { version: 1,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
+    '.claude/skills/status/SKILL.md':       { version: 10,  label: 'status skill',            zip: '.claude/skills/status.zip' },
+    '.claude/skills/continuity/SKILL.md':   { version: 11,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
+    '.claude/skills/read-aloud/SKILL.md':   { version: 10,  label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
+    '.claude/skills/read-in/SKILL.md':      { version: 11,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
+    '.claude/skills/proof-read/SKILL.md':   { version: 2,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
 };
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -277,15 +277,14 @@ function agentsMd(ctx: TemplateContext): string {
 // For new skills: make sure to add the prerequisites section, and update FILE_VERSION_INFO with a new version and label.
 
 function skillReview(ctx: TemplateContext): string {
-    const { title, arcFolder, memoriesFolder } = ctx;
-    const audienceStr = ctx.audience || 'the target audience';
+    void ctx;
     return `---
 name: review
-description: Bindery workspace - Review a chapter of "${title}" for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
+description: Bindery workspace - Review a chapter for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
 ---
 # Skill: /review
 
-Review a chapter of "${title}" and give structured feedback.
+Review a chapter and give structured feedback.
 
 ## Prerequisites
 This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
@@ -307,12 +306,15 @@ Use these Bindery MCP tools to gather context:
 
 ## Steps
 
-### 1. Load context
+### 1. Load settings and context
+Start by reading ".bindery/settings.json" with \
+\`get_text(".bindery/settings.json")\` to pick up the current book's target audience, genre, and story structure.
+
 Load the right context, pick any or all as needed:
-- Read \`${memoriesFolder}/global.md\`
-- Read \`${memoriesFolder}/chXX.md\` if it exists for chapter-specific context
+- Read \`.bindery/memories/global.md\`
+- Read \`.bindery/memories/chXX.md\` if it exists for chapter-specific context
 - Use \`get_chapter\` to load the chapter
-- For a Full review, read the relevant arc file: \`${arcFolder}/Act_I_[X].md\`, \`Act_II_[X].md\`, or \`Act_III_[X].md\`
+- For a Full review, read the relevant arc file from \`Arc/\`.
 - For "review my changes", use \`get_review_text\` to get the diff
 
 ### 2. Perform the review
@@ -321,7 +323,7 @@ Load the right context, pick any or all as needed:
 
 **Full** — adds:
 - Arc consistency with the arc file
-- Age-appropriateness for ${audienceStr}
+- Age-appropriateness for the book's configured target audience
 - Character consistency (use \`get_notes(category: "Characters")\`)
 
 ### 3. Output format
@@ -343,15 +345,14 @@ If the review looks good, suggest: "Want me to save a snapshot?" (calls \`git_sn
 }
 
 function skillBrainstorm(ctx: TemplateContext): string {
-    const { title, arcFolder, memoriesFolder } = ctx;
-    const audienceStr = ctx.audience || 'the target audience';
+    void ctx;
     return `---
 name: brainstorm
-description: Bindery workspace - Brainstorm story ideas, plot beats, character moments, or scene concepts for "${title}". Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
+description: Bindery workspace - Brainstorm story ideas, plot beats, character moments, or scene concepts. Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
 ---
 # Skill: /brainstorm
 
-Brainstorm story ideas, character moments, or plot solutions for "${title}".
+Brainstorm story ideas, character moments, or plot solutions.
 
 ## Prerequisites
 This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
@@ -373,11 +374,12 @@ Use these Bindery MCP tools to gather context:
 
 ## Steps
 
-1. Read \`${memoriesFolder}/global.md\` and the relevant arc file from \`${arcFolder}/\`.
-2. If chapter specific, read \`${memoriesFolder}/chXX.md\` if it exists.
-3. If character-focused, use \`get_notes(category: "Characters")\` for character profiles.
-4. Use \`search\` to find related moments or themes already in the book.
-5. Generate 3-5 concrete ideas that fit the arc and feel true to the characters.
+1. Read ".bindery/settings.json" with \`get_text\` to pick up the current book's genre, target audience, and story structure.
+2. Read \`.bindery/memories/global.md\` and the relevant arc file from \`Arc/\`.
+3. If chapter specific, read \`.bindery/memories/chXX.md\` if it exists.
+4. If character-focused, use \`get_notes(category: "Characters")\` for character profiles.
+5. Use \`search\` to find related moments or themes already in the book.
+6. Generate 3-5 concrete ideas that fit the arc and feel true to the characters.
 
 ## Output format
 
@@ -390,7 +392,7 @@ End with a brief note on which options feel most aligned with the arc.
 
 ## Rules
 - Respect established world rules and character voices
-- Keep ideas appropriate for ${audienceStr}
+- Keep ideas appropriate for the book's configured target audience
 `;
 }
 
@@ -505,7 +507,7 @@ When the user confirms a new or corrected term translation, call \`add_translati
 }
 
 function skillStatus(ctx: TemplateContext): string {
-    const { arcFolder, memoriesFolder } = ctx;
+    void ctx;
     return `---
 name: status
 description: Bindery workspace - Give a book progress snapshot — chapters done, in progress, and coming up. Use for /status, "what's the book status", or "where are we".
@@ -525,17 +527,18 @@ Use these Bindery MCP tools:
 - \`chapter_status_get(book)\` — read the structured progress tracker from \`.bindery/chapter-status.json\`
 - \`chapter_status_update(book, chapters)\` — upsert chapter progress entries (send only changed chapters)
 - \`get_overview(language)\` — list all acts and chapters with titles
-- \`get_text(identifier)\` — read COWORK.md and \`${memoriesFolder}/global.md\`
+- \`get_text(identifier)\` — read COWORK.md, settings.json, and memory files
 - \`memory_list\` — discover which chapter memory files exist (\`chXX.md\`)
 
 ## Steps
 
-1. Use \`chapter_status_get\` to read the current tracker. Use \`memory_list\` to check available memory files. 
-2. Use \`get_text\` to read COWORK.md (current focus), \`${memoriesFolder}/global.md\` and for in-progress chapters \`${memoriesFolder}/chXX.md\`.
-3. Use \`get_overview\` for the full chapter listing if the tracker is empty or incomplete.
-4. Check \`${arcFolder}/\` for what's planned vs written (Overall.md + the relevant act file).
-5. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
-6. If the tracker is out of date or missing entries, update it with \`chapter_status_update\` (upsert only the changed chapters).
+1. Use \`get_text(".bindery/settings.json")\` to pick up the current book's structure and conventions.
+2. Use \`chapter_status_get\` to read the current tracker. Use \`memory_list\` to check available memory files.
+3. Use \`get_text\` to read COWORK.md (current focus), \`.bindery/memories/global.md\`, and for in-progress chapters \`.bindery/memories/chXX.md\`.
+4. Use \`get_overview\` for the full chapter listing if the tracker is empty or incomplete.
+5. Check \`Arc/\` for what's planned vs written (Overall.md + the relevant act file).
+6. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.
+7. If the tracker is out of date or missing entries, update it with \`chapter_status_update\` (upsert only the changed chapters).
 
 ## Output
 Keep it scannable — bold headers, short lines. This is a working tool, not a narrative summary.
@@ -543,7 +546,7 @@ Keep it scannable — bold headers, short lines. This is a working tool, not a n
 }
 
 function skillContinuity(ctx: TemplateContext): string {
-    const { memoriesFolder } = ctx;
+    void ctx;
     return `---
 name: continuity
 description: Bindery workspace - Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
@@ -573,11 +576,12 @@ Use these Bindery MCP tools:
 
 ## Steps
 
-1. Use \`get_chapter\` to read the chapter.
-2. Use \`get_text\` to read \`${memoriesFolder}/global.md\`. Use \`memory_list\` to check if a chapter-specific memory file (\`chXX.md\`) exists; if so, read it with \`get_text\` too. Use \`get_notes(category: "Characters")\` for character profiles.
-3. For world rules: use \`get_notes(category: "World")\`.
-4. For timeline and continuity drift checks: use \`get_book_until\` up to the focus chapter. If unavailable, fall back to \`get_chapter\` for nearby prior chapters.
-5. Use \`search\` to verify specific details against earlier chapters.
+1. Use \`get_text(".bindery/settings.json")\` to pick up the current book's structure and conventions.
+2. Use \`get_chapter\` to read the chapter.
+3. Use \`get_text\` to read \`.bindery/memories/global.md\`. Use \`memory_list\` to check if a chapter-specific memory file (\`chXX.md\`) exists; if so, read it with \`get_text\` too. Use \`get_notes(category: "Characters")\` for character profiles.
+4. For world rules: use \`get_notes(category: "World")\`.
+5. For timeline and continuity drift checks: use \`get_book_until\` up to the focus chapter. If unavailable, fall back to \`get_chapter\` for nearby prior chapters.
+6. Use \`search\` to verify specific details against earlier chapters.
 
 ## Output format
 
@@ -594,14 +598,14 @@ End with a one-line overall assessment. If no issues found, say so clearly.
 }
 
 function skillReadAloud(ctx: TemplateContext): string {
-    const audienceStr = ctx.audience || 'the target audience';
+    void ctx;
     return `---
 name: read-aloud
 description: Bindery workspace - Test how a chapter or passage sounds when read aloud — flags long sentences, staccato rhythm, complex vocabulary, and said-bookisms. Use for /read-aloud, "reading test", or "how does this sound".
 ---
 # Skill: /read-aloud
 
-Test how a chapter sounds when read aloud to ${audienceStr}.
+Test how a chapter sounds when read aloud.
 
 ## Prerequisites
 This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
@@ -612,6 +616,9 @@ User says \`/read-aloud\`, "reading test", or "how does this sound".
 ## Clarify first
 - Whole chapter or specific passage?
 
+## Runtime context
+Before reviewing, read ".bindery/settings.json" with \`get_text\` to pick up the current book's target audience and genre.
+
 ## Tools
 Use these Bindery MCP tools:
 - \`get_chapter(chapterNumber, language)\` — read the full chapter
@@ -620,7 +627,7 @@ Use these Bindery MCP tools:
 ## What to check
 - Sentences over ~30 words
 - Sequences of 3+ short sentences (staccato)
-- Vocabulary too complex for ${audienceStr}
+- Vocabulary too complex for the book's configured target audience
 - Said-bookisms in dialogue ("she exclaimed breathlessly" → prefer "said" or action beat)
 - Paragraphs over 8 lines without a break
 - Accidental word repetition within 2-3 sentences
@@ -640,7 +647,7 @@ Brief overall impression (2-3 sentences) after the table.
 }
 
 function skillReadIn(ctx: TemplateContext): string {
-    const { memoriesFolder } = ctx;
+    void ctx;
     return `---
 name: read-in
 description: Bindery workspace - Load project context at the start of a session — memory, progress tracker, and chapter notes. Use for /read-in, "get your bearings", "what were we doing", or at the start of any working session.
@@ -677,7 +684,8 @@ Run \`git fetch && git pull\` via bash to ensure the workspace is up to date bef
 Use \`get_text("COWORK.md")\` to read the current focus file (ignore if missing).
 
 ### 2. Load global memory
-Use \`memory_list\` to discover available memory files, then \`get_text("${memoriesFolder}/global.md")\` to load cross-chapter decisions.
+Use \`get_text(".bindery/settings.json")\` first to pick up the current book's structure and conventions.
+Then use \`memory_list\` to discover available memory files, and \`get_text(".bindery/memories/global.md")\` to load cross-chapter decisions.
 
 ### 3. Read the progress tracker
 Use \`chapter_status_get\` to read current chapter progress. If it is empty or has fewer than 3 entries, also call \`get_overview\` for the full chapter listing.
@@ -688,7 +696,7 @@ Otherwise if the tracker has a single \`in-progress\` chapter, use that.
 Otherwise — **ask the user**: "Which chapter do you want to work on?"
 
 ### 5. Load chapter memory
-- Once the chapter is known (e.g. chapter 10), check \`memory_list\` output for a matching file (\`ch10.md\`). If it exists, read it with \`get_text("${memoriesFolder}/ch10.md")\`.
+- Once the chapter is known (e.g. chapter 10), check \`memory_list\` output for a matching file (\`ch10.md\`). If it exists, read it with \`get_text(".bindery/memories/ch10.md")\`.
 - Also read the full chapter text with \`get_chapter\` to have it fresh in context, and to check for any discrepancies with the memory file.
 
 ### 6. Story / Arc focus
@@ -801,7 +809,7 @@ Once all subagents return, aggregate across the full panel:
 
 1. **Consensus positives** — moments or elements praised by 3 or more readers. These are your strongest material.
 2. **Consensus issues** — problems flagged by 3 or more readers. Highest priority to address.
-3. **Notable divergences** — where one reader type loved something another didn't. Not automatically a problem, but a useful creative signal (e.g. a genre fan engaged by a worldbuilding passage that lost the reluctant reader).
+3. **Notable divergences** — where one reader type loved something another didn't. Not automatically a problem, but a useful creative signal (e.g. a core reader engaged by a worldbuilding passage that lost the reluctant reader).
 4. **Author notes** — surface separately. These are craft-level observations, not reader reactions, and shouldn't be averaged against them.
 
 Present individual reactions first (summarised), then the aggregated view. Close with a short prioritised action list.
@@ -892,13 +900,13 @@ For **author personas**:
 
 ### Reader reactions
 
-**R1 — Genre fan**
+**R1 — Core reader**
 [2-3 sentence summary. Key quote if strong.]
 
 **R2 — Curious reader**
 ...
 
-**R3 — Realist**
+**R3 — Opposite-corner reader**
 ...
 
 **R4 — Reluctant reader**
@@ -920,7 +928,7 @@ For **author personas**:
 - ...
 
 ### Divergences worth noting
-- [Element] resonated with genre readers but lost the realist / reluctant reader
+- [Element] resonated with core readers but lost the opposite-corner / reluctant reader
 - ...
 
 ### Suggested actions
@@ -932,7 +940,7 @@ For **author personas**:
 
 ## Quick Run
 
-For a faster pass: **R1** (genre fan), **R4** (reluctant reader), and the first stored author. Two reader extremes plus a craft read — widest spread with fewest subagents.
+For a faster pass: **R1** (core reader), **R4** (reluctant reader), and the first stored author. Two reader extremes plus a craft read — widest spread with fewest subagents.
 
 ---
 
