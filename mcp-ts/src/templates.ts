@@ -30,7 +30,7 @@ export interface TemplateContext {
 // Bump FILE_VERSION_INFO[key].version so users with outdated content are prompted.
 
 export const FILE_VERSION_INFO: Record<string, { version: number; label: string; zip: string | null }> = {
-    'CLAUDE.md':                            { version: 8,   label: 'project instructions',    zip: null },
+    'CLAUDE.md':                            { version: 9,   label: 'project instructions',    zip: null },
     '.github/copilot-instructions.md':      { version: 7,   label: 'copilot instructions',    zip: null },
     '.cursor/rules':                        { version: 7,   label: 'cursor rules',            zip: null },
     'AGENTS.md':                            { version: 7,   label: 'agents instructions',     zip: null },
@@ -39,9 +39,10 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.claude/skills/memory/SKILL.md':       { version: 9,   label: 'memory skill',            zip: '.claude/skills/memory.zip' },
     '.claude/skills/translate/SKILL.md':    { version: 9,   label: 'translate skill',         zip: '.claude/skills/translate.zip' },
     '.claude/skills/status/SKILL.md':       { version: 9,   label: 'status skill',            zip: '.claude/skills/status.zip' },
-    '.claude/skills/continuity/SKILL.md':   { version: 9,   label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
+    '.claude/skills/continuity/SKILL.md':   { version: 10,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
     '.claude/skills/read-aloud/SKILL.md':   { version: 9,   label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
     '.claude/skills/read-in/SKILL.md':      { version: 10,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
+    '.claude/skills/proof-read/SKILL.md':   { version: 1,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
 };
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
  *
  * Top-level file templates: 'claude', 'copilot', 'cursor', 'agents'
  * Skill templates: 'review', 'brainstorm', 'memory', 'translate',
- *                  'status', 'continuity', 'read-aloud', 'read-in'
+ *                  'status', 'continuity', 'read-aloud', 'read-in', 'proof-read'
  */
 export function renderTemplate(name: string, ctx: TemplateContext): string {
     switch (name) {
@@ -67,6 +68,7 @@ export function renderTemplate(name: string, ctx: TemplateContext): string {
         case 'continuity': return skillContinuity(ctx);
         case 'read-aloud': return skillReadAloud(ctx);
         case 'read-in':    return skillReadIn(ctx);
+        case 'proof-read': return skillProofRead(ctx);
         default:           return `Unknown template: ${name}`;
     }
 }
@@ -137,6 +139,7 @@ function claudeMd(ctx: TemplateContext): string {
         '| `/continuity` | Check a chapter for consistency errors |',
         '| `/read-aloud` | Test how a passage reads when spoken |',
         '| `/read-in` | Load context and get your bearings at the start of a session |',
+        '| `/proof-read` | Read the book as a multiple proofreaders and present the findings |',
         '',
         '## MCP server (bindery-mcp)',
         '',
@@ -154,6 +157,7 @@ function claudeMd(ctx: TemplateContext): string {
         '| `index_status` | Show index chunk count and build time |',
         '| `get_text` | Read any file by relative path, with optional line range |',
         '| `get_chapter` | Full chapter content by number and language |',
+        '| `get_book_until` | Fetch chapters from 1..N (or start..N) in one call, concatenated in reading order |',
         '| `get_overview` | Chapter structure — acts, chapters, titles |',
         '| `get_notes` | Notes/ files, filterable by category or name |',
         '| `search` | BM25 full-text search with ranked snippets, optional semantic ranking |',
@@ -165,6 +169,7 @@ function claudeMd(ctx: TemplateContext): string {
         '| `get_dialect` | List dialect substitution rules, or look up a specific word |',
         '| `add_dialect` | Add or update a dialect substitution rule (auto-applied at export, e.g. US→UK) |',
         '| `add_language` | Add a language to settings.json and scaffold its story folder with stubs |',
+        '| `settings_update` | Merge a partial patch into settings.json without replacing unrelated keys |',
         '| `memory_list` | List `.bindery/memories/` files with line counts |',
         '| `memory_append` | Append a dated session entry to a file in `.bindery/memories/` |',
         '| `memory_compact` | Overwrite a file in `.bindery/memories/` with a summary (backs up original to `.bindery/memories/archive/`) |',
@@ -559,7 +564,8 @@ User says \`/continuity\`, "check continuity", or "check chapter X for errors".
 
 ## Tools
 Use these Bindery MCP tools:
-- \`get_chapter(chapterNumber, language)\` — read the chapter (and previous chapter for timeline checks)
+- \`get_chapter(chapterNumber, language)\` — read a specific chapter
+- \`get_book_until(chapterNumber, language, startChapter?)\` — load prior chapters in one call for timeline/continuity context
 - \`get_notes(category, name)\` — look up character profiles or world rules
 - \`search(query, language)\` — find earlier mentions of a character detail or event
 - \`search(query, language)\` — exact-match search for names, places, or specific terms
@@ -570,7 +576,7 @@ Use these Bindery MCP tools:
 1. Use \`get_chapter\` to read the chapter.
 2. Use \`get_text\` to read \`${memoriesFolder}/global.md\`. Use \`memory_list\` to check if a chapter-specific memory file (\`chXX.md\`) exists; if so, read it with \`get_text\` too. Use \`get_notes(category: "Characters")\` for character profiles.
 3. For world rules: use \`get_notes(category: "World")\`.
-4. For timeline: also use \`get_chapter\` to read the previous chapter.
+4. For timeline and continuity drift checks: use \`get_book_until\` up to the focus chapter. If unavailable, fall back to \`get_chapter\` for nearby prior chapters.
 5. Use \`search\` to verify specific details against earlier chapters.
 
 ## Output format
@@ -701,4 +707,240 @@ Output a short orientation (3-6 lines):
 - Keep the summary brief; this is orientation, not a full status report
 - Do not suggest work or ask multiple questions — one question at most (which chapter?)
 `;
+}
+
+function skillProofRead(ctx: TemplateContext): string {
+    return `---
+name: proof-read
+description: Bindery workspace - Multi-perspective proofreading using isolated reader and author personas. Each persona runs as a scoped subagent with no arc, notes, or memory context — only the chapter text. Use for /proof-read, "proofread chapter X", "get reader feedback", "how does this land with readers", "simulate reader reactions", or "peer review".
+---
+# Proof-Read
+
+Simulates a panel of readers reviewing a chapter as genuine first-time readers — no arc knowledge, no notes, no memory of prior sessions. Each persona runs as an isolated subagent that only sees the chapter text and their assigned role.
+
+The value is in the isolation. A reader doesn't know what the arc says should happen, what a character's backstory is, or what the chapter was *trying* to do. That's exactly the feedback you can't give yourself, and can't get from an agent that has been working on the book with you.
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
+
+---
+
+## Workflow
+
+### Step 0: Load project context
+
+Before asking the user anything, read the project settings:
+
+\`\`\`
+get_text(".bindery/settings.json")
+\`\`\`
+
+Extract:
+- \`targetAudience\` — used to calibrate reader personas (age, reading level)
+- \`genre\` — used to construct the genre-fan persona and to generate author suggestions if needed
+- \`proof_read.authors\` — the stored author panel for this project (may be absent)
+
+If \`settings.json\` has no \`proof_read\` section yet, that's expected on first run — handle it in the author setup step below.
+
+### Step 1: Author panel setup
+
+**If \`proof_read.authors\` is set:**
+Present the stored authors and confirm:
+> "I have [Author A], [Author B], and [Author C] saved for this project. Shall I use them, or would you like to change the panel?"
+
+If the user wants to change: follow the "no authors stored" flow below, then update settings.
+
+**If \`proof_read.authors\` is not set (first run):**
+Ask:
+> "No author panel configured yet for this project. Would you like suggestions based on the genre, or do you have specific writers in mind?"
+
+- If **suggestions**: generate 4-5 relevant author names based on the book's genre, audience, and tone (see Author Suggestions below). Present them with a one-line description each. Let the user pick 2–3.
+- If **own names**: accept the user's list as-is.
+
+Once the panel is confirmed, store it back to settings:
+
+\`\`\`
+settings_update({ patch: { proof_read: { authors: [ { name: "...", known_for: "...", reads_for: "..." } ] } } })
+\`\`\`
+
+The \`reads_for\` field is a short phrase describing what this author's lens brings — e.g. "pacing of reveals, handling of danger for the age group". Generate it at storage time so it's available for subagent prompts without needing a web lookup later.
+
+### Step 2: Gather remaining parameters
+
+Ask:
+1. Which chapter to focus on — or the whole book?
+2. Quick run (2 readers + 1 author) or full run (all 4 readers + full author panel)?
+
+If the user invoked \`/proof-read 7\` or similar, the focus chapter is known — no need to ask.
+
+### Step 3: Fetch the reading context
+
+A real reader arrives at chapter N having read everything before it. Subagents receive the full text from chapter 1 up to and including the focus chapter — not a summary, not just the target chapter in isolation.
+
+**Why not a summary of prior chapters?** Any summary written by an agent who has worked on the book will carry arc knowledge — framing, foreshadowing, loaded context. It biases the subagent in ways a real reader wouldn't be. Full text preserves the isolation.
+
+**Why not restrict subagents to their own MCP calls?** Subagents with MCP access could accidentally pull notes, arc files, or overviews. Passing text directly is the only way to guarantee they see exactly what a reader sees.
+
+Use \`get_book_until(chapterNumber: n, language)\` to fetch all prior chapters in one call. If unavailable, loop \`get_chapter(1)\` through \`get_chapter(n)\` in the main agent. Pass the concatenated result to each subagent. Subagents make no MCP calls.
+
+For a **whole-book** run, fetch all chapters.
+
+Modern context windows handle full books comfortably — a 20-chapter 12+ novel is roughly 60-80k words, well within range.
+
+### Step 4: Spawn all subagents in a single turn
+
+Launch all persona subagents in parallel. Each receives:
+- Their persona description (constructed from project context — see Reader Personas and Author Personas below)
+- The full chapter text
+- The review task (see Review Task Template)
+- An explicit reminder that they have no prior knowledge of this book beyond what they are about to read
+
+### Step 5: Aggregate
+
+Once all subagents return, aggregate across the full panel:
+
+1. **Consensus positives** — moments or elements praised by 3 or more readers. These are your strongest material.
+2. **Consensus issues** — problems flagged by 3 or more readers. Highest priority to address.
+3. **Notable divergences** — where one reader type loved something another didn't. Not automatically a problem, but a useful creative signal (e.g. a genre fan engaged by a worldbuilding passage that lost the reluctant reader).
+4. **Author notes** — surface separately. These are craft-level observations, not reader reactions, and shouldn't be averaged against them.
+
+Present individual reactions first (summarised), then the aggregated view. Close with a short prioritised action list.
+
+---
+
+## Reader Personas
+
+Reader personas are constructed from the project's \`targetAudience\` and \`genre\` settings — do not hardcode ages or genre references. Use the actual values from settings.
+
+The four reader types are always the same structure regardless of project:
+
+**R1 — Genre Fan**
+A reader at the target age who reads a lot and loves the genre. Knows the tropes, appreciates worldbuilding, will spot inconsistencies. May forgive slow patches if the world is interesting.
+
+**R2 — Curious Reader**
+A reader at the target age who reads regularly but not primarily in this genre. Open and engaged, but reacts as an outsider to genre conventions.
+
+**R3 — The Realist**
+A reader at the target age who prefers realistic fiction. Needs emotional grounding and believable characters. Worldbuilding is background noise unless it serves the character.
+
+**R4 — Reluctant Reader**
+A reader at the target age who reads when they have to. Will notice immediately if something drags or confuses. Short patience for exposition. Will find genuine excitement if it's there — but won't invent it.
+
+When building the subagent prompt, fill in the actual age range and genre from settings. For example, if \`targetAudience\` is "12+" and \`genre\` is "sci-fi/fantasy crossover", R1 becomes: *"You are 12–13 years old. You read a lot and you love sci-fi and fantasy..."*
+
+---
+
+## Author Personas
+
+Author personas come from \`proof_read.authors\` in settings. Each entry has \`name\`, \`known_for\`, and \`reads_for\`. Use these fields directly in the subagent prompt — no need to reconstruct them.
+
+### Author Suggestions
+
+When the user asks for suggestions, generate a shortlist of 4-5 authors whose work overlaps meaningfully with the book's genre, tone, and target audience. Good criteria:
+
+- Writes for approximately the same age group
+- Works in the same genre or a closely adjacent one
+- Has a distinctive craft lens that adds something different from the others (e.g. one known for worldbuilding, one for pacing, one for character voice)
+- Ideally at least one who writes in a "neighbouring" genre (e.g. for a fantasy book, a post-apocalyptic author) to get an outside-genre craft read
+
+Present each suggestion with: name, one well-known title, and what their lens would add to the review.
+
+---
+
+## Review Task Template
+
+For **reader personas**:
+
+> You are [PERSONA DESCRIPTION built from project settings].
+>
+> You are reading a chapter from a [GENRE] novel aimed at [TARGET AUDIENCE] readers. You have no prior knowledge of this book — no plot summaries, no character guides, no notes. You are reading this cold, exactly as you would if you'd just picked it up.
+>
+> Here is the chapter:
+>
+> ---
+> [CHAPTER TEXT]
+> ---
+>
+> Give your honest reaction as this reader. Cover:
+> 1. Your overall impression (1-2 sentences)
+> 2. Moments that worked — where you were engaged, what you enjoyed
+> 3. Moments that didn't land — confusion, slow patches, anything that pulled you out
+> 4. Characters: did they feel real? Did you care what happened to them?
+> 5. Specific lines or passages worth flagging (positive or negative) — quote them
+> 6. Would you keep reading? Why or why not?
+>
+> Be specific. Quote the text when it helps. Do not summarise the plot — react to it.
+
+For **author personas**:
+
+> You are reading this chapter as [AUTHOR NAME], author of [KNOWN_FOR], giving peer feedback to a fellow writer. The book is aimed at [TARGET AUDIENCE] readers. You have no prior knowledge of the manuscript beyond this chapter.
+>
+> Your particular focus: [READS_FOR].
+>
+> ---
+> [CHAPTER TEXT]
+> ---
+>
+> Give craft-level feedback: what's working and why, what isn't and how you'd think about fixing it. Voice, pacing, structure, dialogue, the handling of tension. Quote the text when useful. Be honest — this is peer review, not encouragement.
+
+---
+
+## Output Format
+
+\`\`\`
+## Proof-read: Chapter [N] — [Chapter title if available]
+
+### Reader reactions
+
+**R1 — Genre fan**
+[2-3 sentence summary. Key quote if strong.]
+
+**R2 — Curious reader**
+...
+
+**R3 — Realist**
+...
+
+**R4 — Reluctant reader**
+...
+
+### Author peer review
+
+**[Author name]** ([known_for, short])
+[Craft observations, 3-4 sentences]
+
+...
+
+### What landed (consensus — 3+ readers)
+- [Specific moment or element] — flagged by [names]
+- ...
+
+### What needs attention (consensus — 3+ readers)
+- [Issue] — flagged by [names]
+- ...
+
+### Divergences worth noting
+- [Element] resonated with genre readers but lost the realist / reluctant reader
+- ...
+
+### Suggested actions
+1. [Highest priority]
+2. ...
+\`\`\`
+
+---
+
+## Quick Run
+
+For a faster pass: **R1** (genre fan), **R4** (reluctant reader), and the first stored author. Two reader extremes plus a craft read — widest spread with fewest subagents.
+
+---
+
+## Notes for the agent
+
+- **Never** give subagents MCP access or pass context beyond the selected reading text payload (the chapter, or chapters 1..N for chapter-N runs). The isolation is the point.
+- **Multiple chapters:** Run each chapter as a separate parallel batch. Aggregate per chapter first, then offer a cross-chapter summary if the user asks.
+- **Cost awareness:** Full run is 7 subagent calls per chapter (4 readers + 3 authors). Mention this if the user hasn't specified quick vs. full, especially for longer chapters.
+- **Divergences are data, not problems.** A passage that splits readers along genre-familiarity lines might be exactly right for this book. Surface it, let the author decide.
+- **Author panel changes:** If the user swaps authors mid-session, update \`proof_read.authors\` in settings before running so the change persists.`;
 }

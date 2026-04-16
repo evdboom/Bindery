@@ -16,6 +16,7 @@ import * as path   from 'node:path';
 
 interface GetTextInput    { identifier: string; startLine?: number; endLine?: number }
 interface GetChapterInput { chapterNumber: number; language: string }
+interface GetBookUntilInput { chapterNumber: number; language: string; startChapter?: number }
 interface GetOverviewInput { language?: string; act?: number }
 interface GetNotesInput   { category?: string; name?: string }
 interface SearchInput     { query: string; language?: string; maxResults?: number; mode?: 'lexical' | 'semantic_rerank' | 'full_semantic' }
@@ -28,6 +29,7 @@ interface AddDialectInput     { dialectCode: string; from: string; to: string }
 interface GetDialectInput     { dialectCode: string; word?: string }
 interface AddLanguageInput    { code: string; folderName?: string; chapterWord?: string; actPrefix?: string; prologueLabel?: string; epilogueLabel?: string; createStubs?: boolean }
 interface InitWorkspaceInput  { bookTitle?: string; author?: string; storyFolder?: string; genre?: string; description?: string; targetAudience?: string }
+interface SettingsUpdateInput { patch: Record<string, unknown> }
 interface SetupAiFilesInput   { targets?: string[]; skills?: string[]; overwrite?: boolean }
 interface MemoryAppendInput   { file: string; title: string; content: string }
 interface MemoryCompactInput  { file: string; compacted_content: string }
@@ -39,6 +41,7 @@ interface McpTools {
     toolIndexStatus:      (root: string) => string;
     toolGetText:          (root: string, args: GetTextInput) => string;
     toolGetChapter:       (root: string, args: GetChapterInput) => string;
+    toolGetBookUntil:     (root: string, args: GetBookUntilInput) => string;
     toolGetOverview:      (root: string, args: GetOverviewInput) => string;
     toolGetNotes:         (root: string, args: GetNotesInput) => string;
     toolSearch:           (root: string, args: SearchInput) => Promise<string>;
@@ -51,6 +54,7 @@ interface McpTools {
     toolGetDialect:       (root: string, args: GetDialectInput) => string;
     toolAddLanguage:      (root: string, args: AddLanguageInput) => string;
     toolInitWorkspace:    (root: string, args: InitWorkspaceInput) => string;
+    toolSettingsUpdate:   (root: string, args: SettingsUpdateInput) => string;
     toolSetupAiFiles:     (root: string, args: SetupAiFilesInput) => string;
     toolMemoryList:       (root: string) => string;
     toolMemoryAppend:     (root: string, args: MemoryAppendInput) => string;
@@ -118,6 +122,10 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
             invoke: async (opts, _token) => ok(t.toolGetChapter(requireRoot(), opts.input)),
         }),
 
+        vscode.lm.registerTool<GetBookUntilInput>('bindery_get_book_until', {
+            invoke: async (opts, _token) => ok(t.toolGetBookUntil(requireRoot(), opts.input)),
+        }),
+
         vscode.lm.registerTool<GetOverviewInput>('bindery_get_overview', {
             invoke: async (opts, _token) => ok(t.toolGetOverview(requireRoot(), opts.input)),
         }),
@@ -164,6 +172,10 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<InitWorkspaceInput>('bindery_init_workspace', {
             invoke: async (opts, _token) => ok(t.toolInitWorkspace(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<SettingsUpdateInput>('bindery_settings_update', {
+            invoke: async (opts, _token) => ok(t.toolSettingsUpdate(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<SetupAiFilesInput>('bindery_setup_ai_files', {

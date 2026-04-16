@@ -308,6 +308,41 @@ export function toolGetChapter(root: string, args: GetChapterArgs): string {
     return fs.readFileSync(file, 'utf-8');
 }
 
+// ─── get_book_until ─────────────────────────────────────────────────────────
+
+export interface GetBookUntilArgs {
+    chapterNumber: number;
+    language: string;
+    startChapter?: number;
+}
+
+export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
+    const story = storyFolder(root);
+    const lang = args.language.toUpperCase();
+    const langDir = path.join(root, story, lang);
+    if (!fs.existsSync(langDir)) {
+        return `Language folder not found: ${lang}`;
+    }
+
+    const start = Math.max(1, args.startChapter ?? 1);
+    const end = Math.max(1, Math.floor(args.chapterNumber));
+    if (start > end) {
+        return `Invalid range: startChapter (${start}) is greater than chapterNumber (${end}).`;
+    }
+
+    const sections: string[] = [];
+    for (let i = start; i <= end; i++) {
+        const file = findChapterFile(langDir, i);
+        if (!file) {
+            return `Chapter ${i} not found in ${lang}`;
+        }
+        const content = fs.readFileSync(file, 'utf-8');
+        sections.push(`<!-- BEGIN CHAPTER ${i} -->\n${content}\n<!-- END CHAPTER ${i} -->`);
+    }
+
+    return sections.join('\n\n---\n\n');
+}
+
 function findChapterFile(dir: string, num: number): string | null {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const fullPath = path.join(dir, entry.name);
@@ -1238,6 +1273,54 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         : '';
     const engbNote = engbSeeded ? ' en-gb dialect seeded (75 rules).' : '';
     return `${action}: ${created.join(', ')}. Book: "${bookTitle}", story folder: ${storyFolderName}/, languages: ${langNote}.${engbNote}${hint}`;
+}
+
+// ─── settings_update ───────────────────────────────────────────────────────
+
+export interface SettingsUpdateArgs {
+    patch: Record<string, unknown>;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function deepMergeSettings(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = { ...base };
+    for (const [key, patchValue] of Object.entries(patch)) {
+        const baseValue = out[key];
+        if (isPlainObject(baseValue) && isPlainObject(patchValue)) {
+            out[key] = deepMergeSettings(baseValue, patchValue);
+            continue;
+        }
+        out[key] = patchValue;
+    }
+    return out;
+}
+
+export function toolSettingsUpdate(root: string, args: SettingsUpdateArgs): string {
+    const settingsPath = path.join(root, '.bindery', 'settings.json');
+    if (!fs.existsSync(settingsPath)) {
+        return 'Error: .bindery/settings.json not found. Run init_workspace first.';
+    }
+    if (!isPlainObject(args.patch) || Object.keys(args.patch).length === 0) {
+        return 'Error: patch must be a non-empty object.';
+    }
+
+    let existing: Record<string, unknown>;
+    try {
+        const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as unknown;
+        if (!isPlainObject(parsed)) {
+            return 'Error: .bindery/settings.json is not a JSON object.';
+        }
+        existing = parsed;
+    } catch {
+        return 'Error: failed to parse .bindery/settings.json';
+    }
+
+    const merged = deepMergeSettings(existing, args.patch);
+    fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
+    return `Updated .bindery/settings.json (merged keys: ${Object.keys(args.patch).join(', ')}).`;
 }
 
 // ─── setup_ai_files ──────────────────────────────────────────────────────────

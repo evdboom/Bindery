@@ -115,8 +115,10 @@ are saved back with `add_translation` (glossary) or `add_dialect` (dialect subst
 
 > "Check chapter 8 for consistency errors — character descriptions and world rules"
 
-Claude calls `get_chapter` to read the chapter, `get_notes` to load character
-profiles and world rules, then uses `search` to verify specific details against earlier chapters. Results are presented in a table with issue type, location, and the reference that contradicts it.
+Claude calls `get_book_until` to load prior chapters through the focus chapter,
+uses `get_notes` to load character profiles and world rules, then uses `search`
+to verify specific details against earlier chapters. Results are presented in a
+table with issue type, location, and the reference that contradicts it.
 
 ## Tools reference
 
@@ -131,6 +133,7 @@ profiles and world rules, then uses `search` to verify specific details against 
 | `index_status` | Show lexical and semantic index status, build times, and stale hints |
 | `get_text` | Read any file by relative path, with optional line range |
 | `get_chapter` | Full chapter content by number and language |
+| `get_book_until` | Chapters from a start chapter through N (inclusive), concatenated in order |
 | `get_overview` | Chapter structure — acts, chapters, titles |
 | `get_notes` | Notes/ files, filterable by category or name |
 | `search` | Search in lexical, semantic-rerank, or full-semantic mode; semantic modes fall back to lexical with warnings |
@@ -142,6 +145,7 @@ profiles and world rules, then uses `search` to verify specific details against 
 | `get_dialect` | List dialect substitution rules, or look up a specific word |
 | `add_dialect` | Add or update a dialect substitution rule (auto-applied at export) |
 | `add_language` | Add a language to settings.json and scaffold the story folder with stubs |
+| `settings_update` | Deep-merge a partial patch into settings.json without replacing unrelated keys |
 | `memory_list` | List memory files with line counts |
 | `memory_append` | Append a dated session entry to a memory file |
 | `memory_compact` | Overwrite a memory file with a summary (backs up original) |

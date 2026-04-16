@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   toolGetChapter,
+  toolGetBookUntil,
   toolGetText,
   toolIndexBuild,
+  toolSettingsUpdate,
   toolSearch,
   toolHealth,
   toolSetupAiFiles,
@@ -49,6 +51,56 @@ describe('mcp tools', () => {
     const result = toolGetChapter(root, { chapterNumber: 2, language: 'en' });
     expect(result).toContain('# Two');
     expect(result).toContain('Beta');
+  });
+
+  it('returns concatenated chapter text from chapter 1 through N', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 2.md'), '# Two\nBeta\n');
+
+    const result = toolGetBookUntil(root, { chapterNumber: 2, language: 'en' });
+    expect(result).toContain('BEGIN CHAPTER 1');
+    expect(result).toContain('# One');
+    expect(result).toContain('BEGIN CHAPTER 2');
+    expect(result).toContain('# Two');
+  });
+
+  it('deep-merges partial settings patches without replacing unrelated keys', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      proof_read: {
+        enabled: true,
+        options: { mode: 'quick', preserve: true },
+      },
+      storyFolder: 'Story',
+    }, null, 2) + '\n');
+
+    const update = toolSettingsUpdate(root, {
+      patch: {
+        proof_read: {
+          authors: [{ name: 'Author A', known_for: 'X', reads_for: 'Y' }],
+          options: { mode: 'full' },
+        },
+      },
+    });
+
+    expect(update).toContain('Updated .bindery/settings.json');
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      proof_read?: {
+        enabled?: boolean;
+        authors?: Array<{ name: string }>;
+        options?: { mode?: string; preserve?: boolean };
+      };
+      storyFolder?: string;
+    };
+
+    expect(settings.storyFolder).toBe('Story');
+    expect(settings.proof_read?.enabled).toBe(true);
+    expect(settings.proof_read?.options?.mode).toBe('full');
+    expect(settings.proof_read?.options?.preserve).toBe(true);
+    expect(settings.proof_read?.authors?.[0]?.name).toBe('Author A');
   });
 
   it('builds index and returns search results', async () => {
