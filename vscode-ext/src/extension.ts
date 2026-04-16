@@ -828,6 +828,7 @@ const SKILL_ITEMS: Array<{ label: string; description: string; value: SkillTempl
     { label: '/continuity', description: 'Cross-check chapter for consistency errors',                   value: 'continuity' },
     { label: '/read-aloud', description: 'Reading-aloud test for a chapter or passage',                  value: 'read-aloud' },
     { label: '/read-in',    description: 'Load context and get your bearings at the start of a session', value: 'read-in'    },
+    { label: '/proof-read', description: 'Multi-perspective proofread with reader and author personas',  value: 'proof-read' },
 ];
 
 async function setupAiCommand(context?: vscode.ExtensionContext) {

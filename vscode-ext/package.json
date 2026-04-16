@@ -325,6 +325,37 @@
         }
       },
       {
+        "name": "bindery_get_book_until",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Get Book Until",
+        "toolReferenceName": "binderyGetBookUntil",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Fetch chapters from a start chapter through a target chapter (inclusive), concatenated in reading order.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "chapterNumber": {
+              "type": "number",
+              "description": "Final chapter number (inclusive, 1-based)"
+            },
+            "language": {
+              "type": "string",
+              "description": "Language code, e.g. EN or NL"
+            },
+            "startChapter": {
+              "type": "number",
+              "description": "Starting chapter number (default 1)"
+            }
+          },
+          "required": [
+            "chapterNumber",
+            "language"
+          ]
+        }
+      },
+      {
         "name": "bindery_get_overview",
         "tags": [
           "bindery"
@@ -555,13 +586,35 @@
               "items": {
                 "type": "string"
               },
-              "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read-aloud, read-in. Default: all."
+              "description": "Claude skills to include: review, brainstorm, memory, translate, status, continuity, read-aloud, read-in, proof-read. Default: all."
             },
             "overwrite": {
               "type": "boolean",
               "description": "Overwrite existing files? Default false."
             }
           }
+        }
+      },
+      {
+        "name": "bindery_settings_update",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Settings Update",
+        "toolReferenceName": "binderySettingsUpdate",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Merge a partial patch into .bindery/settings.json without replacing unrelated keys.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "patch": {
+              "type": "object",
+              "description": "Partial settings object to deep-merge into .bindery/settings.json"
+            }
+          },
+          "required": [
+            "patch"
+          ]
         }
       },
       {

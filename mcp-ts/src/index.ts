@@ -20,6 +20,7 @@ import {
     toolIndexStatus,
     toolGetText,
     toolGetChapter,
+    toolGetBookUntil,
     toolGetOverview,
     toolGetNotes,
     toolSearch,
@@ -32,6 +33,7 @@ import {
     toolGetDialect,
     toolAddLanguage,
     toolInitWorkspace,
+    toolSettingsUpdate,
     toolSetupAiFiles,
     toolMemoryList,
     toolMemoryAppend,
@@ -157,6 +159,20 @@ server.registerTool('get_chapter', {
     annotations: { readOnlyHint: true },
 }, async ({ book, chapterNumber, language }) => {
     try { return ok(toolGetChapter(resolveBook(book).root, { chapterNumber, language })); } catch (e) { return err(e); }
+});
+
+server.registerTool('get_book_until', {
+    title: 'Get Book Until',
+    description: 'Fetch chapters from a starting chapter through a target chapter (inclusive), concatenated in reading order.',
+    inputSchema: {
+        book:          bookSchema,
+        chapterNumber: z.number().describe('Final chapter number (inclusive, 1-based)'),
+        language:      z.string().describe('Language code, e.g. EN or NL'),
+        startChapter:  z.number().optional().describe('Starting chapter number (default 1)'),
+    },
+    annotations: { readOnlyHint: true },
+}, async ({ book, chapterNumber, language, startChapter }) => {
+    try { return ok(toolGetBookUntil(resolveBook(book).root, { chapterNumber, language, startChapter })); } catch (e) { return err(e); }
 });
 
 server.registerTool('get_overview', {
@@ -356,6 +372,20 @@ server.registerTool('init_workspace', {
     try { return ok(toolInitWorkspace(resolveBook(book).root, { bookTitle, author, storyFolder, genre, description, targetAudience })); } catch (e) { return err(e); }
 });
 
+server.registerTool('settings_update', {
+    title: 'Settings Update',
+    description:
+        'Merge a partial patch into .bindery/settings.json without replacing unrelated keys. ' +
+        'Useful for persisting tool-specific state (for example proof_read settings).',
+    inputSchema: {
+        book:  bookSchema,
+        patch: z.record(z.string(), z.any()).describe('Partial settings object to deep-merge into .bindery/settings.json'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, patch }) => {
+    try { return ok(toolSettingsUpdate(resolveBook(book).root, { patch })); } catch (e) { return err(e); }
+});
+
 server.registerTool('setup_ai_files', {
     title: 'Setup AI Files',
     description:
@@ -365,7 +395,7 @@ server.registerTool('setup_ai_files', {
     inputSchema: {
         book:      bookSchema,
         targets:   z.array(z.string()).optional().describe('Which files to generate: claude, copilot, cursor, agents. Default: all.'),
-        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, status, continuity, read-aloud, read-in. Default: all.'),
+        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, status, continuity, read-aloud, read-in, proof-read. Default: all.'),
         overwrite: z.boolean().optional().describe('Overwrite existing files? Default false (skip existing).'),
     },
     annotations: { destructiveHint: true },

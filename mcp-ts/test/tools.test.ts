@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   toolGetChapter,
+  toolGetBookUntil,
   toolGetText,
   toolIndexBuild,
+  toolSettingsUpdate,
   toolSearch,
   toolHealth,
   toolSetupAiFiles,
@@ -49,6 +51,150 @@ describe('mcp tools', () => {
     const result = toolGetChapter(root, { chapterNumber: 2, language: 'en' });
     expect(result).toContain('# Two');
     expect(result).toContain('Beta');
+  });
+
+  it('returns concatenated chapter text from chapter 1 through N', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 2.md'), '# Two\nBeta\n');
+
+    const result = toolGetBookUntil(root, { chapterNumber: 2, language: 'en' });
+    expect(result).toContain('BEGIN CHAPTER 1');
+    expect(result).toContain('# One');
+    expect(result).toContain('BEGIN CHAPTER 2');
+    expect(result).toContain('# Two');
+  });
+
+  it('coerces a non-integer startChapter to an integer range start', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 2.md'), '# Two\nBeta\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 3.md'), '# Three\nGamma\n');
+
+    const result = toolGetBookUntil(root, { chapterNumber: 3, startChapter: 2.9, language: 'en' });
+    expect(result).toContain('BEGIN CHAPTER 2');
+    expect(result).toContain('BEGIN CHAPTER 3');
+    expect(result).not.toContain('BEGIN CHAPTER 1');
+  });
+
+  it('clamps negative non-integer startChapter values to chapter 1', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 2.md'), '# Two\nBeta\n');
+
+    const result = toolGetBookUntil(root, { chapterNumber: 2, startChapter: -1.5, language: 'en' });
+    expect(result).toContain('BEGIN CHAPTER 1');
+    expect(result).toContain('BEGIN CHAPTER 2');
+  });
+
+  it('returns a clear error when a chapter in range is missing', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 3.md'), '# Three\nGamma\n');
+
+    const result = toolGetBookUntil(root, { chapterNumber: 3, language: 'en' });
+    expect(result).toBe('Chapter 2 not found in EN');
+  });
+
+  it('deep-merges partial settings patches without replacing unrelated keys', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      proof_read: {
+        enabled: true,
+        options: { mode: 'quick', preserve: true },
+      },
+      storyFolder: 'Story',
+    }, null, 2) + '\n');
+
+    const update = toolSettingsUpdate(root, {
+      patch: {
+        proof_read: {
+          authors: [{ name: 'Author A', known_for: 'X', reads_for: 'Y' }],
+          options: { mode: 'full' },
+        },
+      },
+    });
+
+    expect(update).toContain('Updated .bindery/settings.json');
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      proof_read?: {
+        enabled?: boolean;
+        authors?: Array<{ name: string }>;
+        options?: { mode?: string; preserve?: boolean };
+      };
+      storyFolder?: string;
+    };
+
+    expect(settings.storyFolder).toBe('Story');
+    expect(settings.proof_read?.enabled).toBe(true);
+    expect(settings.proof_read?.options?.mode).toBe('full');
+    expect(settings.proof_read?.options?.preserve).toBe(true);
+    expect(settings.proof_read?.authors?.[0]?.name).toBe('Author A');
+  });
+
+  it('ignores unsafe prototype-pollution keys in settings_update patches', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      proof_read: { enabled: true },
+    }, null, 2) + '\n');
+
+    const patch = JSON.parse('{"proof_read":{"enabled":false},"__proto__":{"polluted":"yes"}}') as Record<string, unknown>;
+    const update = toolSettingsUpdate(root, { patch });
+    expect(update).toContain('Updated .bindery/settings.json');
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      proof_read?: { enabled?: boolean };
+      __proto__?: unknown;
+    };
+    expect(settings.proof_read?.enabled).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(settings, '__proto__')).toBe(false);
+    expect(({} as { polluted?: string }).polluted).toBeUndefined();
+  });
+
+  it('ignores constructor and prototype keys in settings_update patches', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      proof_read: { enabled: true },
+    }, null, 2) + '\n');
+
+    const patch = JSON.parse('{"proof_read":{"enabled":false},"constructor":{"evil":1},"prototype":{"evil":2}}') as Record<string, unknown>;
+    const update = toolSettingsUpdate(root, { patch });
+    expect(update).toContain('Updated .bindery/settings.json');
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      proof_read?: { enabled?: boolean };
+      constructor?: unknown;
+      prototype?: unknown;
+    };
+    expect(settings.proof_read?.enabled).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(settings, 'constructor')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(settings, 'prototype')).toBe(false);
+  });
+
+  it('returns an error when all patch keys are unsafe', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ bookTitle: 'Test Book', storyFolder: 'Story' }, null, 2) + '\n');
+
+    const patch = JSON.parse('{"__proto__":{"evil":1},"constructor":{"evil":2}}') as Record<string, unknown>;
+    const result = toolSettingsUpdate(root, { patch });
+    expect(result).toContain('Error');
+    expect(result).toContain('no safe keys');
+  });
+
+  it('only reports actually-merged keys in success message', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ bookTitle: 'Test Book', storyFolder: 'Story' }, null, 2) + '\n');
+
+    const patch = JSON.parse('{"bookTitle":"New Title","__proto__":{"evil":1}}') as Record<string, unknown>;
+    const result = toolSettingsUpdate(root, { patch });
+    expect(result).toContain('bookTitle');
+    expect(result).not.toContain('__proto__');
   });
 
   it('builds index and returns search results', async () => {

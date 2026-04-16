@@ -308,6 +308,42 @@ export function toolGetChapter(root: string, args: GetChapterArgs): string {
     return fs.readFileSync(file, 'utf-8');
 }
 
+// ─── get_book_until ─────────────────────────────────────────────────────────
+
+export interface GetBookUntilArgs {
+    chapterNumber: number;
+    language: string;
+    startChapter?: number;
+}
+
+export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
+    const story = storyFolder(root);
+    const lang = args.language.toUpperCase();
+    const langDir = path.join(root, story, lang);
+    if (!fs.existsSync(langDir)) {
+        return `Language folder not found: ${lang}`;
+    }
+
+    const start = Math.max(1, Math.floor(args.startChapter ?? 1));
+    const end = Math.max(1, Math.floor(args.chapterNumber));
+    if (start > end) {
+        return `Invalid range: startChapter (${start}) is greater than chapterNumber (${end}).`;
+    }
+
+    const chapterFileMap = findChapterFiles(langDir);
+    const sections: string[] = [];
+    for (let i = start; i <= end; i++) {
+        const file = chapterFileMap.get(i);
+        if (!file) {
+            return `Chapter ${i} not found in ${lang}`;
+        }
+        const content = fs.readFileSync(file, 'utf-8');
+        sections.push(`<!-- BEGIN CHAPTER ${i} -->\n${content}\n<!-- END CHAPTER ${i} -->`);
+    }
+
+    return sections.join('\n\n---\n\n');
+}
+
 function findChapterFile(dir: string, num: number): string | null {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const fullPath = path.join(dir, entry.name);
@@ -320,6 +356,24 @@ function findChapterFile(dir: string, num: number): string | null {
         }
     }
     return null;
+}
+
+function findChapterFiles(dir: string, acc = new Map<number, string>()): Map<number, string> {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            findChapterFiles(fullPath, acc);
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+            const m = /(?:chapter|hoofdstuk|chapter_?)\s*(\d+)/i.exec(entry.name);
+            if (m) {
+                const chapterNumber = Number.parseInt(m[1], 10);
+                if (!acc.has(chapterNumber)) {
+                    acc.set(chapterNumber, fullPath);
+                }
+            }
+        }
+    }
+    return acc;
 }
 
 // ─── get_overview ─────────────────────────────────────────────────────────────
@@ -1238,6 +1292,95 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         : '';
     const engbNote = engbSeeded ? ' en-gb dialect seeded (75 rules).' : '';
     return `${action}: ${created.join(', ')}. Book: "${bookTitle}", story folder: ${storyFolderName}/, languages: ${langNote}.${engbNote}${hint}`;
+}
+
+// ─── settings_update ───────────────────────────────────────────────────────
+
+export interface SettingsUpdateArgs {
+    patch: Record<string, unknown>;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Disallow keys that can mutate object prototypes when merged from untrusted input.
+ */
+function isUnsafeMergeKey(key: string): boolean {
+    return key === '__proto__' || key === 'constructor' || key === 'prototype';
+}
+
+/**
+ * Deep-clone plain objects while filtering unsafe merge keys. Primitive and array values
+ * are copied by reference for settings payload compatibility.
+ */
+function cloneSettingsObject(value: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value)) {
+        if (isUnsafeMergeKey(key)) {
+            continue;
+        }
+        const entry = value[key];
+        out[key] = isPlainObject(entry) ? cloneSettingsObject(entry) : entry;
+    }
+    return out;
+}
+
+function deepMergeSettings(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+
+    for (const key of Object.keys(base)) {
+        if (isUnsafeMergeKey(key)) {
+            continue;
+        }
+        const baseValue = base[key];
+        out[key] = isPlainObject(baseValue) ? cloneSettingsObject(baseValue) : baseValue;
+    }
+
+    for (const key of Object.keys(patch)) {
+        if (isUnsafeMergeKey(key)) {
+            continue;
+        }
+        const patchValue = patch[key];
+        const baseValue = out[key];
+        if (isPlainObject(baseValue) && isPlainObject(patchValue)) {
+            out[key] = deepMergeSettings(baseValue, patchValue);
+            continue;
+        }
+        out[key] = isPlainObject(patchValue) ? cloneSettingsObject(patchValue) : patchValue;
+    }
+    return out;
+}
+
+export function toolSettingsUpdate(root: string, args: SettingsUpdateArgs): string {
+    const settingsPath = path.join(root, '.bindery', 'settings.json');
+    if (!fs.existsSync(settingsPath)) {
+        return 'Error: .bindery/settings.json not found. Run init_workspace first.';
+    }
+    if (!isPlainObject(args.patch) || Object.keys(args.patch).length === 0) {
+        return 'Error: patch must be a non-empty object.';
+    }
+
+    let existing: Record<string, unknown>;
+    try {
+        const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as unknown;
+        if (!isPlainObject(parsed)) {
+            return 'Error: .bindery/settings.json is not a JSON object.';
+        }
+        existing = parsed;
+    } catch {
+        return 'Error: failed to parse .bindery/settings.json';
+    }
+
+    const safeKeys = Object.keys(args.patch).filter(k => !isUnsafeMergeKey(k));
+    if (safeKeys.length === 0) {
+        return 'Error: patch contains no safe keys to merge (unsafe keys like __proto__, constructor, and prototype are rejected).';
+    }
+
+    const merged = deepMergeSettings(existing, args.patch);
+    fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
+    return `Updated .bindery/settings.json (merged keys: ${safeKeys.join(', ')}).`;
 }
 
 // ─── setup_ai_files ──────────────────────────────────────────────────────────
