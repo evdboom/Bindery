@@ -9,7 +9,7 @@
     "url": "https://github.com/evdboom/bindery"
   },
   "engines": {
-    "vscode": "^1.115.0"
+    "vscode": "^1.116.0"
   },
   "categories": [
     "Formatters",
@@ -1028,7 +1028,7 @@
   "devDependencies": {
     "esbuild": "^0.28.0",
     "@types/node": "^25.6.0",
-    "@types/vscode": "^1.116.0",
+    "@types/vscode": "1.116.0",
     "typescript": "6.0.2",
     "vitest": "^4.1.4"
   }
