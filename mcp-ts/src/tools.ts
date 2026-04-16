@@ -1354,9 +1354,14 @@ export function toolSettingsUpdate(root: string, args: SettingsUpdateArgs): stri
         return 'Error: failed to parse .bindery/settings.json';
     }
 
+    const safeKeys = Object.keys(args.patch).filter(k => !isUnsafeMergeKey(k));
+    if (safeKeys.length === 0) {
+        return 'Error: patch contains no safe keys to merge (unsafe keys like __proto__, constructor, and prototype are rejected).';
+    }
+
     const merged = deepMergeSettings(existing, args.patch);
     fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
-    return `Updated .bindery/settings.json (merged keys: ${Object.keys(args.patch).join(', ')}).`;
+    return `Updated .bindery/settings.json (merged keys: ${safeKeys.join(', ')}).`;
 }
 
 // ─── setup_ai_files ──────────────────────────────────────────────────────────

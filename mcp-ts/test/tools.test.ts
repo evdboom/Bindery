@@ -168,6 +168,26 @@ describe('mcp tools', () => {
     expect(Object.prototype.hasOwnProperty.call(settings, 'prototype')).toBe(false);
   });
 
+  it('returns an error when all patch keys are unsafe', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ bookTitle: 'Test Book', storyFolder: 'Story' }, null, 2) + '\n');
+
+    const patch = JSON.parse('{"__proto__":{"evil":1},"constructor":{"evil":2}}') as Record<string, unknown>;
+    const result = toolSettingsUpdate(root, { patch });
+    expect(result).toContain('Error');
+    expect(result).toContain('no safe keys');
+  });
+
+  it('only reports actually-merged keys in success message', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ bookTitle: 'Test Book', storyFolder: 'Story' }, null, 2) + '\n');
+
+    const patch = JSON.parse('{"bookTitle":"New Title","__proto__":{"evil":1}}') as Record<string, unknown>;
+    const result = toolSettingsUpdate(root, { patch });
+    expect(result).toContain('bookTitle');
+    expect(result).not.toContain('__proto__');
+  });
+
   it('builds index and returns search results', async () => {
     const root = makeRoot();
     write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Arrival\nThe red comet crossed the sky.\n');
