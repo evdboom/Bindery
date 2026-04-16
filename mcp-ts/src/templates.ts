@@ -42,7 +42,7 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.claude/skills/continuity/SKILL.md':   { version: 11,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
     '.claude/skills/read-aloud/SKILL.md':   { version: 10,  label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
     '.claude/skills/read-in/SKILL.md':      { version: 11,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
-    '.claude/skills/proof-read/SKILL.md':   { version: 2,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
+    '.claude/skills/proof-read/SKILL.md':   { version: 3,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
 };
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -788,11 +788,17 @@ A real reader arrives at chapter N having read everything before it. Subagents r
 
 **Why not a summary of prior chapters?** Any summary written by an agent who has worked on the book will carry arc knowledge — framing, foreshadowing, loaded context. It biases the subagent in ways a real reader wouldn't be. Full text preserves the isolation.
 
-**Why not restrict subagents to their own MCP calls?** Subagents with MCP access could accidentally pull notes, arc files, or overviews. Passing text directly is the only way to guarantee they see exactly what a reader sees.
+**Why not have subagents call MCP themselves?** Subagents with MCP access could accidentally pull notes, arc files, or overviews. A pre-written staging file is the only way to guarantee they see exactly what a reader sees — nothing more.
 
-Use \`get_book_until(chapterNumber: n, language)\` to fetch all prior chapters in one call. If unavailable, loop \`get_chapter(1)\` through \`get_chapter(n)\` in the main agent. Pass the concatenated result to each subagent. Subagents make no MCP calls.
+Use \`get_book_until(chapterNumber: n, language)\` to fetch all prior chapters in one call. If unavailable, loop \`get_chapter(1)\` through \`get_chapter(n)\` in the main agent. For a **whole-book** run, fetch all chapters.
 
-For a **whole-book** run, fetch all chapters.
+Once the text is retrieved, **write it to a staging file**:
+
+\`\`\`
+create_file(".bindery/proof-read-payload.md", <retrieved text>)
+\`\`\`
+
+If the file already exists from a previous run, overwrite it. Store the absolute path — it will be passed to every subagent in the next step.
 
 Modern context windows handle full books comfortably — a 20-chapter 12+ novel is roughly 60-80k words, well within range.
 
@@ -800,9 +806,9 @@ Modern context windows handle full books comfortably — a 20-chapter 12+ novel 
 
 Launch all persona subagents in parallel. Each receives:
 - Their persona description (constructed from project context — see Reader Personas and Author Personas below)
-- The full retrieved text
-- The review task (see Review Task Template)
-- An explicit reminder that they have no prior knowledge of this book beyond what they are about to read
+- The absolute path to the staging file written in Step 3
+- The review task (see Review Task Template) — which instructs them to read the staging file as their **only** file access
+- An explicit reminder that they have no prior knowledge of this book beyond what they read from that file
 
 ### Step 5: Aggregate
 
@@ -865,11 +871,8 @@ For **reader personas**:
 > You are reading [TARGET CHAPTER OR BOOK] from a [GENRE] novel aimed at [TARGET AUDIENCE] readers. You have no prior knowledge of this book — no plot summaries, no character guides, no notes. You are reading this cold, exactly as you would if you'd just picked it up.
 > [CHAPTER NOTE: if the focus is a single chapter, say, "you read up to and including chapter N, focus your feedback on chapter N"]
 >
-> Here is the text:
->
-> ---
-> [RETRIEVED TEXT]
-> ---
+> The text is in the file at: \`[STAGING FILE PATH]\`
+> Read that file using the \`read_file\` tool. **That is the only file you may access.** Do not call any other tool, MCP server, or external resource.
 >
 > Give your honest reaction as this reader. Cover:
 > 1. Your overall impression (1-2 sentences)
@@ -888,9 +891,8 @@ For **author personas**:
 >
 > Your particular focus: [READS_FOR].
 >
-> ---
-> [RETRIEVED TEXT]
-> ---
+> The manuscript is in the file at: \`[STAGING FILE PATH]\`
+> Read that file using the \`read_file\` tool. **That is the only file you may access.** Do not call any other tool, MCP server, or external resource.
 >
 > Give craft-level feedback: what's working and why, what isn't and how you'd think about fixing it. Voice, pacing, structure, dialogue, the handling of tension. Quote the text when useful. Be honest — this is peer review, not encouragement.
 
@@ -949,7 +951,8 @@ For a faster pass: **R1** (core reader), **R4** (reluctant reader), and the firs
 
 ## Notes for the agent
 
-- **Never** give subagents MCP access or pass context beyond the selected reading text payload (the chapter, or chapters 1..N for chapter-N runs). The isolation is the point.
+- **Never** give subagents MCP access. The calling agent writes the reading text to \`.bindery/proof-read-payload.md\` and subagents read only that file. This guarantees isolation — they cannot accidentally pull arc files, notes, or overviews.
+- **Staging file:** overwrite it fresh each run so stale text from a previous session never bleeds in.
 - **Multiple chapters:** Run each chapter as a separate parallel batch. Aggregate per chapter first, then offer a cross-chapter summary if the user asks.
 - **Cost awareness:** Full run is 7 subagent calls per chapter (4 readers + 3 authors). Mention this if the user hasn't specified quick vs. full, especially for longer chapters.
 - **Divergences are data, not problems.** A passage that splits readers along genre-familiarity lines might be exactly right for this book. Surface it, let the author decide.
