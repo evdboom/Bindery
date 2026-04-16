@@ -718,6 +718,7 @@ Output a short orientation (3-6 lines):
 }
 
 function skillProofRead(ctx: TemplateContext): string {
+    void ctx;
     return `---
 name: proof-read
 description: Bindery workspace - Multi-perspective proofreading using isolated reader and author personas. Each persona runs as a scoped subagent with no arc, notes, or memory context — only the reading-text payload for the read-so-far experience (chapters 1..N). Use for /proof-read, "proofread chapter X", "get reader feedback", "how does this land with readers", "simulate reader reactions", or "peer review".
