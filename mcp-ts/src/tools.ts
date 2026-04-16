@@ -324,7 +324,7 @@ export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
         return `Language folder not found: ${lang}`;
     }
 
-    const start = Math.max(1, args.startChapter ?? 1);
+    const start = Math.max(1, Math.floor(args.startChapter ?? 1));
     const end = Math.max(1, Math.floor(args.chapterNumber));
     if (start > end) {
         return `Invalid range: startChapter (${start}) is greater than chapterNumber (${end}).`;
@@ -1285,15 +1285,44 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isUnsafeMergeKey(key: string): boolean {
+    return key === '__proto__' || key === 'constructor' || key === 'prototype';
+}
+
+function cloneSettingsObject(value: Record<string, unknown>): Record<string, unknown> {
+    const out = Object.create(null) as Record<string, unknown>;
+    for (const key of Object.keys(value)) {
+        if (isUnsafeMergeKey(key)) {
+            continue;
+        }
+        const entry = value[key];
+        out[key] = isPlainObject(entry) ? cloneSettingsObject(entry) : entry;
+    }
+    return out;
+}
+
 function deepMergeSettings(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
-    const out: Record<string, unknown> = { ...base };
-    for (const [key, patchValue] of Object.entries(patch)) {
+    const out = Object.create(null) as Record<string, unknown>;
+
+    for (const key of Object.keys(base)) {
+        if (isUnsafeMergeKey(key)) {
+            continue;
+        }
+        const baseValue = base[key];
+        out[key] = isPlainObject(baseValue) ? cloneSettingsObject(baseValue) : baseValue;
+    }
+
+    for (const key of Object.keys(patch)) {
+        if (isUnsafeMergeKey(key)) {
+            continue;
+        }
+        const patchValue = patch[key];
         const baseValue = out[key];
         if (isPlainObject(baseValue) && isPlainObject(patchValue)) {
             out[key] = deepMergeSettings(baseValue, patchValue);
             continue;
         }
-        out[key] = patchValue;
+        out[key] = isPlainObject(patchValue) ? cloneSettingsObject(patchValue) : patchValue;
     }
     return out;
 }

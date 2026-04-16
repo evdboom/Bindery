@@ -65,6 +65,18 @@ describe('mcp tools', () => {
     expect(result).toContain('# Two');
   });
 
+  it('coerces a non-integer startChapter to an integer range start', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 2.md'), '# Two\nBeta\n');
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 3.md'), '# Three\nGamma\n');
+
+    const result = toolGetBookUntil(root, { chapterNumber: 3, startChapter: 2.9, language: 'en' });
+    expect(result).toContain('BEGIN CHAPTER 2');
+    expect(result).toContain('BEGIN CHAPTER 3');
+    expect(result).not.toContain('BEGIN CHAPTER 1');
+  });
+
   it('deep-merges partial settings patches without replacing unrelated keys', () => {
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
@@ -101,6 +113,27 @@ describe('mcp tools', () => {
     expect(settings.proof_read?.options?.mode).toBe('full');
     expect(settings.proof_read?.options?.preserve).toBe(true);
     expect(settings.proof_read?.authors?.[0]?.name).toBe('Author A');
+  });
+
+  it('ignores unsafe prototype-pollution keys in settings_update patches', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      proof_read: { enabled: true },
+    }, null, 2) + '\n');
+
+    const patch = JSON.parse('{"proof_read":{"enabled":false},"__proto__":{"polluted":"yes"}}') as Record<string, unknown>;
+    const update = toolSettingsUpdate(root, { patch });
+    expect(update).toContain('Updated .bindery/settings.json');
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      proof_read?: { enabled?: boolean };
+      __proto__?: unknown;
+    };
+    expect(settings.proof_read?.enabled).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(settings, '__proto__')).toBe(false);
+    expect(({} as { polluted?: string }).polluted).toBeUndefined();
   });
 
   it('builds index and returns search results', async () => {

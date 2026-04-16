@@ -139,7 +139,7 @@ function claudeMd(ctx: TemplateContext): string {
         '| `/continuity` | Check a chapter for consistency errors |',
         '| `/read-aloud` | Test how a passage reads when spoken |',
         '| `/read-in` | Load context and get your bearings at the start of a session |',
-        '| `/proof-read` | Read the book as a multiple proofreaders and present the findings |',
+        '| `/proof-read` | Read the book as multiple proofreaders and present the findings |',
         '',
         '## MCP server (bindery-mcp)',
         '',
@@ -712,11 +712,11 @@ Output a short orientation (3-6 lines):
 function skillProofRead(ctx: TemplateContext): string {
     return `---
 name: proof-read
-description: Bindery workspace - Multi-perspective proofreading using isolated reader and author personas. Each persona runs as a scoped subagent with no arc, notes, or memory context — only the chapter text. Use for /proof-read, "proofread chapter X", "get reader feedback", "how does this land with readers", "simulate reader reactions", or "peer review".
+description: Bindery workspace - Multi-perspective proofreading using isolated reader and author personas. Each persona runs as a scoped subagent with no arc, notes, or memory context — only the reading-text payload for the read-so-far experience (chapters 1..N). Use for /proof-read, "proofread chapter X", "get reader feedback", "how does this land with readers", "simulate reader reactions", or "peer review".
 ---
 # Proof-Read
 
-Simulates a panel of readers reviewing a chapter as genuine first-time readers — no arc knowledge, no notes, no memory of prior sessions. Each persona runs as an isolated subagent that only sees the chapter text and their assigned role.
+Simulates a panel of readers reviewing a chapter as genuine first-time readers — no arc knowledge, no notes, no memory of prior sessions. Each persona runs as an isolated subagent that only sees the reading-text payload so far (chapters 1..N) and their assigned role.
 
 The value is in the isolation. A reader doesn't know what the arc says should happen, what a character's backstory is, or what the chapter was *trying* to do. That's exactly the feedback you can't give yourself, and can't get from an agent that has been working on the book with you.
 
