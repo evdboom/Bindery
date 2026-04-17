@@ -335,12 +335,14 @@ async function initWorkspaceCommand() {
             // Create .gitignore if it doesn't exist
             const gitignorePath = path.join(root, '.gitignore');
             if (!fs.existsSync(gitignorePath)) {
+                const outputDir = (settings.mergedOutputDir ?? 'Merged').replace(/\/+$/, '');
                 fs.writeFileSync(gitignorePath, [
-                    'Merged/',
+                    `${outputDir}/`,
                     '*.docx',
                     '*.epub',
                     '*.pdf',
                     'node_modules/',
+                    '.bindery/proof-read-payload.md',
                     '',
                 ].join('\n'), 'utf-8');
             }

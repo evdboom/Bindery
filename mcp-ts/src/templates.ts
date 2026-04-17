@@ -793,8 +793,6 @@ A real reader arrives at chapter N having read everything before it. Subagents r
 Use \`get_book_until(chapterNumber: n, language)\` to fetch all prior chapters in one call. If unavailable, loop \`get_chapter(1)\` through \`get_chapter(n)\` in the main agent. For a **whole-book** run, fetch all chapters.
 
 Once the text is retrieved, **write it to a staging file**:
-
-Using an available file create tool (\`create_file\`, \`edit\`), write the text to a file at:
 \`.bindery/proof-read-payload.md\`
 
 If the file already exists from a previous run, overwrite it.
