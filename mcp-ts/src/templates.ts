@@ -42,7 +42,7 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.claude/skills/continuity/SKILL.md':   { version: 11,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
     '.claude/skills/read-aloud/SKILL.md':   { version: 10,  label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
     '.claude/skills/read-in/SKILL.md':      { version: 11,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
-    '.claude/skills/proof-read/SKILL.md':   { version: 3,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
+    '.claude/skills/proof-read/SKILL.md':   { version: 4,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
 };
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -788,17 +788,14 @@ A real reader arrives at chapter N having read everything before it. Subagents r
 
 **Why not a summary of prior chapters?** Any summary written by an agent who has worked on the book will carry arc knowledge — framing, foreshadowing, loaded context. It biases the subagent in ways a real reader wouldn't be. Full text preserves the isolation.
 
-**Why not have subagents call MCP themselves?** Subagents with MCP access could accidentally pull notes, arc files, or overviews. A pre-written staging file is the only way to guarantee they see exactly what a reader sees — nothing more.
+**Why not have subagents call MCP themselves?** Subagents with MCP access could accidentally pull notes, arc files, or overviews. Using a pre-written staging file and passing only that payload to subagents reduces that risk and is the best available way in this workflow to keep them focused on reader-visible text.
 
 Use \`get_book_until(chapterNumber: n, language)\` to fetch all prior chapters in one call. If unavailable, loop \`get_chapter(1)\` through \`get_chapter(n)\` in the main agent. For a **whole-book** run, fetch all chapters.
 
 Once the text is retrieved, **write it to a staging file**:
+\`.bindery/proof-read-payload.md\`
 
-\`\`\`
-create_file(".bindery/proof-read-payload.md", <retrieved text>)
-\`\`\`
-
-If the file already exists from a previous run, overwrite it. Store the absolute path — it will be passed to every subagent in the next step.
+If the file already exists from a previous run, overwrite it.
 
 Modern context windows handle full books comfortably — a 20-chapter 12+ novel is roughly 60-80k words, well within range.
 
@@ -806,7 +803,7 @@ Modern context windows handle full books comfortably — a 20-chapter 12+ novel 
 
 Launch all persona subagents in parallel. Each receives:
 - Their persona description (constructed from project context — see Reader Personas and Author Personas below)
-- The absolute path to the staging file written in Step 3
+- The path to the staging file written in Step 3
 - The review task (see Review Task Template) — which instructs them to read the staging file as their **only** file access
 - An explicit reminder that they have no prior knowledge of this book beyond what they read from that file
 
@@ -951,7 +948,7 @@ For a faster pass: **R1** (core reader), **R4** (reluctant reader), and the firs
 
 ## Notes for the agent
 
-- **Never** give subagents MCP access. The calling agent writes the reading text to \`.bindery/proof-read-payload.md\` and subagents read only that file. This guarantees isolation — they cannot accidentally pull arc files, notes, or overviews.
+- **Never** give subagents MCP access. The calling agent should write the reading text to \`.bindery/proof-read-payload.md\` and have subagents work only from that staged file. This reduces the risk of them pulling arc files, notes, or overviews, but treat it as a best-effort workflow unless access restrictions are enforced by the runtime.
 - **Staging file:** overwrite it fresh each run so stale text from a previous session never bleeds in.
 - **Multiple chapters:** Run each chapter as a separate parallel batch. Aggregate per chapter first, then offer a cross-chapter summary if the user asks.
 - **Cost awareness:** Full run is 7 subagent calls per chapter (4 readers + 3 authors). Mention this if the user hasn't specified quick vs. full, especially for longer chapters.
