@@ -76,7 +76,17 @@ function wellKnownPaths(tool: ToolName): string[] {
 function defaultCommand(tool: ToolName): string {
     if (tool === 'git') { return process.platform === 'win32' ? 'git.exe' : 'git'; }
     if (tool === 'pandoc') { return process.platform === 'win32' ? 'pandoc.exe' : 'pandoc'; }
-    return process.platform === 'win32' ? 'soffice.exe' : 'libreoffice';
+    return process.platform === 'win32' ? 'soffice.exe' : 'soffice';
+}
+
+/** All command names to try on PATH for a given tool. */
+function pathCandidates(tool: ToolName): string[] {
+    if (tool === 'git')    { return [defaultCommand('git')]; }
+    if (tool === 'pandoc') { return [defaultCommand('pandoc')]; }
+    // LibreOffice installs expose either 'libreoffice' or 'soffice' on PATH.
+    return process.platform === 'win32'
+        ? ['soffice.exe', 'soffice']
+        : ['libreoffice', 'soffice'];
 }
 
 function resolveOnPath(cmd: string): string | null {
@@ -106,11 +116,12 @@ function extractVersion(stdout: string): string | null {
  * (the MCP server doesn't have access to them).
  */
 export function probeTool(tool: ToolName): ProbeResult {
-    const cmd = defaultCommand(tool);
     const candidates: Array<{ p: string; source: 'path' | 'default' }> = [];
 
-    const onPath = resolveOnPath(cmd);
-    if (onPath) { candidates.push({ p: onPath, source: 'path' }); }
+    for (const cmd of pathCandidates(tool)) {
+        const onPath = resolveOnPath(cmd);
+        if (onPath) { candidates.push({ p: onPath, source: 'path' }); break; }
+    }
 
     for (const c of wellKnownPaths(tool)) {
         if (fs.existsSync(c)) { candidates.push({ p: c, source: 'default' }); }
