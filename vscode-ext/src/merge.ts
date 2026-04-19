@@ -669,16 +669,33 @@ export async function checkPandoc(pandocPath: string): Promise<string> {
 }
 
 async function checkPandocOutputSupport(pandocPath: string, outputType: OutputType): Promise<boolean> {
+    const formats = await getPandocOutputFormats(pandocPath);
+    return formats.includes(outputType);
+}
+
+/** Cached list of pandoc's supported output formats, keyed by pandoc path. */
+const pandocFormatsCache = new Map<string, string[]>();
+
+/**
+ * Returns the lowercase list of output formats this pandoc build supports
+ * (from `pandoc --list-output-formats`). Cached per-path.
+ */
+export async function getPandocOutputFormats(pandocPath: string): Promise<string[]> {
+    const cached = pandocFormatsCache.get(pandocPath);
+    if (cached) { return cached; }
     return new Promise((resolve) => {
         cp.execFile(pandocPath, ['--list-output-formats'], { encoding: 'utf-8' }, (err, stdout) => {
-            if (err) {
-                resolve(false);
-                return;
-            }
-            const formats = stdout.split(/\r?\n/).map(v => v.trim().toLowerCase());
-            resolve(formats.includes(outputType));
+            if (err) { resolve([]); return; }
+            const formats = stdout.split(/\r?\n/).map(v => v.trim().toLowerCase()).filter(Boolean);
+            pandocFormatsCache.set(pandocPath, formats);
+            resolve(formats);
         });
     });
+}
+
+/** Clear cached pandoc capability info (call when pandoc path changes). */
+export function clearPandocCapabilityCache(): void {
+    pandocFormatsCache.clear();
 }
 
 function runPandoc(
@@ -863,6 +880,23 @@ export async function mergeBook(options: MergeOptions): Promise<MergeResult> {
         const needsPandoc = options.outputTypes.some(t => t === 'docx' || t === 'epub' || t === 'pdf');
         if (needsPandoc) {
             await checkPandoc(options.pandocPath);
+
+            // Capability probe: warn up-front if the installed pandoc can't produce a requested format,
+            // rather than failing mid-export with a cryptic pandoc error.
+            const supported = await getPandocOutputFormats(options.pandocPath);
+            if (supported.length > 0) {
+                for (const t of options.outputTypes) {
+                    // PDF is produced via DOCX+LibreOffice, so we only need 'docx' in pandoc for it.
+                    const pandocFormat = t === 'pdf' ? 'docx' : t;
+                    if (pandocFormat === 'md') { continue; }
+                    if (!supported.includes(pandocFormat)) {
+                        warnings.push(
+                            `Pandoc at ${options.pandocPath} does not support '${pandocFormat}' output. ` +
+                            `Install a full pandoc build from https://pandoc.org or remove '${t}' from the export list.`
+                        );
+                    }
+                }
+            }
         }
 
         // Determine book title from settings-driven options only
