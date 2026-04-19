@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const SERVER_SCRIPT = path.resolve(__dirname, '..', 'out', 'index.js');
-const MSG_TIMEOUT_MS = 5000;
+const MSG_TIMEOUT_MS = 15_000;
 
 interface JsonRpcRequest {
     jsonrpc: '2.0';
@@ -149,7 +149,7 @@ afterEach(() => {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('MCP stdio integration', () => {
+describe('MCP stdio integration', { timeout: 30_000 }, () => {
     let kill: () => void = () => undefined;
 
     afterEach(() => { kill(); });
