@@ -2,7 +2,8 @@
  * Auto-detect Pandoc and LibreOffice installations across platforms.
  *
  * Resolution order for each tool:
- *   1. Explicit user setting (if set to non-default value and exists)
+ *   1. Explicit user setting (if set to a non-default value, even if the file is missing,
+ *      so downstream code can report a clearer error for that configured path)
  *   2. Command on PATH (`where.exe` / `which`)
  *   3. Well-known per-OS install locations
  *
