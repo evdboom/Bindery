@@ -1,6 +1,6 @@
 {
   "name": "bindery-mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "MCP server for Bindery markdown book projects — chapter navigation, search, typography formatting, and export.",
   "main": "out/index.js",
   "files": [
@@ -15,7 +15,8 @@
     "build": "npm run compile",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json"
+    "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "mcp",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "@vitest/coverage-v8": "^4.1.4",
     "typescript": "6.0.2",
     "vitest": "^4.1.4"
   },

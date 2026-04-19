@@ -33,6 +33,7 @@ import {
     type AiTarget, type SkillTemplate,
 } from './ai-setup';
 import { registerLmTools, registerMcpCommand } from './mcp';
+import { locateToolPath, clearLocateCache } from './tool-locate';
 
 // ─── Known language presets ───────────────────────────────────────────────────
 
@@ -104,8 +105,8 @@ function getEffectiveConfig(wsSettings: WorkspaceSettings | null): EffectiveConf
         languages:       wsSettings?.languages
                          ?? vsc.get<LanguageConfig[]>('languages')
                          ?? [DEFAULT_LANGUAGE],
-        pandocPath:      vsc.get<string>('pandocPath')      ?? 'pandoc',
-        libreOfficePath: vsc.get<string>('libreOfficePath') ?? 'libreoffice',
+        pandocPath:      locateToolPath('pandoc',      vsc.get<string>('pandocPath')),
+        libreOfficePath: locateToolPath('libreoffice', vsc.get<string>('libreOfficePath')),
     };
 }
 
@@ -1166,6 +1167,15 @@ async function doMerge(outputTypes: OutputType[]) {
 // ─── Activation ───────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
+
+    // Clear tool-path auto-detect cache whenever the user changes pandoc/libreoffice settings.
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('bindery.pandocPath') || e.affectsConfiguration('bindery.libreOfficePath')) {
+                clearLocateCache();
+            }
+        })
+    );
 
     // Formatting provider (used by VS Code's Format Document command)
     context.subscriptions.push(

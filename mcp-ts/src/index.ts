@@ -46,7 +46,7 @@ import { resolveBook, listBooks, findBookByPath } from './registry.js';
 // ─── Server ───────────────────────────────────────────────────────────────────
 
 const server = new McpServer(
-    { name: 'bindery-mcp', version: '0.1.0' },
+    { name: 'bindery-mcp', version: '1.0.0' },
     { capabilities: { tools: {} } }
 );
 

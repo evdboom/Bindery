@@ -32,6 +32,9 @@ import {
     type AiTarget,
     type SkillTemplate,
 } from './aisetup.js';
+import { probeTool, type ProbeResult } from './tool-probe.js';
+import { BUILTIN_EN_GB_RULES, type TranslationRule } from './tools-dialect-defaults.js';
+import { parseUnifiedDiff, formatReviewFiles, type DiffFile } from './tools-diff.js';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -153,6 +156,12 @@ export function toolHealth(root: string): string {
     const enabledTargets = new Set<string>(validTargets ?? ALL_AI_TARGETS);
     const aiVersionsOutdated = getOutdatedAiFiles(root, enabledTargets);
 
+    const tools = {
+        git:         summarizeProbe(probeTool('git')),
+        pandoc:      summarizeProbe(probeTool('pandoc')),
+        libreoffice: summarizeProbe(probeTool('libreoffice')),
+    };
+
     const response = {
         root,
         settings: settingsStatus,
@@ -164,6 +173,7 @@ export function toolHealth(root: string): string {
         semantic_index_stale_reasons: semanticIndexStale,
         embeddings: embeddingsStatus,
         default_search_mode: parseSearchMode(process.env['BINDERY_DEFAULT_SEARCH_MODE']),
+        tools,
         ai_version_outdated: aiVersionsOutdated.length > 0,
         ai_versions_outdated: aiVersionsOutdated,
         message: aiVersionsOutdated.length > 0
@@ -172,6 +182,10 @@ export function toolHealth(root: string): string {
     };
 
     return JSON.stringify(response, null, 2);
+}
+
+function summarizeProbe(p: ProbeResult): { available: boolean; path: string | null; version: string | null } {
+    return { available: p.available, path: p.path, version: p.version };
 }
 
 // ─── index_build ─────────────────────────────────────────────────────────────
@@ -193,7 +207,19 @@ export async function toolIndexBuild(root: string): Promise<string> {
     }
 
     try {
-        const semantic = await buildSemanticIndex(root);
+        // Log progress to stderr at coarse milestones so agents / humans get feedback on long builds.
+        // stderr keeps stdout clean (MCP servers use stdout for JSON-RPC).
+        let lastLoggedPct = -10;
+        const semantic = await buildSemanticIndex(root, {
+            onProgress: ({ completed, total, failed }) => {
+                if (total === 0) { return; }
+                const pct = Math.floor((completed / total) * 100);
+                if (pct >= lastLoggedPct + 10 || completed === total) {
+                    lastLoggedPct = pct;
+                    process.stderr.write(`[bindery] semantic index: ${completed}/${total} (${pct}%${failed ? `, ${failed} failed` : ''})\n`);
+                }
+            },
+        });
         lines.push(
             `Semantic index built: ${semantic.meta.vectorCount}/${semantic.meta.chunkCount} vectors, ` +
             `${new Date(semantic.meta.builtAt).toLocaleString()} (${semantic.meta.model})`
@@ -405,13 +431,37 @@ function actLines(langDir: string, actEntry: { name: string }): string[] {
     const chapters = fs.readdirSync(actDir, { withFileTypes: true })
         .filter(e => e.isFile() && e.name.endsWith('.md'))
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-    return [
+    const numbers = chapters
+        .map(ch => {
+            const m = /(\d+)/.exec(ch.name);
+            return m ? parseInt(m[1], 10) : null;
+        })
+        .filter((n): n is number => n !== null);
+    const gaps = findNumericGaps(numbers);
+    const lines = [
         `### ${actEntry.name}`,
         ...chapters.map(ch => {
             const firstLine = firstH1(path.join(actDir, ch.name));
             return `- ${ch.name}${firstLine ? ': ' + firstLine : ''}`;
         }),
     ];
+    if (gaps.length > 0) {
+        lines.push(`_Warning: non-contiguous chapter numbering, missing: ${gaps.join(', ')}_`);
+    }
+    return lines;
+}
+
+/** Returns the list of integers missing from the range [min..max] of `nums`. */
+function findNumericGaps(nums: number[]): number[] {
+    if (nums.length < 2) { return []; }
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+    const present = new Set(nums);
+    const gaps: number[] = [];
+    for (let i = min; i <= max; i++) {
+        if (!present.has(i)) { gaps.push(i); }
+    }
+    return gaps;
 }
 
 function topLevelLines(langDir: string): string[] {
@@ -647,26 +697,6 @@ export interface GetReviewTextArgs {
     autoStage?:    boolean;
 }
 
-interface DiffFile {
-    file: string;
-    hunks: DiffHunk[];
-}
-
-interface DiffHunk {
-    beforeStart: number;
-    beforeCount: number;
-    afterStart:  number;
-    afterCount:  number;
-    lines: DiffLine[];
-}
-
-interface DiffLine {
-    type: 'context' | 'insert' | 'delete';
-    text: string;
-    oldLine?: number;
-    newLine?: number;
-}
-
 export function toolGetReviewText(root: string, args: GetReviewTextArgs): string {
     const contextLines = args.contextLines ?? 3;
     const language     = (args.language ?? 'ALL').toUpperCase();
@@ -843,79 +873,11 @@ export interface AddTranslationArgs {
     to:             string;
 }
 
-interface TranslationRule  { from: string; to: string }
 interface TranslationEntry { label?: string; type: string; sourceLanguage?: string; rules?: TranslationRule[]; ignoredWords?: string[] }
 type TranslationsFile = Record<string, TranslationEntry>;
 
 // ─── Built-in en-gb substitution rules (US → British English) ────────────────
-
-const BUILTIN_EN_GB_RULES: TranslationRule[] = [
-    { from: 'analyze',        to: 'analyse' },
-    { from: 'analyzes',       to: 'analyses' },
-    { from: 'analyzed',       to: 'analysed' },
-    { from: 'analyzing',      to: 'analysing' },
-    { from: 'canceled',       to: 'cancelled' },
-    { from: 'canceling',      to: 'cancelling' },
-    { from: 'center',         to: 'centre' },
-    { from: 'centers',        to: 'centres' },
-    { from: 'centered',       to: 'centred' },
-    { from: 'centering',      to: 'centring' },
-    { from: 'color',          to: 'colour' },
-    { from: 'colors',         to: 'colours' },
-    { from: 'colored',        to: 'coloured' },
-    { from: 'coloring',       to: 'colouring' },
-    { from: 'defense',        to: 'defence' },
-    { from: 'destabilize',    to: 'destabilise' },
-    { from: 'destabilizes',   to: 'destabilises' },
-    { from: 'destabilized',   to: 'destabilised' },
-    { from: 'destabilizing',  to: 'destabilising' },
-    { from: 'equalize',       to: 'equalise' },
-    { from: 'equalizes',      to: 'equalises' },
-    { from: 'equalized',      to: 'equalised' },
-    { from: 'equalizing',     to: 'equalising' },
-    { from: 'favor',          to: 'favour' },
-    { from: 'favors',         to: 'favours' },
-    { from: 'favored',        to: 'favoured' },
-    { from: 'favoring',       to: 'favouring' },
-    { from: 'favorite',       to: 'favourite' },
-    { from: 'favorites',      to: 'favourites' },
-    { from: 'fiber',          to: 'fibre' },
-    { from: 'gray',           to: 'grey' },
-    { from: 'initialize',     to: 'initialise' },
-    { from: 'initializes',    to: 'initialises' },
-    { from: 'initialized',    to: 'initialised' },
-    { from: 'initializing',   to: 'initialising' },
-    { from: 'mesmerize',      to: 'mesmerise' },
-    { from: 'mesmerizes',     to: 'mesmerises' },
-    { from: 'mesmerized',     to: 'mesmerised' },
-    { from: 'mesmerizing',    to: 'mesmerising' },
-    { from: 'mom',            to: 'mum' },
-    { from: 'offense',        to: 'offence' },
-    { from: 'organize',       to: 'organise' },
-    { from: 'organizes',      to: 'organises' },
-    { from: 'organized',      to: 'organised' },
-    { from: 'organizing',     to: 'organising' },
-    { from: 'organization',   to: 'organisation' },
-    { from: 'realize',        to: 'realise' },
-    { from: 'realizes',       to: 'realises' },
-    { from: 'realized',       to: 'realised' },
-    { from: 'realizing',      to: 'realising' },
-    { from: 'realization',    to: 'realisation' },
-    { from: 'recognize',      to: 'recognise' },
-    { from: 'recognizes',     to: 'recognises' },
-    { from: 'recognized',     to: 'recognised' },
-    { from: 'recognizing',    to: 'recognising' },
-    { from: 'specialize',     to: 'specialise' },
-    { from: 'specializes',    to: 'specialises' },
-    { from: 'specialized',    to: 'specialised' },
-    { from: 'specializing',   to: 'specialising' },
-    { from: 'theater',        to: 'theatre' },
-    { from: 'theaters',       to: 'theatres' },
-    { from: 'traveler',       to: 'traveller' },
-    { from: 'travelers',      to: 'travellers' },
-    { from: 'traveled',       to: 'travelled' },
-    { from: 'traveling',      to: 'travelling' },
-];
+// Data lives in ./tools-dialect-defaults.ts — BUILTIN_EN_GB_RULES is imported above.
 
 export function toolAddTranslation(root: string, args: AddTranslationArgs): string {
     const { targetLangCode, from, to } = args;
@@ -1116,77 +1078,7 @@ export function toolAddLanguage(root: string, args: AddLanguageArgs): string {
 }
 
 // ─── diff helpers ─────────────────────────────────────────────────────────────
-
-function parseHunkLines(body: string, beforeStart: number, afterStart: number): DiffLine[] {
-    const lines: DiffLine[] = [];
-    let oldLine = beforeStart;
-    let newLine = afterStart;
-    for (const line of body.split('\n')) {
-        if (line.startsWith('+')) {
-            lines.push({ type: 'insert', text: line.slice(1), newLine: newLine++ });
-        } else if (line.startsWith('-')) {
-            lines.push({ type: 'delete', text: line.slice(1), oldLine: oldLine++ });
-        } else if (line.startsWith(' ')) {
-            lines.push({ type: 'context', text: line.slice(1), oldLine: oldLine++, newLine: newLine++ });
-        }
-    }
-    return lines;
-}
-
-function parseUnifiedDiff(raw: string): DiffFile[] {
-    const files: DiffFile[] = [];
-    const fileChunks = raw.split(/^diff --git /m).filter(Boolean);
-
-    for (const chunk of fileChunks) {
-        const nameMatch = /^a\/(.+?)\s+b\/(.+)/m.exec(chunk);
-        if (!nameMatch) { continue; }
-        const fileName = nameMatch[2];
-
-        const hunks: DiffHunk[] = [];
-        for (const hunkPart of chunk.split(/^@@\s+/m).slice(1)) {
-            const headerMatch = /^-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)/.exec(hunkPart);
-            if (!headerMatch) { continue; }
-
-            const beforeStart = Number.parseInt(headerMatch[1], 10);
-            const beforeCount = headerMatch[2] === undefined ? 1 : Number.parseInt(headerMatch[2], 10);
-            const afterStart  = Number.parseInt(headerMatch[3], 10);
-            const afterCount  = headerMatch[4] === undefined ? 1 : Number.parseInt(headerMatch[4], 10);
-
-            const body = headerMatch[5] + '\n' + hunkPart.slice(headerMatch[0].length);
-            hunks.push({ beforeStart, beforeCount, afterStart, afterCount, lines: parseHunkLines(body, beforeStart, afterStart) });
-        }
-
-        files.push({ file: fileName, hunks });
-    }
-
-    return files;
-}
-
-function formatReviewFiles(files: DiffFile[]): string {
-    const parts: string[] = [];
-
-    for (const file of files) {
-        const lines: string[] = [`## ${file.file}`];
-
-        for (const hunk of file.hunks) {
-            lines.push(`\n@@ -${hunk.beforeStart},${hunk.beforeCount} +${hunk.afterStart},${hunk.afterCount} @@`);
-            for (const l of hunk.lines) {
-                const lineType = (() => {
-                    switch (l.type) {
-                        case 'delete': return '-';
-                        case 'insert': return '+';
-                        default: return ' ';
-                    }
-                })();
-                lines.push(`${lineType} ${l.text}`);
-            }
-        }
-
-        parts.push(lines.join('\n'));
-    }
-
-    return parts.join('\n\n---\n\n');
-}
+// Parsing/formatting lives in ./tools-diff.ts.
 
 // ─── init_workspace ──────────────────────────────────────────────────────────
 
