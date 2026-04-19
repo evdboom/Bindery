@@ -82,6 +82,14 @@ function defaultCommand(tool: ToolName): string {
     return process.platform === 'win32' ? 'soffice.exe' : 'libreoffice';
 }
 
+/** All names that can resolve via PATH for a given tool. */
+function pathCandidates(tool: ToolName): string[] {
+    if (tool === 'pandoc') { return ['pandoc']; }
+    return process.platform === 'win32'
+        ? ['soffice.exe', 'soffice']
+        : ['libreoffice', 'soffice'];
+}
+
 /** Is this setting value "the unset default" (empty, or literal 'pandoc'/'libreoffice')? */
 function isSettingDefault(tool: ToolName, value: string | undefined): boolean {
     const v = (value ?? '').trim();
@@ -134,13 +142,14 @@ export function locateTool(tool: ToolName, setting: string | undefined): Resolve
         return resolved;
     }
 
-    // 2. PATH lookup
-    const cmd = defaultCommand(tool);
-    const onPath = resolveOnPath(cmd);
-    if (onPath && fs.existsSync(onPath)) {
-        const resolved: ResolvedTool = { path: onPath, source: 'path' };
-        cache.set(tool, resolved);
-        return resolved;
+    // 2. PATH lookup — try all candidate names (e.g. both 'libreoffice' and 'soffice')
+    for (const cmd of pathCandidates(tool)) {
+        const onPath = resolveOnPath(cmd);
+        if (onPath && fs.existsSync(onPath)) {
+            const resolved: ResolvedTool = { path: onPath, source: 'path' };
+            cache.set(tool, resolved);
+            return resolved;
+        }
     }
 
     // 3. Well-known defaults
@@ -153,7 +162,7 @@ export function locateTool(tool: ToolName, setting: string | undefined): Resolve
     }
 
     // 4. Fallback to command name — will fail at execution with a clear error
-    const fallback: ResolvedTool = { path: cmd, source: 'fallback' };
+    const fallback: ResolvedTool = { path: defaultCommand(tool), source: 'fallback' };
     cache.set(tool, fallback);
     return fallback;
 }

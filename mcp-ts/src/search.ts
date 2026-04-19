@@ -133,7 +133,7 @@ export function buildIndex(root: string): LoadedIndex {
 }
 
 export interface BuildSemanticProgress {
-    /** 0-based index of the most recently embedded chunk. */
+    /** Number of chunks embedded so far (1-based count, i.e. 1 … total). */
     completed: number;
     /** Total number of chunks to embed. */
     total:     number;

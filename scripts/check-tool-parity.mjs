@@ -4,7 +4,7 @@
  *
  * Verifies every tool name appears in all 5 required surfaces:
  *   1. mcp-ts/src/tools.ts           — implementation function `toolXxx`
- *   2. mcp-ts/src/index.ts           — server.registerTool('bindery_xxx', ...)
+ *   2. mcp-ts/src/index.ts           — server.registerTool('xxx', ...)
  *   3. vscode-ext/src/mcp.ts         — vscode.lm.registerTool('bindery_xxx', ...)
  *   4. vscode-ext/package.json       — languageModelTools[].name = 'bindery_xxx'
  *   5. mcpb/manifest.json            — tools[].name = 'xxx' (no prefix)

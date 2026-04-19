@@ -668,10 +668,7 @@ export async function checkPandoc(pandocPath: string): Promise<string> {
     });
 }
 
-async function checkPandocOutputSupport(pandocPath: string, outputType: OutputType): Promise<boolean> {
-    const formats = await getPandocOutputFormats(pandocPath);
-    return formats.includes(outputType);
-}
+
 
 /** Cached list of pandoc's supported output formats, keyed by pandoc path. */
 const pandocFormatsCache = new Map<string, string[]>();

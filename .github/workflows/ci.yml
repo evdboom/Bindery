@@ -92,6 +92,8 @@ jobs:
         run: cd mcp-ts && npm ci
       - name: Compile mcp-ts
         run: cd mcp-ts && npm run compile
+      - name: Tool parity guard
+        run: node scripts/check-tool-parity.mjs
       - name: mcp-ts coverage
         run: cd mcp-ts && npm run test:coverage
 
