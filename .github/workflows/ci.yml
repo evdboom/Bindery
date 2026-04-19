@@ -90,6 +90,8 @@ jobs:
 
       - name: Install mcp-ts
         run: cd mcp-ts && npm ci
+      - name: Compile mcp-ts
+        run: cd mcp-ts && npm run compile
       - name: mcp-ts coverage
         run: cd mcp-ts && npm run test:coverage
 
