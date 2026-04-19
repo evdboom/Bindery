@@ -15,6 +15,14 @@ import { chunkWorkspace, type Chunk } from './docstore.js';
 export type SearchMode = 'lexical' | 'semantic_rerank' | 'full_semantic';
 export type SearchSource = 'bm25' | 'ollama-reranked' | 'ollama-semantic';
 
+/**
+ * On-disk format version for the lexical and semantic indexes.
+ * Bump when the persisted structure changes in a backward-incompatible way
+ * (e.g. MiniSearch schema, chunk shape, signature algorithm). Old indexes
+ * with a lower or missing version are treated as stale and auto-rebuilt.
+ */
+export const INDEX_FORMAT_VERSION = 1;
+
 export interface SearchResult {
     chunk:    Chunk;
     score:    number;
@@ -28,10 +36,11 @@ export interface SearchOperationOutcome {
 }
 
 export interface IndexMeta {
-    builtAt:          string;
-    chunkCount:       number;
-    root:             string;
-    contentSignature: string;
+    builtAt:             string;
+    chunkCount:          number;
+    root:                string;
+    contentSignature:    string;
+    indexFormatVersion?: number;
 }
 
 export interface SemanticIndexMeta {
@@ -42,6 +51,7 @@ export interface SemanticIndexMeta {
     model:                 string;
     contentSignature:      string;
     chapterStatusSignature: string;
+    indexFormatVersion?:   number;
 }
 
 export interface SemanticIndexEntry {
@@ -111,6 +121,7 @@ export function buildIndex(root: string): LoadedIndex {
         chunkCount: chunks.length,
         root,
         contentSignature: contentSignatureForChunks(chunks),
+        indexFormatVersion: INDEX_FORMAT_VERSION,
     };
 
     const persisted: PersistedIndex = { meta, chunks, index: ms.toJSON() };
@@ -121,7 +132,24 @@ export function buildIndex(root: string): LoadedIndex {
     return { ms, chunks, meta };
 }
 
-export async function buildSemanticIndex(root: string): Promise<LoadedSemanticIndex> {
+export interface BuildSemanticProgress {
+    /** 0-based index of the most recently embedded chunk. */
+    completed: number;
+    /** Total number of chunks to embed. */
+    total:     number;
+    /** Count of chunks where the embedding call returned null (skipped). */
+    failed:    number;
+}
+
+export interface BuildSemanticOptions {
+    /** Called after each chunk finishes embedding. */
+    onProgress?: (p: BuildSemanticProgress) => void;
+}
+
+export async function buildSemanticIndex(
+    root:    string,
+    options: BuildSemanticOptions = {},
+): Promise<LoadedSemanticIndex> {
     const ollama = ollamaConfig();
     if (!ollama.url) {
         throw new Error('Semantic indexing requires BINDERY_OLLAMA_URL.');
@@ -135,12 +163,33 @@ export async function buildSemanticIndex(root: string): Promise<LoadedSemanticIn
     const chunks = chunkWorkspace(root, semanticDiscoverOptions());
     const embeddings: SemanticIndexEntry[] = [];
 
-    for (const chunk of chunks) {
-        const vector = await fetchEmbedding(ollama.url, ollama.model, chunk.text);
-        if (vector) {
-            embeddings.push({ chunkId: chunk.id, vector });
+    // Embed chunks with bounded concurrency for throughput. Each worker pulls the
+    // next index off a shared counter until exhausted. Failed embeddings are
+    // counted but skipped so the build still completes.
+    const total = chunks.length;
+    const concurrency = Math.max(1, Math.min(ollama.concurrency, total || 1));
+    let nextIndex = 0;
+    let completed = 0;
+    let failed = 0;
+
+    async function worker(): Promise<void> {
+        while (true) {
+            const i = nextIndex++;
+            if (i >= total) { return; }
+            const chunk = chunks[i];
+            const vector = await fetchEmbedding(ollama.url!, ollama.model, chunk.text);
+            if (vector) {
+                embeddings.push({ chunkId: chunk.id, vector });
+            } else {
+                failed++;
+            }
+            completed++;
+            options.onProgress?.({ completed, total, failed });
         }
     }
+
+    const workers = Array.from({ length: concurrency }, () => worker());
+    await Promise.all(workers);
 
     const meta: SemanticIndexMeta = {
         builtAt: new Date().toISOString(),
@@ -150,6 +199,7 @@ export async function buildSemanticIndex(root: string): Promise<LoadedSemanticIn
         model: ollama.model,
         contentSignature: contentSignatureForChunks(chunks),
         chapterStatusSignature: chapterStatusSignature(root),
+        indexFormatVersion: INDEX_FORMAT_VERSION,
     };
 
     const persisted: PersistedSemanticIndex = { meta, chunks, embeddings };
@@ -167,6 +217,9 @@ export function loadIndex(root: string): LoadedIndex | null {
     if (!fs.existsSync(p)) { return null; }
     try {
         const data: PersistedIndex = JSON.parse(fs.readFileSync(p, 'utf-8'));
+        if ((data.meta?.indexFormatVersion ?? 0) !== INDEX_FORMAT_VERSION) {
+            return null; // treat older/missing version as stale so callers rebuild
+        }
         const ms = MiniSearch.loadJSON<Chunk>(JSON.stringify(data.index), {
             idField: 'id',
             fields: ['text', 'relPath'],
@@ -184,6 +237,9 @@ export function loadSemanticIndex(root: string): LoadedSemanticIndex | null {
     if (!fs.existsSync(p)) { return null; }
     try {
         const data: PersistedSemanticIndex = JSON.parse(fs.readFileSync(p, 'utf-8'));
+        if ((data.meta?.indexFormatVersion ?? 0) !== INDEX_FORMAT_VERSION) {
+            return null; // older/missing format → treat as stale
+        }
         return { chunks: data.chunks, embeddings: data.embeddings, meta: data.meta };
     } catch {
         return null;
@@ -394,10 +450,16 @@ function normalizeEmbeddingInput(text: string): string {
     return compact.length <= maxChars ? compact : compact.slice(0, maxChars);
 }
 
-function ollamaConfig(): { url: string | null; model: string } {
+function ollamaConfig(): { url: string | null; model: string; timeoutMs: number; maxRetries: number; concurrency: number } {
+    const timeoutRaw = Number(process.env['BINDERY_OLLAMA_TIMEOUT_MS']);
+    const retriesRaw = Number(process.env['BINDERY_OLLAMA_RETRIES']);
+    const concurrencyRaw = Number(process.env['BINDERY_OLLAMA_CONCURRENCY']);
     return {
         url: process.env['BINDERY_OLLAMA_URL']?.trim() || null,
         model: process.env['BINDERY_OLLAMA_MODEL'] ?? 'nomic-embed-text',
+        timeoutMs: Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 15000,
+        maxRetries: Number.isFinite(retriesRaw) && retriesRaw >= 0 ? retriesRaw : 1,
+        concurrency: Number.isFinite(concurrencyRaw) && concurrencyRaw > 0 ? Math.floor(concurrencyRaw) : 4,
     };
 }
 
@@ -442,23 +504,35 @@ async function fetchEmbedding(
 ): Promise<number[] | null> {
     const url = baseUrl.replace(/\/$/, '') + '/api/embeddings';
     const prompt = normalizeEmbeddingInput(text);
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, prompt }),
-        signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) { return null; }
-    const json = await res.json() as { embedding?: number[] };
-    return json.embedding ?? null;
+    const { timeoutMs, maxRetries } = ollamaConfig();
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, prompt }),
+                signal: AbortSignal.timeout(timeoutMs),
+            });
+            if (!res.ok) { return null; }
+            const json = await res.json() as { embedding?: number[] };
+            return json.embedding ?? null;
+        } catch {
+            if (attempt === maxRetries) { return null; }
+            // Short exponential backoff: 200ms, 400ms, 800ms, ...
+            await new Promise(r => setTimeout(r, 200 * 2 ** attempt));
+        }
+    }
+    return null;
 }
 
 async function validateOllamaEndpoint(baseUrl: string): Promise<string | null> {
     const url = baseUrl.replace(/\/$/, '') + '/api/tags';
+    const { timeoutMs } = ollamaConfig();
     try {
         const res = await fetch(url, {
             method: 'GET',
-            signal: AbortSignal.timeout(5000),
+            signal: AbortSignal.timeout(Math.min(timeoutMs, 5000)),
         });
         if (!res.ok) {
             return `Endpoint check failed (GET /api/tags returned HTTP ${res.status}).`;
