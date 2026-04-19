@@ -18,12 +18,12 @@ The bigger shift came with Claude Cowork, which combines the session memory of a
 
 The **Bindery** extension provides:
 
-- **Typography formatting** — curly quotes, em-dashes, ellipses, smart apostrophes
-- **Chapter merge & export** — Markdown, DOCX, EPUB, PDF output via Pandoc + LibreOffice
-- **Dialect conversion** — US→UK spelling with extensible substitution rules (`.bindery/translations.json`)
-- **Multi-language support** — configurable per-language chapter labelling and folder structure
+- **Typography formatting** — curly quotes, em-dashes, ellipses, smart apostrophes (on save or on demand)
+- **Chapter merge & export** — Markdown, DOCX, EPUB, PDF output via Pandoc + LibreOffice, with auto-detection of tool paths
+- **Dialect & translation management** — extensible substitution rules for dialect exports (e.g. US→UK), plus cross-language glossaries in `.bindery/translations.json`
+- **Multi-language support** — configurable per-language chapter labelling and folder structure, with dialect derivatives
 - **Workspace config** — `.bindery/settings.json` for project-level settings
-- **MCP integration** — registers Bindery tools for GitHub Copilot Chat and writes `.vscode/mcp.json` for Claude / Codex
+- **MCP integration** — registers 25 Bindery tools for GitHub Copilot Chat and writes `.vscode/mcp.json` for Claude / Codex
 
 Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=option-a.bindery) or:
 
@@ -43,10 +43,13 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes
 - **BM25 full-text search** — fast lexical search across all chapters and notes via [MiniSearch](https://lucaong.github.io/minisearch/)
 - **Optional semantic search** — set `BINDERY_OLLAMA_URL` for semantic reranking, or enable a full semantic index for precomputed embedding search
 - **Version tracking** — `get_review_text` shows uncommitted changes as a structured diff; `git_snapshot` saves progress as a git commit scoped to story/notes/arc folders. Git is auto-initialized during workspace setup if available
+- **Translation & dialect management** — glossary entries and dialect substitution rules in `.bindery/translations.json`, queryable and updatable by agents
+- **Session memory** — persistent `.bindery/memories/` files for cross-session decisions, with append, list, and compact operations
+- **Chapter status tracking** — per-chapter progress tracker (`draft`, `in-progress`, `done`, `needs-review`)
 - **Multi-book support** — configure one or more books via `--book Name=path` CLI args or `BINDERY_BOOKS` env var; every tool call specifies which book to use by name (agents never see raw paths)
 - **Container/mount aware** — agents in sandboxed environments (e.g. Cowork) can call `identify_book` with their working directory to discover their book name, even when mount paths differ from the configured paths
 
-See [mcpb/README.md](mcpb/README.md) for full documentation and tool list.
+See [mcpb/README.md](mcpb/README.md) for the full 27-tool reference and usage examples.
 
 
 ### [mcpb/](mcpb/) — Claude Desktop Extension
@@ -108,6 +111,29 @@ The VS Code extension works standalone — no server setup needed for typography
 - **Ollama** (optional) — needed for semantic reranking and search.
   - Install via package manager or from [https://ollama.com/](https://ollama.com/)
 
+### Pandoc / LibreOffice auto-detection
+
+On all platforms the extension resolves tool paths in this order:
+
+1. Explicit `bindery.pandocPath` / `bindery.libreOfficePath` user setting (if set and the file exists)
+2. Command on `PATH` (`where.exe` on Windows, `which` elsewhere)
+3. Well-known install locations:
+   - **Windows**: `%LOCALAPPDATA%\Pandoc\pandoc.exe`, `%ProgramFiles%\Pandoc\pandoc.exe`, `%ProgramFiles%\LibreOffice\program\soffice.exe`
+   - **macOS**: `/opt/homebrew/bin/pandoc`, `/usr/local/bin/pandoc`, `/Applications/LibreOffice.app/Contents/MacOS/soffice`
+   - **Linux**: `/usr/bin/pandoc`, `/usr/bin/libreoffice`
+
+You usually do not need to configure anything — install Pandoc/LibreOffice normally and exports will work. Use the `bindery_health` MCP tool to see what was detected.
+
+## Known limitations
+
+- **Git** must be on `PATH` (or at a standard install location) for `get_review_text` and `git_snapshot`. If git isn't found, these tools fail with a clear error; all other tools still work.
+- **Pandoc** is required for DOCX, EPUB, and PDF export. Markdown-only export has no external dependencies.
+- **LibreOffice** is required only for PDF export. Bindery generates PDFs by producing a DOCX via Pandoc and then converting with LibreOffice headless.
+- **Semantic search** requires an optional [Ollama](https://ollama.com/) instance. Without it, lexical BM25 search still works offline. Configure with `BINDERY_OLLAMA_URL`; optional tuning via `BINDERY_OLLAMA_TIMEOUT_MS` (default 15000) and `BINDERY_OLLAMA_RETRIES` (default 1).
+- **Large books with semantic indexing** can take several minutes to embed on first build. Rebuilds are incremental when chapter content is unchanged.
+- **Chapter numbering**: the tools sort chapters by filename but accept non-contiguous numbers. `get_overview` now flags gaps (e.g. chapters 1, 3 with no 2) as a warning.
+- **Search index format**: bumped automatically when the on-disk format changes. Older indexes are silently ignored and rebuilt on next use — no manual action required.
+
 ## Privacy
 
 Bindery stays within your workspace, only if the optional Ollama URL is filled for the MCP server will texts be sent to Ollama for embedding / semantic search. The full privacy policy can be viewed at [https://evdboom.nl/projects/bindery/privacy](https://evdboom.nl/projects/bindery/privacy)
@@ -153,9 +179,11 @@ but differs from the source — this is what CI catches.
 
 The CI workflow (`.github/workflows/ci.yml`) runs on every push and pull request:
 
-1. Builds and tests the MCP server.
+1. Builds and tests the MCP server (Ubuntu, Windows, macOS).
 2. Copies `mcp-ts/src/templates.ts` → `vscode-ext/src/ai-setup-templates.ts`.
 3. Verifies the copy is identical to the source (fails with a clear remediation message if not).
 4. Builds and tests the VS Code extension.
+5. Runs the **tool parity guard** (`scripts/check-tool-parity.mjs`) — verifies all MCP tools are registered consistently across all 5 surfaces (server, VS Code LM tools, package.json, mcpb manifest, implementation).
+6. Enforces **coverage thresholds** (statements 80%, branches 65%, functions 90%, lines 80%) for both packages.
 
 If CI fails on the sync check, fix it by running the copy command above and committing the result.
