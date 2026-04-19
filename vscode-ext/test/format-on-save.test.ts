@@ -103,4 +103,63 @@ describe('updateTypography()', () => {
         const input = '\u201CHello,\u201D she said\u2014stepping back\u2026';
         expect(updateTypography(input)).toBe(input);
     });
+
+    // ─── Opening quotes after various opening characters ──────────────────────
+
+    it('opens double quote after opening parenthesis', () => {
+        expect(updateTypography('("Hello")')).toContain('\u201CHello\u201D');
+    });
+
+    it('opens double quote after opening bracket', () => {
+        expect(updateTypography('["Hello"]')).toContain('\u201CHello\u201D');
+    });
+
+    it('opens double quote after em-dash', () => {
+        const result = updateTypography('\u2014"Hello"');
+        expect(result).toContain('\u201CHello\u201D');
+    });
+
+    it('opens single quote after parenthesis', () => {
+        const result = updateTypography("('test')");
+        expect(result).toContain('\u2018test\u2019');
+    });
+
+    // ─── Closing double quote after em-dash ───────────────────────────────────
+
+    it('corrects closing quote after em-dash at end of sentence', () => {
+        // Input: "word--" should become "word—" (em-dash + closing quote)
+        const input = 'He said "fine--"';
+        const result = updateTypography(input);
+        expect(result).toContain('\u2014\u201D');
+    });
+
+    it('corrects closing quote after em-dash followed by punctuation', () => {
+        const input = 'He said "fine--" and left.';
+        const result = updateTypography(input);
+        expect(result).toContain('\u2014\u201D');
+    });
+
+    // ─── Multiple HTML comments ───────────────────────────────────────────────
+
+    it('handles multiple HTML comments in one document', () => {
+        const input = '<!-- first -- comment -->\nText--here.\n<!-- second -- comment -->';
+        const result = updateTypography(input);
+        expect(result).toContain('<!-- first -- comment -->');
+        expect(result).toContain('<!-- second -- comment -->');
+        expect(result).toContain('Text\u2014here.');
+    });
+
+    // ─── Multi-line quotes ────────────────────────────────────────────────────
+
+    it('handles quote at start of a line', () => {
+        const result = updateTypography('"Start of line."');
+        expect(result).toBe('\u201CStart of line.\u201D');
+    });
+
+    // ─── No-op for content without formattable characters ─────────────────────
+
+    it('returns plain text unchanged when no formatting is needed', () => {
+        const input = 'Plain text without anything special.';
+        expect(updateTypography(input)).toBe(input);
+    });
 });

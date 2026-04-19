@@ -40,12 +40,12 @@
         "bindery.pandocPath": {
           "type": "string",
           "default": "pandoc",
-          "description": "Path to the pandoc executable. Machine-specific — set in user settings, not workspace settings. Install from https://pandoc.org"
+          "description": "Path to the pandoc executable. Leave as 'pandoc' to auto-detect (PATH + well-known install locations, including %LOCALAPPDATA%\\Pandoc\\pandoc.exe and %ProgramFiles%\\Pandoc\\pandoc.exe on Windows). Override only if you have a non-standard install. Install from https://pandoc.org"
         },
         "bindery.libreOfficePath": {
           "type": "string",
           "default": "libreoffice",
-          "description": "Path to the LibreOffice executable for PDF export. Machine-specific — set in user settings. On Windows use the full path to soffice.exe, e.g. C:\\Program Files\\LibreOffice\\program\\soffice.exe"
+          "description": "Path to the LibreOffice executable for PDF export. Leave as 'libreoffice' to auto-detect (PATH + well-known install locations, including %ProgramFiles%\\LibreOffice\\program\\soffice.exe on Windows and /Applications/LibreOffice.app/Contents/MacOS/soffice on macOS). Override only if you have a non-standard install."
         },
         "bindery.generalSubstitutions": {
           "type": "array",
@@ -1023,12 +1023,14 @@
     "build:mcp": "cd ../mcp-ts && npm ci && npm run compile",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json"
+    "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "esbuild": "^0.28.0",
     "@types/node": "^25.6.0",
     "@types/vscode": "1.116.0",
+    "@vitest/coverage-v8": "^4.1.4",
+    "esbuild": "^0.28.0",
     "typescript": "6.0.2",
     "vitest": "^4.1.4"
   }
