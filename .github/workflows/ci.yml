@@ -10,7 +10,11 @@ permissions:
 jobs:
   test:
     name: Test & template-sync check
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -39,7 +43,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: mcp-test-results
+          name: mcp-test-results-${{ matrix.os }}
           path: mcp-ts/test-results.json
 
       # ── Template sync ─────────────────────────────────────────────────────────
@@ -65,5 +69,43 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: vscode-ext-test-results
+          name: vscode-ext-test-results-${{ matrix.os }}
           path: vscode-ext/test-results.json
+
+  # ── Job: Coverage gates ──────────────────────────────────────────────────────
+  # Runs coverage-with-thresholds on ubuntu only (one platform is enough — coverage
+  # numbers don't depend on OS, and per-OS coverage runs would triple CI time).
+  coverage:
+    name: Coverage (v8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            mcp-ts/package-lock.json
+            vscode-ext/package-lock.json
+
+      - name: Install mcp-ts
+        run: cd mcp-ts && npm ci
+      - name: mcp-ts coverage
+        run: cd mcp-ts && npm run test:coverage
+
+      - name: Sync templates to vscode-ext
+        run: cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+
+      - name: Install vscode-ext
+        run: cd vscode-ext && npm ci
+      - name: vscode-ext coverage
+        run: cd vscode-ext && npm run test:coverage
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: |
+            mcp-ts/coverage/
+            vscode-ext/coverage/

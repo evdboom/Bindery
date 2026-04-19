@@ -12,6 +12,7 @@ mcp-rust/target/
 
 # Test artifacts
 test-results.json
+coverage/
 
 # Environment (contains personal paths)
 .env
