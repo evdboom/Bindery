@@ -12,9 +12,9 @@ Converts plain-text typography to professional typographic characters:
 |-------|--------|-------------|
 | `...` | `…` | Ellipsis |
 | `--` | `—` | Em-dash (preserves `---` for markdown HR) |
-| `"text"` | `"text"` | Curly double quotes |
-| `'text'` | `'text'` | Curly single quotes |
-| `don't` | `don't` | Smart apostrophes |
+| `"text"` | `“text”` | Curly double quotes |
+| `'text'` | `‘text’` | Curly single quotes |
+| `don't` | `don’t` | Smart apostrophes |
 
 HTML comments are preserved and not modified.
 
