@@ -21,10 +21,11 @@ async function loadAiSetup() {
   return import('../src/aisetup');
 }
 
+vi.unmock('fflate');
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
-  vi.unmock('fflate');
   for (const root of tempRoots.splice(0, tempRoots.length)) {
     fs.rmSync(root, { recursive: true, force: true });
   }
