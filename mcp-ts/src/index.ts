@@ -260,7 +260,7 @@ server.registerTool('update_workspace', {
         switchBranch: z.boolean().optional().describe('Allow the tool to switch to the requested branch before pulling (default false)'),
         autoStash:    z.boolean().optional().describe('Temporarily stash local changes before pull when needed (default true)'),
     },
-    annotations: { destructiveHint: true },
+    annotations: { destructiveHint: true, openWorldHint: true },
 }, async ({ book, remote, branch, switchBranch, autoStash }) => {
     try { return ok(toolUpdateWorkspace(resolveBook(book).root, { remote, branch, switchBranch, autoStash })); } catch (e) { return err(e); }
 });
@@ -279,7 +279,7 @@ server.registerTool('git_snapshot', {
         branch:               z.string().optional().describe('Branch to push (default: stored setting or current branch)'),
         rememberPushDefaults: z.boolean().optional().describe('Persist the push preference, remote, and branch under .bindery/settings.json'),
     },
-    annotations: { destructiveHint: true },
+    annotations: { destructiveHint: true, openWorldHint: true },
 }, async ({ book, message, push, remote, branch, rememberPushDefaults }) => {
     try { return ok(toolGitSnapshot(resolveBook(book).root, { message, push, remote, branch, rememberPushDefaults })); } catch (e) { return err(e); }
 });
