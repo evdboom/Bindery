@@ -60,7 +60,7 @@ jobs:
     name: Publish VS Code Extension
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - uses: actions/checkout@v6
@@ -86,11 +86,22 @@ jobs:
           npx --yes esbuild@0.28.0 mcp-ts/out/tools.js --bundle --platform=node --format=cjs --target=node18 --outfile=vscode-ext/mcp-ts/out/tools.js
           npx --yes esbuild@0.28.0 mcp-ts/out/index.js --bundle --platform=node --format=cjs --target=node18 --outfile=vscode-ext/mcp-ts/out/index.js
 
-      - name: Set version from tag and publish extension
+      - name: Set version from tag and package extension
         # package.json ships with version "0.0.0" — the real version is injected here from the release tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           cd vscode-ext
           npm ci
           npm version "$VERSION" --no-git-tag-version
+          npx --yes @vscode/vsce@3.7.1 package -o "bindery-${VERSION}.vsix"
+
+      - name: Upload .vsix to release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: vscode-ext/*.vsix
+          fail_on_unmatched_files: true
+
+      - name: Publish extension to Marketplace
+        run: |
+          cd vscode-ext
           npx --yes @vscode/vsce@3.7.1 publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
