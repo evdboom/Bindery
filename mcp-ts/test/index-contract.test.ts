@@ -21,12 +21,13 @@ describe('mcp index contract', () => {
     expect(hasBothHints).toBe(false);
   });
 
-  it('tools that send data to Ollama declare openWorldHint: true', () => {
+  it('tools that contact external services declare openWorldHint: true', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
 
-    // Find the annotation block for each Ollama-capable tool and verify openWorldHint: true
-    const ollamaTools = ['index_build', 'search'];
-    for (const toolName of ollamaTools) {
+    // Find the annotation block for each tool that contacts an external service and verify openWorldHint: true
+    // index_build / search → Ollama reranking; update_workspace → git fetch/pull; git_snapshot → git push
+    const externalTools = ['index_build', 'search', 'update_workspace', 'git_snapshot'];
+    for (const toolName of externalTools) {
       // Match registerTool('search', { ... annotations: { ... } ... })
       const toolBlockMatch = new RegExp(
         String.raw`server\.registerTool\('${toolName}',[\s\S]*?annotations:\s*\{([^}]*)\}`,
@@ -37,10 +38,11 @@ describe('mcp index contract', () => {
     }
   });
 
-  it('tools that do not use Ollama do not declare openWorldHint: true', () => {
+  it('tools that do not contact external services do not declare openWorldHint: true', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
 
-    const ollamaToolNames = new Set(['index_build', 'search']);
+    // Tools that legitimately contact external services (Ollama, git remotes, etc.)
+    const externalToolNames = new Set(['index_build', 'search', 'update_workspace', 'git_snapshot']);
 
     // Extract all registerTool blocks and check non-Ollama tools lack openWorldHint
     const toolBlockRegex = /server\.registerTool\('([^']+)'[\s\S]*?annotations:\s*\{([^}]*)\}/g;
@@ -48,7 +50,7 @@ describe('mcp index contract', () => {
     while ((match = toolBlockRegex.exec(source)) !== null) {
       const name = match[1];
       const annotationsBody = match[2];
-      if (!ollamaToolNames.has(name)) {
+      if (!externalToolNames.has(name)) {
         expect(
           /openWorldHint:\s*true/.test(annotationsBody),
           `Tool '${name}' should NOT have openWorldHint: true`,
