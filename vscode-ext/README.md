@@ -59,7 +59,7 @@ Bindery includes a bundled MCP server that makes your book's chapters, notes, se
 
 **Claude for VS Code / Codex** — run `Bindery: Register MCP Server` once per workspace. This writes `.vscode/mcp.json` pointing to the bundled server. Both extensions pick this up automatically on next reload.
 
-#### Available MCP tools (25)
+#### Available MCP tools (26)
 
 | Tool | Description |
 |------|-------------|
@@ -77,7 +77,8 @@ Bindery includes a bundled MCP server that makes your book's chapters, notes, se
 | `bindery_get_notes` | Notes files, filterable by category or character name |
 | `bindery_format` | Apply typography formatting to a file or folder |
 | `bindery_get_review_text` | Structured git diff of uncommitted changes |
-| `bindery_git_snapshot` | Save a snapshot (git commit) of story/notes/arc changes |
+| `bindery_update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |
+| `bindery_git_snapshot` | Save a snapshot (git commit) of story/notes/arc changes, with optional push |
 | `bindery_get_translation` | Look up cross-language glossary entries |
 | `bindery_add_translation` | Add or update a glossary entry |
 | `bindery_get_dialect` | Look up dialect substitution rules |

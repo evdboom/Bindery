@@ -113,7 +113,7 @@ function getEffectiveConfig(wsSettings: WorkspaceSettings | null): EffectiveConf
 /** True if filePath is inside <root>/<storyFolder>/. */
 function isInsideStoryFolder(filePath: string, root: string, storyFolder: string): boolean {
     // Normalize separators so Windows paths compare correctly
-    const norm  = (p: string) => p.replaceAll(/\\/g, '/');
+    const norm  = (p: string) => p.replaceAll('\\', '/');
     const story = norm(path.join(root, storyFolder));
     const file  = norm(filePath);
     return file.startsWith(story + '/');
@@ -294,7 +294,7 @@ async function initWorkspaceCommand() {
     const detectedLangs = detectLanguageFolders(path.join(root, storyFolder));
     const languages     = detectedLangs.length > 0 ? detectedLangs : [DEFAULT_LANGUAGE];
 
-    const slug: string = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Book';
+    const slug: string = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/g, '') || 'Book';
 
     const settings: WorkspaceSettings = {
         ...(title    ? { bookTitle: title }             : {}),
@@ -444,8 +444,8 @@ async function addDialectCommand() {
     let sourceLang: LanguageConfig | undefined;
     if (editor) {
         const sf   = wsSettings?.storyFolder ?? 'Story';
-        const file = editor.document.uri.fsPath.replaceAll(/\\/g, '/');
-        const base = path.join(root, sf).replaceAll(/\\/g, '/');
+        const file = editor.document.uri.fsPath.replaceAll('\\', '/');
+        const base = path.join(root, sf).replaceAll('\\', '/');
         if (file.startsWith(base + '/')) {
             const folderName = file.slice(base.length + 1).split('/')[0];
             sourceLang = wsSettings?.languages?.find(
@@ -888,9 +888,9 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
     if (hasNew) {
         const settingsPath = getSettingsPath(root);
         try {
-            const current = JSON.parse(require('fs').readFileSync(settingsPath, 'utf-8'));
+            const current = JSON.parse(require('node:fs').readFileSync(settingsPath, 'utf-8'));
             const updated  = { ...current, ...settings };
-            require('fs').writeFileSync(settingsPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8');
+            require('node:fs').writeFileSync(settingsPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8');
         } catch { /* non-fatal */ }
     }
 
@@ -1167,9 +1167,10 @@ async function doMerge(outputTypes: OutputType[]) {
 // ─── Activation ───────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
+    const subscriptions: vscode.Disposable[] = [];
 
     // Clear tool-path auto-detect cache whenever the user changes pandoc/libreoffice settings.
-    context.subscriptions.push(
+    subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((e) => {
             if (e.affectsConfiguration('bindery.pandocPath') || e.affectsConfiguration('bindery.libreOfficePath')) {
                 clearLocateCache();
@@ -1178,7 +1179,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Formatting provider (used by VS Code's Format Document command)
-    context.subscriptions.push(
+    subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider(
             { language: 'markdown', scheme: 'file' },
             new TypographyFormattingProvider()
@@ -1186,7 +1187,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Format-on-save — only fires for files inside the configured Story folder
-    context.subscriptions.push(
+    subscriptions.push(
         vscode.workspace.onWillSaveTextDocument((event) => {
             if (event.document.languageId !== 'markdown') { return; }
 
@@ -1211,7 +1212,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Commands
-    context.subscriptions.push(
+    subscriptions.push(
         vscode.commands.registerCommand('bindery.init',                    initWorkspaceCommand),
         vscode.commands.registerCommand('bindery.setupAI',                 () => setupAiCommand(context)),
         vscode.commands.registerCommand('bindery.formatDocument',          formatDocumentCommand),
@@ -1261,7 +1262,7 @@ export function activate(context: vscode.ExtensionContext) {
     statusBar.text    = '$(book) Bindery';
     statusBar.tooltip = 'Bindery: Merge Chapters → All Formats';
     statusBar.command = 'bindery.mergeAll';
-    context.subscriptions.push(statusBar);
+    subscriptions.push(statusBar);
 
     const updateStatusBar = () => {
         if (vscode.window.activeTextEditor?.document.languageId === 'markdown') {
@@ -1270,8 +1271,9 @@ export function activate(context: vscode.ExtensionContext) {
             statusBar.hide();
         }
     };
-    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateStatusBar));
+    subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateStatusBar));
+    context.subscriptions.push(...subscriptions);
     updateStatusBar();
 }
 
-export function deactivate() { }
+export function deactivate(): void { return; }

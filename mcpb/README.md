@@ -13,6 +13,7 @@ Works with any Markdown book project structured with the Bindery VS Code extensi
 - **Workspace setup** — create or update `.bindery/settings.json` and scaffold AI instruction files
 - **Chapter status tracking** — record and query per-chapter progress (draft, in-progress, done, needs-review)
 - **Typography formatting** — curly quotes, em-dashes, ellipses
+- **Workspace sync** — fetch and pull the current branch before a session, with branch/default-branch reporting
 - **Version snapshots** — git-based save points after writing sessions
 - **Review diffs** — structured git diff of uncommitted changes
 
@@ -66,7 +67,13 @@ automatically during future exports.
 > "Review my changes and save a snapshot if they look good"
 
 Claude calls `get_review_text` to show the diff, reviews it, then calls
-`git_snapshot` to commit the changes with a descriptive message.
+`git_snapshot` to commit the changes with a descriptive message. If you have configured a preferred push target, the same call can also push the snapshot.
+
+### Sync the workspace before reading in
+
+> "Update this workspace before we start"
+
+Claude calls `update_workspace` to fetch and pull the current branch. If the current branch differs from the remote default branch, the tool reports that so Claude can ask whether to switch before continuing.
 
 ### Look up a glossary term
 
@@ -81,8 +88,7 @@ inflected forms automatically. If no glossary entry exists yet, Claude can call
 
 > "Show me all the British English substitution rules"
 
-Claude calls `get_dialect` with `dialectCode: "en-gb"` (omitting `word`) to
-dump every `from → to` rule in the `en-gb` entry of `.bindery/translations.json`.
+Claude calls `get_dialect` with `dialectCode: "en-gb"` (omitting `word`) to dump every `from → to` rule in the `en-gb` entry of `.bindery/translations.json`.
 Useful before an export session to see what spelling substitutions are configured.
 
 ### Save session decisions to memory
@@ -139,7 +145,8 @@ table with issue type, location, and the reference that contradicts it.
 | `search` | Search in lexical, semantic-rerank, or full-semantic mode; semantic modes fall back to lexical with warnings |
 | `format` | Apply typography formatting to a file or folder |
 | `get_review_text` | Structured git diff with optional auto-staging |
-| `git_snapshot` | Git commit of story, notes, and arc changes |
+| `update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |
+| `git_snapshot` | Git commit of story, notes, and arc changes, with optional push |
 | `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |
 | `add_translation` | Add or update a cross-language glossary entry (agent reference) |
 | `get_dialect` | List dialect substitution rules, or look up a specific word |

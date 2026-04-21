@@ -34,7 +34,7 @@ import {
 } from './aisetup.js';
 import { probeTool, type ProbeResult } from './tool-probe.js';
 import { BUILTIN_EN_GB_RULES, type TranslationRule } from './tools-dialect-defaults.js';
-import { parseUnifiedDiff, formatReviewFiles, type DiffFile } from './tools-diff.js';
+import { parseUnifiedDiff, formatReviewFiles } from './tools-diff.js';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -51,6 +51,13 @@ interface Settings {
     languages?: Array<{ code: string; folderName: string; chapterWord: string; actPrefix: string; prologueLabel: string; epilogueLabel: string }>;
     aiTargets?: string[];
     aiSkills?: string[];
+    git?: {
+        snapshot?: {
+            pushDefault?: boolean;
+            remote?: string;
+            branch?: string;
+        };
+    };
 }
 
 function readSettings(root: string): Settings | null {
@@ -84,6 +91,313 @@ function appendWarnings(body: string, warnings: string[]): string {
     if (warnings.length === 0) { return body; }
     const header = warnings.map(w => 'Warning: ' + w).join('\n');
     return `${header}\n\n${body}`;
+}
+
+type GitExecResult = { stdout: string; stderr: string; status: number | null };
+
+function runGit(root: string, args: string[]): GitExecResult {
+    const result = spawnSync('git', args, { cwd: root, encoding: 'utf-8' });
+    if (result.error) { throw result.error; }
+    return {
+        stdout: result.stdout ?? '',
+        stderr: result.stderr ?? '',
+        status: result.status ?? null,
+    };
+}
+
+function gitOk(root: string, args: string[]): string {
+    const result = runGit(root, args);
+    if (result.status !== 0) {
+        throw new Error(result.stderr.trim() || `git ${args.join(' ')} failed`);
+    }
+    return result.stdout;
+}
+
+function gitTry(root: string, args: string[]): GitExecResult {
+    try {
+        return runGit(root, args);
+    } catch (error) {
+        return { stdout: '', stderr: error instanceof Error ? error.message : String(error), status: 1 };
+    }
+}
+
+function trimOrUndefined(value: string | undefined): string | undefined {
+    return value?.trim() || undefined;
+}
+
+function listGitRemotes(root: string): string[] {
+    const result = gitTry(root, ['remote']);
+    if (result.status !== 0) { return []; }
+    return result.stdout.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+}
+
+function pickRemote(root: string, preferred?: string): string | undefined {
+    const remotes = listGitRemotes(root);
+    if (preferred && remotes.includes(preferred)) { return preferred; }
+    return remotes.includes('origin') ? 'origin' : remotes[0];
+}
+
+function currentBranch(root: string): string | undefined {
+    const result = gitTry(root, ['branch', '--show-current']);
+    const branch = result.stdout.trim();
+    return result.status === 0 && branch ? branch : undefined;
+}
+
+function currentUpstream(root: string): string | undefined {
+    const result = gitTry(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}']);
+    const upstream = result.stdout.trim();
+    return result.status === 0 && upstream ? upstream : undefined;
+}
+
+function remoteDefaultBranch(root: string, remote: string): string | undefined {
+    const symbolic = gitTry(root, ['symbolic-ref', '--quiet', `refs/remotes/${remote}/HEAD`]);
+    if (symbolic.status === 0) {
+        const ref = symbolic.stdout.trim();
+        const prefix = `refs/remotes/${remote}/`;
+        if (ref.startsWith(prefix)) {
+            return ref.slice(prefix.length);
+        }
+    }
+
+    const remoteShow = gitTry(root, ['remote', 'show', remote]);
+    if (remoteShow.status === 0) {
+        const match = /^\s*HEAD branch:\s+(.+)$/m.exec(remoteShow.stdout);
+        if (match?.[1]?.trim()) {
+            return match[1].trim();
+        }
+    }
+
+    return undefined;
+}
+
+function localBranchExists(root: string, branch: string): boolean {
+    return gitTry(root, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]).status === 0;
+}
+
+function remoteBranchExists(root: string, remote: string, branch: string): boolean {
+    const result = gitTry(root, ['ls-remote', '--heads', remote, branch]);
+    return result.status === 0 && result.stdout.trim().length > 0;
+}
+
+function dirtyWorktree(root: string): boolean {
+    const result = gitTry(root, ['status', '--porcelain']);
+    return result.status === 0 && result.stdout.trim().length > 0;
+}
+
+function settingsPath(root: string): string {
+    return path.join(root, '.bindery', 'settings.json');
+}
+
+type UpdateSettingsObjectResult = 'updated' | 'missing' | 'invalid';
+
+function updateSettingsObject(root: string, patch: Record<string, unknown>): UpdateSettingsObjectResult {
+    const filePath = settingsPath(root);
+    if (!fs.existsSync(filePath)) { return 'missing'; }
+
+    let existing: Record<string, unknown> = {};
+    try {
+        const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as unknown;
+        if (!isPlainObject(parsed)) { return 'invalid'; }
+        existing = parsed;
+    } catch {
+        return 'invalid';
+    }
+
+    const merged = deepMergeSettings(existing, patch);
+    fs.writeFileSync(filePath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
+    return 'updated';
+}
+
+function ensureGitRepository(root: string): string | undefined {
+    try {
+        gitOk(root, ['rev-parse', '--show-toplevel']);
+        return undefined;
+    } catch {
+        return 'Failed to update workspace: not a git repository.';
+    }
+}
+
+function fetchWorkspaceRemote(root: string, remote: string): string {
+    gitOk(root, ['fetch', remote, '--prune']);
+    return `Fetched latest refs from ${remote}.`;
+}
+
+type SwitchBranchResult = {
+    activeBranch?: string;
+    note?: string;
+    error?: string;
+};
+
+function maybeSwitchWorkspaceBranch(
+    root: string,
+    remote: string,
+    activeBranch: string,
+    requestedBranch: string | undefined,
+    switchBranch: boolean | undefined,
+): SwitchBranchResult {
+    if (!requestedBranch || requestedBranch === activeBranch) {
+        return { activeBranch };
+    }
+
+    if (switchBranch !== true) {
+        return {
+            activeBranch,
+            note: `Current branch is ${activeBranch}. Requested branch ${requestedBranch} was not checked out because switchBranch is false.`,
+        };
+    }
+
+    try {
+        if (localBranchExists(root, requestedBranch)) {
+            gitOk(root, ['switch', requestedBranch]);
+        } else if (remoteBranchExists(root, remote, requestedBranch)) {
+            gitOk(root, ['switch', '--track', `${remote}/${requestedBranch}`]);
+        } else {
+            return { error: `Failed to update workspace: branch ${requestedBranch} was not found locally or on ${remote}.` };
+        }
+
+        return {
+            activeBranch: currentBranch(root) ?? requestedBranch,
+            note: `Switched to ${requestedBranch}.`,
+        };
+    } catch (error) {
+        return { error: `Failed to update workspace: ${error instanceof Error ? error.message : String(error)}` };
+    }
+}
+
+function ensureWorkspaceUpstream(root: string, remote: string, branch: string, defaultBranch?: string): string | undefined {
+    const upstreamBefore = currentUpstream(root);
+    if (!upstreamBefore && remoteBranchExists(root, remote, branch)) {
+        const setUpstream = gitTry(root, ['branch', '--set-upstream-to', `${remote}/${branch}`, branch]);
+        if (setUpstream.status === 0) {
+            return `Set upstream to ${remote}/${branch}.`;
+        }
+    }
+
+    if (currentUpstream(root)) {
+        return undefined;
+    }
+
+    const branchNote = defaultBranch && branch !== defaultBranch
+        ? ` Current branch ${branch} differs from remote default ${defaultBranch}.`
+        : '';
+    return `Failed to update workspace: branch ${branch} has no upstream tracking branch.${branchNote}`;
+}
+
+type StashState = { stashed: boolean; note?: string };
+
+function stashWorkspaceChanges(root: string, autoStash: boolean): StashState {
+    if (!autoStash || !dirtyWorktree(root)) {
+        return { stashed: false };
+    }
+
+    const stamp = new Date().toISOString();
+    const stashResult = gitTry(root, ['stash', 'push', '--include-untracked', '-m', `bindery update_workspace ${stamp}`]);
+    if (stashResult.status !== 0) {
+        return { stashed: false };
+    }
+
+    const stdout = stashResult.stdout.trim();
+    if (/^No local changes to save/i.test(stdout)) {
+        return { stashed: false };
+    }
+
+    return { stashed: true, note: stdout || 'Stashed local changes before pulling.' };
+}
+
+function restoreWorkspaceStash(root: string, failurePrefix?: string): string {
+    const popResult = gitTry(root, ['stash', 'pop']);
+    if (popResult.status === 0) {
+        return popResult.stdout.trim() || 'Restored stashed local changes.';
+    }
+
+    const detail = popResult.stderr.trim() || popResult.stdout.trim() || 'stash pop failed';
+    return `${failurePrefix ?? 'Restoring stashed changes needs attention'}: ${detail}`;
+}
+
+function workspaceBranchStatus(branch: string, remote: string, defaultBranch?: string): string {
+    if (defaultBranch) {
+        return branch === defaultBranch
+            ? `Current branch ${branch} matches the remote default branch.`
+            : `Current branch ${branch} differs from remote default branch ${defaultBranch}.`;
+    }
+
+    return `Current branch ${branch}. Remote default branch for ${remote} could not be determined.`;
+}
+
+type PullWorkspaceResult = {
+    error?: string;
+    lines: string[];
+};
+
+function pullWorkspace(root: string, stashState: StashState): PullWorkspaceResult {
+    const pullResult = gitTry(root, ['pull', '--ff-only']);
+    if (pullResult.status !== 0) {
+        const restoreNotes = stashState.stashed
+            ? [restoreWorkspaceStash(root, 'Pull failed and stash restore needs attention')]
+            : [];
+        const detail = pullResult.stderr.trim() || pullResult.stdout.trim() || 'git pull failed';
+        return { error: ['Failed to update workspace: ' + detail, ...restoreNotes].join('\n'), lines: [] };
+    }
+
+    const lines = [pullResult.stdout.trim() || 'Workspace is already up to date.'];
+    if (stashState.stashed) {
+        lines.push(restoreWorkspaceStash(root, 'Pulled successfully, but restoring stashed changes needs attention'));
+    }
+    return { lines };
+}
+
+function switchBranchReminder(requestedBranch: string | undefined, activeBranch: string, switchBranch: boolean | undefined): string | undefined {
+    if (!requestedBranch || requestedBranch === activeBranch || switchBranch === true) {
+        return undefined;
+    }
+    return `If you want to switch to ${requestedBranch}, call update_workspace again with switchBranch: true.`;
+}
+
+function maybeRememberSnapshotDefaults(
+    root: string,
+    rememberPushDefaults: boolean | undefined,
+    pushRequested: boolean,
+    remote: string | undefined,
+    branch: string | undefined,
+): string | undefined {
+    if (!rememberPushDefaults) {
+        return undefined;
+    }
+
+    const snapshot: Record<string, unknown> = { pushDefault: pushRequested };
+    if (remote) { snapshot.remote = remote; }
+    if (branch) { snapshot.branch = branch; }
+
+    const result = updateSettingsObject(root, {
+        git: {
+            snapshot,
+        },
+    });
+
+    if (result === 'updated') {
+        return 'Saved snapshot push defaults to .bindery/settings.json.';
+    }
+    if (result === 'missing') {
+        return 'Could not save snapshot push defaults: .bindery/settings.json was not found.';
+    }
+    return 'Could not save snapshot push defaults: .bindery/settings.json is invalid JSON.';
+}
+
+function pushSnapshot(root: string, remote: string | undefined, branch: string | undefined): string {
+    if (!remote) {
+        return 'Push skipped: no git remote is configured.';
+    }
+
+    if (!branch) {
+        return 'Push skipped: unable to determine which branch to push.';
+    }
+
+    const pushResult = gitTry(root, ['push', remote, branch]);
+    if (pushResult.status !== 0) {
+        return `Push failed: ${pushResult.stderr.trim() || pushResult.stdout.trim() || 'git push failed'}`;
+    }
+
+    return `Pushed snapshot to ${remote}/${branch}.`;
 }
 
 // ─── health ───────────────────────────────────────────────────────────────────
@@ -215,8 +529,9 @@ export async function toolIndexBuild(root: string): Promise<string> {
                 if (total === 0) { return; }
                 const pct = Math.floor((completed / total) * 100);
                 if (pct >= lastLoggedPct + 10 || completed === total) {
+                    const failedCount = failed ? `, ${failed} failed` : '';
                     lastLoggedPct = pct;
-                    process.stderr.write(`[bindery] semantic index: ${completed}/${total} (${pct}%${failed ? `, ${failed} failed` : ''})\n`);
+                    process.stderr.write(`[bindery] semantic index: ${completed}/${total} (${pct}%${failedCount})\n`);
                 }
             },
         });
@@ -434,7 +749,7 @@ function actLines(langDir: string, actEntry: { name: string }): string[] {
     const numbers = chapters
         .map(ch => {
             const m = /(\d+)/.exec(ch.name);
-            return m ? parseInt(m[1], 10) : null;
+            return m ? Number.parseInt(m[1], 10) : null;
         })
         .filter((n): n is number => n !== null);
     const gaps = findNumericGaps(numbers);
@@ -750,10 +1065,73 @@ function contentFolders(root: string): string[] {
     return [story, 'Notes', 'Arc'].filter(d => fs.existsSync(path.join(root, d)));
 }
 
+// ─── update_workspace ────────────────────────────────────────────────────────
+
+export interface UpdateWorkspaceArgs {
+    remote?: string;
+    branch?: string;
+    switchBranch?: boolean;
+    autoStash?: boolean;
+}
+
+export function toolUpdateWorkspace(root: string, args: UpdateWorkspaceArgs): string {
+    const repoError = ensureGitRepository(root);
+    if (repoError) { return repoError; }
+
+    const requestedRemote = trimOrUndefined(args.remote);
+    const requestedBranch = trimOrUndefined(args.branch);
+    const remote = pickRemote(root, requestedRemote);
+    if (!remote) {
+        return 'Failed to update workspace: no git remote is configured for this repository.';
+    }
+
+    const lines: string[] = [];
+    const autoStash = args.autoStash !== false;
+
+    try {
+        lines.push(fetchWorkspaceRemote(root, remote));
+    } catch (error) {
+        return `Failed to update workspace: ${error instanceof Error ? error.message : String(error)}`;
+    }
+
+    const defaultBranch = remoteDefaultBranch(root, remote);
+    let activeBranch = currentBranch(root);
+    if (!activeBranch) {
+        return 'Failed to update workspace: unable to determine the current branch.';
+    }
+
+    const switchResult = maybeSwitchWorkspaceBranch(root, remote, activeBranch, requestedBranch, args.switchBranch);
+    if (switchResult.error) { return switchResult.error; }
+    activeBranch = switchResult.activeBranch ?? activeBranch;
+    if (switchResult.note) { lines.push(switchResult.note); }
+
+    const upstreamNote = ensureWorkspaceUpstream(root, remote, activeBranch, defaultBranch);
+    if (upstreamNote?.startsWith('Failed to update workspace:')) {
+        return upstreamNote;
+    }
+    if (upstreamNote) { lines.push(upstreamNote); }
+
+    const stashState = stashWorkspaceChanges(root, autoStash);
+    if (stashState.note) { lines.push(stashState.note); }
+
+    const pullWorkspaceResult = pullWorkspace(root, stashState);
+    if (pullWorkspaceResult.error) { return pullWorkspaceResult.error; }
+    lines.push(...pullWorkspaceResult.lines, workspaceBranchStatus(activeBranch, remote, defaultBranch));
+
+    const reminder = switchBranchReminder(requestedBranch, activeBranch, args.switchBranch);
+    if (reminder) { lines.push(reminder); }
+
+    return lines.join('\n');
+}
+
 // ─── git_snapshot ─────────────────────────────────────────────────────────────
 
 export interface GitSnapshotArgs {
     message?: string;
+    push?: boolean;
+    remote?: string;
+    branch?: string;
+    rememberPushDefaults?: boolean;
 }
 
 export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
@@ -791,7 +1169,24 @@ export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
         return `Failed to commit: ${e instanceof Error ? e.message : String(e)}`;
     }
 
-    return `Snapshot saved: "${msg}" (${fileCount} file${fileCount === 1 ? '' : 's'})`;
+    const lines = [`Snapshot saved: "${msg}" (${fileCount} file${fileCount === 1 ? '' : 's'})`];
+
+    const settings = readSettings(root);
+    const defaultPush = settings?.git?.snapshot?.pushDefault === true;
+    const pushRequested = args.push ?? defaultPush;
+    const remote = trimOrUndefined(args.remote) ?? trimOrUndefined(settings?.git?.snapshot?.remote) ?? pickRemote(root);
+    const branch = trimOrUndefined(args.branch) ?? trimOrUndefined(settings?.git?.snapshot?.branch) ?? currentBranch(root);
+
+    const rememberNote = maybeRememberSnapshotDefaults(root, args.rememberPushDefaults, pushRequested, remote, branch);
+    if (rememberNote) { lines.push(rememberNote); }
+
+    if (!pushRequested) {
+        return lines.join('\n');
+    }
+
+    lines.push(pushSnapshot(root, remote, branch));
+
+    return lines.join('\n');
 }
 
 // ─── get_translation ─────────────────────────────────────────────────────────
