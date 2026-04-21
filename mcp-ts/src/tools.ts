@@ -365,12 +365,8 @@ function maybeRememberSnapshotDefaults(
     }
 
     const snapshot: Record<string, unknown> = { pushDefault: pushRequested };
-    const optionalSnapshotValues = { remote, branch };
-    for (const [key, value] of Object.entries(optionalSnapshotValues)) {
-        if (typeof value === 'string' && value.length > 0) {
-            snapshot[key] = value;
-        }
-    }
+    if (remote) { snapshot.remote = remote; }
+    if (branch) { snapshot.branch = branch; }
 
     const result = updateSettingsObject(root, {
         git: {
