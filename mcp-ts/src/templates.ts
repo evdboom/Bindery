@@ -41,7 +41,7 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.claude/skills/status/SKILL.md':       { version: 10,  label: 'status skill',            zip: '.claude/skills/status.zip' },
     '.claude/skills/continuity/SKILL.md':   { version: 11,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
     '.claude/skills/read-aloud/SKILL.md':   { version: 10,  label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
-    '.claude/skills/read-in/SKILL.md':      { version: 11,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
+    '.claude/skills/read-in/SKILL.md':      { version: 12,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
     '.claude/skills/proof-read/SKILL.md':   { version: 4,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
 };
 
@@ -60,15 +60,15 @@ export function renderTemplate(name: string, ctx: TemplateContext): string {
         case 'copilot':    return copilotMd(ctx);
         case 'cursor':     return cursorRules(ctx);
         case 'agents':     return agentsMd(ctx);
-        case 'review':     return skillReview(ctx);
-        case 'brainstorm': return skillBrainstorm(ctx);
-        case 'memory':     return skillMemory(ctx);
-        case 'translate':  return skillTranslate(ctx);
-        case 'status':     return skillStatus(ctx);
-        case 'continuity': return skillContinuity(ctx);
-        case 'read-aloud': return skillReadAloud(ctx);
-        case 'read-in':    return skillReadIn(ctx);
-        case 'proof-read': return skillProofRead(ctx);
+        case 'review':     return skillReview();
+        case 'brainstorm': return skillBrainstorm();
+        case 'memory':     return skillMemory();
+        case 'translate':  return skillTranslate();
+        case 'status':     return skillStatus();
+        case 'continuity': return skillContinuity();
+        case 'read-aloud': return skillReadAloud();
+        case 'read-in':    return skillReadIn();
+        case 'proof-read': return skillProofRead();
         default:           return `Unknown template: ${name}`;
     }
 }
@@ -163,7 +163,8 @@ function claudeMd(ctx: TemplateContext): string {
         '| `search` | BM25 full-text search with ranked snippets, optional semantic ranking |',
         '| `format` | Apply typography formatting to a file or folder |',
         '| `get_review_text` | Structured git diff with optional auto-staging |',
-        '| `git_snapshot` | Git commit of story, notes, and arc changes |',
+        '| `update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |',
+        '| `git_snapshot` | Git commit of story, notes, and arc changes, with optional push |',
         '| `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |',
         '| `add_translation` | Add or update a cross-language glossary entry (agent reference, not auto-applied) |',
         '| `get_dialect` | List dialect substitution rules, or look up a specific word |',
@@ -276,8 +277,7 @@ function agentsMd(ctx: TemplateContext): string {
 // Skills are Bindery workspaces designed for specific writing tasks, triggered by slash commands. They include step-by-step instructions and recommended MCP tools to use.
 // For new skills: make sure to add the prerequisites section, and update FILE_VERSION_INFO with a new version and label.
 
-function skillReview(ctx: TemplateContext): string {
-    void ctx;
+function skillReview(): string {
     return `---
 name: review
 description: Bindery workspace - Review a chapter for language, arc consistency, and age-appropriateness. Use for /review, "review chapter X", "quick review", or "review my changes".
@@ -344,8 +344,7 @@ If the review looks good, suggest: "Want me to save a snapshot?" (calls \`git_sn
 `;
 }
 
-function skillBrainstorm(ctx: TemplateContext): string {
-    void ctx;
+function skillBrainstorm(): string {
     return `---
 name: brainstorm
 description: Bindery workspace - Brainstorm story ideas, plot beats, character moments, or scene concepts. Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
@@ -396,7 +395,7 @@ End with a brief note on which options feel most aligned with the arc.
 `;
 }
 
-function skillMemory(ctx: TemplateContext): string {
+function skillMemory(): string {
     return `---
 name: memory
 description: Bindery workspace - Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
@@ -453,7 +452,7 @@ Offer to save a snapshot with \`git_snapshot\`.
 `;
 }
 
-function skillTranslate(ctx: TemplateContext): string {
+function skillTranslate(): string {
     return `---
 name: translate
 description: Bindery workspace - Translate a chapter or spot-check an existing translation using the Bindery translation table. Use for /translate, "translate chapter X", or "help me with the translation".
@@ -506,8 +505,7 @@ When the user confirms a new or corrected term translation, call \`add_translati
 `;
 }
 
-function skillStatus(ctx: TemplateContext): string {
-    void ctx;
+function skillStatus(): string {
     return `---
 name: status
 description: Bindery workspace - Give a book progress snapshot — chapters done, in progress, and coming up. Use for /status, "what's the book status", or "where are we".
@@ -545,8 +543,7 @@ Keep it scannable — bold headers, short lines. This is a working tool, not a n
 `;
 }
 
-function skillContinuity(ctx: TemplateContext): string {
-    void ctx;
+function skillContinuity(): string {
     return `---
 name: continuity
 description: Bindery workspace - Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
@@ -597,8 +594,7 @@ End with a one-line overall assessment. If no issues found, say so clearly.
 `;
 }
 
-function skillReadAloud(ctx: TemplateContext): string {
-    void ctx;
+function skillReadAloud(): string {
     return `---
 name: read-aloud
 description: Bindery workspace - Test how a chapter or passage sounds when read aloud — flags long sentences, staccato rhythm, complex vocabulary, and said-bookisms. Use for /read-aloud, "reading test", or "how does this sound".
@@ -646,8 +642,7 @@ Brief overall impression (2-3 sentences) after the table.
 `;
 }
 
-function skillReadIn(ctx: TemplateContext): string {
-    void ctx;
+function skillReadIn(): string {
     return `---
 name: read-in
 description: Bindery workspace - Load project context at the start of a session — memory, progress tracker, and chapter notes. Use for /read-in, "get your bearings", "what were we doing", or at the start of any working session.
@@ -664,6 +659,7 @@ User says \`/read-in\`, "get your bearings", "what were we working on", or at th
 
 ## Tools
 Use these Bindery MCP tools:
+- \`update_workspace\` — fetch and pull the workspace before loading context; also reports current branch versus the remote default branch
 - \`memory_list\` — discover which memory files exist (\`global.md\`, \`chXX.md\` files)
 - \`get_text(identifier)\` — read COWORK.md and memory files
 - \`chapter_status_get(book)\` — read the structured progress tracker
@@ -675,10 +671,10 @@ Use these Bindery MCP tools:
 ## Steps
 
 ### 0. Sync repository
-Run \`git fetch && git pull\` via bash to ensure the workspace is up to date before loading any context.
-- If the pull succeeds with changes, note it briefly: "Pulled X commits from remote."
-- If already up to date, say nothing.
-- If the pull fails (e.g. merge conflict, no remote), flag it to the user and stop — do not proceed with stale context.
+Call \`update_workspace\` before loading any context.
+- If the update fails (for example: no remote, merge issue, or upstream problem), flag it to the user and stop — do not proceed with stale context.
+- If the tool reports that the current branch differs from the remote default branch, mention that briefly so the user can decide whether to switch.
+- If the tool reports that the workspace is already up to date, say nothing unless the branch status matters.
 
 ### 1. Check for current focus
 Use \`get_text("COWORK.md")\` to read the current focus file (ignore if missing).
@@ -717,8 +713,7 @@ Output a short orientation (3-6 lines):
 `;
 }
 
-function skillProofRead(ctx: TemplateContext): string {
-    void ctx;
+function skillProofRead(): string {
     return `---
 name: proof-read
 description: Bindery workspace - Multi-perspective proofreading using isolated reader and author personas. Each persona runs as a scoped subagent with no arc, notes, or memory context — only the reading-text payload for the read-so-far experience (chapters 1..N). Use for /proof-read, "proofread chapter X", "get reader feedback", "how does this land with readers", "simulate reader reactions", or "peer review".

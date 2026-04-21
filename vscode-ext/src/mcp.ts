@@ -22,7 +22,8 @@ interface GetNotesInput   { category?: string; name?: string }
 interface SearchInput     { query: string; language?: string; maxResults?: number; mode?: 'lexical' | 'semantic_rerank' | 'full_semantic' }
 interface FormatInput     { filePath?: string; dryRun?: boolean; noRecurse?: boolean }
 interface GetReviewTextInput { language?: string; contextLines?: number; autoStage?: boolean }
-interface GitSnapshotInput   { message?: string }
+interface UpdateWorkspaceInput { remote?: string; branch?: string; switchBranch?: boolean; autoStash?: boolean }
+interface GitSnapshotInput   { message?: string; push?: boolean; remote?: string; branch?: string; rememberPushDefaults?: boolean }
 interface AddTranslationInput { from: string; to: string; targetLangCode: string }
 interface GetTranslationInput { language: string; word?: string; type?: 'glossary' | 'substitution' }
 interface AddDialectInput     { dialectCode: string; from: string; to: string }
@@ -47,6 +48,7 @@ interface McpTools {
     toolSearch:           (root: string, args: SearchInput) => Promise<string>;
     toolFormat:           (root: string, args: FormatInput) => string;
     toolGetReviewText:    (root: string, args: GetReviewTextInput) => string;
+    toolUpdateWorkspace:  (root: string, args: UpdateWorkspaceInput) => string;
     toolGitSnapshot:      (root: string, args: GitSnapshotInput) => string;
     toolAddTranslation:   (root: string, args: AddTranslationInput) => string;
     toolGetTranslation:   (root: string, args: GetTranslationInput) => string;
@@ -144,6 +146,10 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<GetReviewTextInput>('bindery_get_review_text', {
             invoke: async (opts, _token) => ok(t.toolGetReviewText(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<UpdateWorkspaceInput>('bindery_update_workspace', {
+            invoke: async (opts, _token) => ok(t.toolUpdateWorkspace(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GitSnapshotInput>('bindery_git_snapshot', {

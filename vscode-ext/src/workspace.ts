@@ -43,10 +43,17 @@ export interface WorkspaceSettings {
     mergeFilePrefix?: string;
     formatOnSave?:   boolean;
     languages?:      LanguageConfig[];
+    git?: {
+        snapshot?: {
+            pushDefault?: boolean;
+            remote?: string;
+            branch?: string;
+        };
+    };
 }
 
 // Re-export DialectConfig so callers don't need to import from merge.ts directly
-export type { DialectConfig };
+export type { DialectConfig } from './merge';
 
 /** Type of a translation entry — determines how the extension uses its rules. */
 export type TranslationType = 'substitution' | 'glossary';
@@ -173,7 +180,7 @@ export function getSubstitutionRules(
 ): UkReplacement[] {
     if (!translations) { return []; }
     const entry = resolveEntry(translations, langKey);
-    if (!entry || entry.type !== 'substitution') { return []; }
+    if (entry?.type !== 'substitution') { return []; }
     return (entry.rules ?? [])
         .filter(r => r.from?.trim() && r.to?.trim())
         .map(r => ({ us: r.from.trim().toLowerCase(), uk: r.to.trim() }));
@@ -260,7 +267,7 @@ export function addIgnoredWords(
             added++;
         }
     }
-    entry.ignoredWords = Array.from(existing).sort();
+    entry.ignoredWords = Array.from(existing).sort((a, b) => a.localeCompare(b));
     writeTranslations(root, translations);
     return added;
 }

@@ -26,6 +26,7 @@ import {
     toolSearch,
     toolFormat,
     toolGetReviewText,
+    toolUpdateWorkspace,
     toolGitSnapshot,
     toolGetTranslation,
     toolAddTranslation,
@@ -247,19 +248,40 @@ server.registerTool('get_review_text', {
     try { return ok(toolGetReviewText(resolveBook(book).root, { language, contextLines, autoStage })); } catch (e) { return err(e); }
 });
 
+server.registerTool('update_workspace', {
+    title: 'Update Workspace',
+    description:
+        'Fetch and pull the current git branch for this workspace, report the current branch versus the remote default branch, ' +
+        'and optionally switch to a specified branch before pulling. If local changes would block the update, the tool can auto-stash them first.',
+    inputSchema: {
+        book:         bookSchema,
+        remote:       z.string().optional().describe('Preferred remote name to fetch from and pull against (default: origin or first remote)'),
+        branch:       z.string().optional().describe('Optional branch name to switch to before pulling'),
+        switchBranch: z.boolean().optional().describe('Allow the tool to switch to the requested branch before pulling (default false)'),
+        autoStash:    z.boolean().optional().describe('Temporarily stash local changes before pull when needed (default true)'),
+    },
+    annotations: { destructiveHint: true },
+}, async ({ book, remote, branch, switchBranch, autoStash }) => {
+    try { return ok(toolUpdateWorkspace(resolveBook(book).root, { remote, branch, switchBranch, autoStash })); } catch (e) { return err(e); }
+});
+
 server.registerTool('git_snapshot', {
     title: 'Git Snapshot',
     description:
         'Save a snapshot (git commit) of all changes in story, notes, and arc folders. ' +
-        'Provides an optional commit message — defaults to a timestamp. ' +
+        'Provides an optional commit message, can optionally push to a remote branch, and can remember push defaults in settings.json. ' +
         'Use this to create save points after writing sessions or successful reviews.',
     inputSchema: {
-        book:    bookSchema,
-        message: z.string().optional().describe('Snapshot message (default: timestamp)'),
+        book:                 bookSchema,
+        message:              z.string().optional().describe('Snapshot message (default: timestamp)'),
+        push:                 z.boolean().optional().describe('Push the new commit after saving the snapshot (default: use stored setting or false)'),
+        remote:               z.string().optional().describe('Remote name to push to (default: stored setting, origin, or first remote)'),
+        branch:               z.string().optional().describe('Branch to push (default: stored setting or current branch)'),
+        rememberPushDefaults: z.boolean().optional().describe('Persist the push preference, remote, and branch under .bindery/settings.json'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, message }) => {
-    try { return ok(toolGitSnapshot(resolveBook(book).root, { message })); } catch (e) { return err(e); }
+}, async ({ book, message, push, remote, branch, rememberPushDefaults }) => {
+    try { return ok(toolGitSnapshot(resolveBook(book).root, { message, push, remote, branch, rememberPushDefaults })); } catch (e) { return err(e); }
 });
 
 server.registerTool('get_translation', {

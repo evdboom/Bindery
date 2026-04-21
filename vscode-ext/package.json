@@ -486,6 +486,37 @@
         }
       },
       {
+        "name": "bindery_update_workspace",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Update Workspace",
+        "toolReferenceName": "binderyUpdateWorkspace",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Fetch and pull the current git branch, report the current branch versus the remote default branch, and optionally switch branches before pulling.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "remote": {
+              "type": "string",
+              "description": "Preferred remote name to fetch from and pull against (default: origin or first remote)"
+            },
+            "branch": {
+              "type": "string",
+              "description": "Optional branch name to switch to before pulling"
+            },
+            "switchBranch": {
+              "type": "boolean",
+              "description": "Allow the tool to switch to the requested branch before pulling (default false)"
+            },
+            "autoStash": {
+              "type": "boolean",
+              "description": "Temporarily stash local changes before pull when needed (default true)"
+            }
+          }
+        }
+      },
+      {
         "name": "bindery_git_snapshot",
         "tags": [
           "bindery"
@@ -493,13 +524,29 @@
         "displayName": "Bindery: Git Snapshot",
         "toolReferenceName": "binderyGitSnapshot",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Use after writing sessions or successful reviews.",
+        "modelDescription": "Save a snapshot (git commit) of all changes in story, notes, and arc folders, with optional push and saved push defaults.",
         "inputSchema": {
           "type": "object",
           "properties": {
             "message": {
               "type": "string",
               "description": "Snapshot message (default: timestamp)"
+            },
+            "push": {
+              "type": "boolean",
+              "description": "Push the new commit after saving the snapshot (default: use stored setting or false)"
+            },
+            "remote": {
+              "type": "string",
+              "description": "Remote name to push to (default: stored setting, origin, or first remote)"
+            },
+            "branch": {
+              "type": "string",
+              "description": "Branch to push (default: stored setting or current branch)"
+            },
+            "rememberPushDefaults": {
+              "type": "boolean",
+              "description": "Persist the push preference, remote, and branch under .bindery/settings.json"
             }
           }
         }
