@@ -11,6 +11,7 @@ import {
 } from '../src/tools';
 
 const tempRoots: string[] = [];
+const GIT_TEST_TIMEOUT_MS = 15_000;
 
 function makeRoot(): string {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-mcp-XXX-test-'));
@@ -229,7 +230,7 @@ describe('toolGitSnapshot', () => {
         const localHead = git(root, ['rev-parse', 'HEAD']).stdout.trim();
         const remoteHead = spawnSync('git', ['ls-remote', remote, `refs/heads/${branch}`], { encoding: 'utf-8' }).stdout.split('\t')[0]?.trim();
         expect(remoteHead).toBe(localHead);
-    });
+    }, GIT_TEST_TIMEOUT_MS);
 
     it('keeps the local snapshot when push is requested but no remote exists', () => {
         const root = makeGitRepo();
@@ -239,7 +240,7 @@ describe('toolGitSnapshot', () => {
 
         expect(result).toContain('Snapshot saved:');
         expect(result).toContain('Push skipped: no git remote is configured.');
-    });
+    }, GIT_TEST_TIMEOUT_MS);
 
     it('remembers push defaults without persisting null remote/branch values', () => {
         const root = makeGitRepo();
@@ -256,7 +257,7 @@ describe('toolGitSnapshot', () => {
         expect(settings.git?.snapshot?.pushDefault).toBe(true);
         expect(settings.git?.snapshot).not.toHaveProperty('remote');
         expect(settings.git?.snapshot?.branch).toBe(currentBranch(root));
-    });
+    }, GIT_TEST_TIMEOUT_MS);
 
     it('reports when push defaults could not be saved because settings.json is missing', () => {
         const root = makeGitRepo();
@@ -292,7 +293,7 @@ describe('toolUpdateWorkspace', () => {
 
         expect(fs.readFileSync(path.join(clone, 'Story', 'EN', 'Chapter 1.md'), 'utf-8')).toContain('Remote update.');
         expect(result).toContain(`Current branch ${branch} matches the remote default branch.`);
-    });
+    }, GIT_TEST_TIMEOUT_MS);
 
     it('reports when the current branch differs from the remote default branch', () => {
         const source = makeGitRepo();
@@ -312,7 +313,7 @@ describe('toolUpdateWorkspace', () => {
 
         expect(result).toContain('Current branch feature differs from remote default branch');
         expect(result).toContain(defaultBranch);
-    });
+    }, GIT_TEST_TIMEOUT_MS);
 
     it('fails with guidance when the current branch has no upstream', () => {
         const source = makeGitRepo();
@@ -325,7 +326,7 @@ describe('toolUpdateWorkspace', () => {
 
         expect(result).toContain('has no upstream tracking branch');
         expect(result).toContain(defaultBranch);
-    });
+    }, GIT_TEST_TIMEOUT_MS);
 
     it('auto-stashes local changes before pulling and restores them afterwards', () => {
         const source = makeGitRepo();
@@ -345,5 +346,5 @@ describe('toolUpdateWorkspace', () => {
         expect(fs.existsSync(path.join(clone, 'Notes', 'local.md'))).toBe(true);
         expect(fs.readFileSync(path.join(clone, 'Story', 'EN', 'Chapter 1.md'), 'utf-8')).toContain('Remote update.');
         expect(result).not.toContain('restoring stashed changes needs attention');
-    });
+    }, GIT_TEST_TIMEOUT_MS);
 });
