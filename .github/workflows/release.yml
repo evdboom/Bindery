@@ -128,7 +128,7 @@ jobs:
         run: |
           VSIX_FILE=$(find vscode-ext -maxdepth 1 -name '*.vsix' -print -quit)
           if [ -z "$VSIX_FILE" ]; then
-            echo "No VSIX found to publish."
+            echo "No VSIX found in vscode-ext/. Verify download-artifact succeeded and artifact name is 'vscode-vsix'."
             exit 1
           fi
           npx --yes @vscode/vsce@3.7.1 publish --packagePath "$VSIX_FILE" --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
