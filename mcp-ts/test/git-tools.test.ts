@@ -240,6 +240,32 @@ describe('toolGitSnapshot', () => {
         expect(result).toContain('Snapshot saved:');
         expect(result).toContain('Push skipped: no git remote is configured.');
     });
+
+    it('remembers push defaults without persisting null remote/branch values', () => {
+        const root = makeGitRepo();
+        write(path.join(root, '.bindery', 'settings.json'), '{}\n');
+        write(path.join(root, 'Story', 'EN', 'Chapter 1.md'), '# Ch1\nNew content.\n');
+
+        const result = toolGitSnapshot(root, { push: true, rememberPushDefaults: true });
+
+        expect(result).toContain('Saved snapshot push defaults');
+
+        const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+            git?: { snapshot?: { pushDefault?: boolean; remote?: string; branch?: string } };
+        };
+        expect(settings.git?.snapshot?.pushDefault).toBe(true);
+        expect(settings.git?.snapshot).not.toHaveProperty('remote');
+        expect(settings.git?.snapshot?.branch).toBe(currentBranch(root));
+    });
+
+    it('reports when push defaults could not be saved because settings.json is missing', () => {
+        const root = makeGitRepo();
+        write(path.join(root, 'Story', 'EN', 'Chapter 1.md'), '# Ch1\nNew content.\n');
+
+        const result = toolGitSnapshot(root, { rememberPushDefaults: true });
+
+        expect(result).toContain('Could not save snapshot push defaults: .bindery/settings.json was not found.');
+    });
 });
 
 describe('toolUpdateWorkspace', () => {

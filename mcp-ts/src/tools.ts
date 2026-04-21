@@ -188,22 +188,24 @@ function settingsPath(root: string): string {
     return path.join(root, '.bindery', 'settings.json');
 }
 
-function updateSettingsObject(root: string, patch: Record<string, unknown>): void {
+type UpdateSettingsObjectResult = 'updated' | 'missing' | 'invalid';
+
+function updateSettingsObject(root: string, patch: Record<string, unknown>): UpdateSettingsObjectResult {
     const filePath = settingsPath(root);
-    if (!fs.existsSync(filePath)) { return; }
+    if (!fs.existsSync(filePath)) { return 'missing'; }
 
     let existing: Record<string, unknown> = {};
     try {
         const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as unknown;
-        if (isPlainObject(parsed)) {
-            existing = parsed;
-        }
+        if (!isPlainObject(parsed)) { return 'invalid'; }
+        existing = parsed;
     } catch {
-        return;
+        return 'invalid';
     }
 
     const merged = deepMergeSettings(existing, patch);
     fs.writeFileSync(filePath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
+    return 'updated';
 }
 
 function ensureGitRepository(root: string): string | undefined {
@@ -362,16 +364,27 @@ function maybeRememberSnapshotDefaults(
         return undefined;
     }
 
-    updateSettingsObject(root, {
+    const snapshot: Record<string, unknown> = { pushDefault: pushRequested };
+    const optionalSnapshotValues = { remote, branch };
+    for (const [key, value] of Object.entries(optionalSnapshotValues)) {
+        if (typeof value === 'string' && value.length > 0) {
+            snapshot[key] = value;
+        }
+    }
+
+    const result = updateSettingsObject(root, {
         git: {
-            snapshot: {
-                pushDefault: pushRequested,
-                remote: remote ?? null,
-                branch: branch ?? null,
-            },
+            snapshot,
         },
     });
-    return 'Saved snapshot push defaults to .bindery/settings.json.';
+
+    if (result === 'updated') {
+        return 'Saved snapshot push defaults to .bindery/settings.json.';
+    }
+    if (result === 'missing') {
+        return 'Could not save snapshot push defaults: .bindery/settings.json was not found.';
+    }
+    return 'Could not save snapshot push defaults: .bindery/settings.json is invalid JSON.';
 }
 
 function pushSnapshot(root: string, remote: string | undefined, branch: string | undefined): string {
