@@ -55,9 +55,10 @@ jobs:
           files: mcpb/*.mcpb
           fail_on_unmatched_files: true
 
-  # ── Job 2: Publish VS Code extension ────────────────────────────────────────
-  publish-vscode:
-    name: Publish VS Code Extension
+  # ── Job 2: Package VS Code extension + attach VSIX to release ───────────────
+  package-vscode:
+    name: Package VS Code Extension
+    needs: build-mcpb
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -101,7 +102,33 @@ jobs:
           files: vscode-ext/*.vsix
           fail_on_unmatched_files: true
 
+      - name: Upload .vsix as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-vsix
+          path: vscode-ext/*.vsix
+          if-no-files-found: error
+
+  # ── Job 3: Publish VSIX to VS Code Marketplace ──────────────────────────────
+  publish-vscode:
+    name: Publish VS Code Extension
+    needs: package-vscode
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download packaged .vsix artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vscode-vsix
+          path: vscode-ext
+
       - name: Publish extension to Marketplace
         run: |
-          cd vscode-ext
-          npx --yes @vscode/vsce@3.7.1 publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
+          VSIX_FILE=$(find vscode-ext -maxdepth 1 -name '*.vsix' -print -quit)
+          if [ -z "$VSIX_FILE" ]; then
+            echo "No VSIX found to publish."
+            exit 1
+          fi
+          npx --yes @vscode/vsce@3.7.1 publish --packagePath "$VSIX_FILE" --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
