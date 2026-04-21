@@ -55,12 +55,13 @@ jobs:
           files: mcpb/*.mcpb
           fail_on_unmatched_files: true
 
-  # ── Job 2: Publish VS Code extension ────────────────────────────────────────
-  publish-vscode:
-    name: Publish VS Code Extension
+  # ── Job 2: Package VS Code extension + attach VSIX to release ───────────────
+  package-vscode:
+    name: Package VS Code Extension
+    needs: build-mcpb
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - uses: actions/checkout@v6
@@ -86,11 +87,48 @@ jobs:
           npx --yes esbuild@0.28.0 mcp-ts/out/tools.js --bundle --platform=node --format=cjs --target=node18 --outfile=vscode-ext/mcp-ts/out/tools.js
           npx --yes esbuild@0.28.0 mcp-ts/out/index.js --bundle --platform=node --format=cjs --target=node18 --outfile=vscode-ext/mcp-ts/out/index.js
 
-      - name: Set version from tag and publish extension
+      - name: Set version from tag and package extension
         # package.json ships with version "0.0.0" — the real version is injected here from the release tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           cd vscode-ext
           npm ci
           npm version "$VERSION" --no-git-tag-version
-          npx --yes @vscode/vsce@3.7.1 publish --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
+          npx --yes @vscode/vsce@3.7.1 package -o "bindery-${VERSION}.vsix"
+
+      - name: Upload .vsix to release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: vscode-ext/*.vsix
+          fail_on_unmatched_files: true
+
+      - name: Upload .vsix as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-vsix
+          path: vscode-ext/*.vsix
+          if-no-files-found: error
+
+  # ── Job 3: Publish VSIX to VS Code Marketplace ──────────────────────────────
+  publish-vscode:
+    name: Publish VS Code Extension
+    needs: package-vscode
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download packaged .vsix artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vscode-vsix
+          path: vscode-ext
+
+      - name: Publish extension to Marketplace
+        run: |
+          VSIX_FILE=$(find vscode-ext -maxdepth 1 -name '*.vsix' -print -quit)
+          if [ -z "$VSIX_FILE" ]; then
+            echo "No VSIX found in vscode-ext/. Verify download-artifact succeeded and artifact name is 'vscode-vsix'."
+            exit 1
+          fi
+          npx --yes @vscode/vsce@3.7.1 publish --packagePath "$VSIX_FILE" --pat ${{ secrets.VSCODE_EXTENSION_PAT }}
