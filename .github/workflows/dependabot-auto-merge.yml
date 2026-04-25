@@ -47,24 +47,34 @@ jobs:
             const invalidCommits = commits.filter((commit) => {
               const authorLogin = commit.author?.login;
               const committerLogin = commit.committer?.login;
+              const verification = commit.commit?.verification;
+              const isVerified = verification?.verified === true;
+              const hasValidReason = verification?.reason === 'valid';
 
-              return authorLogin !== 'dependabot[bot]' || committerLogin !== 'dependabot[bot]';
+              return (
+                authorLogin !== 'dependabot[bot]' ||
+                committerLogin !== 'dependabot[bot]' ||
+                !isVerified ||
+                !hasValidReason
+              );
             });
 
             if (invalidCommits.length > 0) {
               core.setFailed([
-                'Refusing to auto-approve: PR contains non-Dependabot commits.',
+                'Refusing to auto-approve: PR contains commits that are not fully verified Dependabot commits.',
                 ...invalidCommits.map((commit) => {
                   const sha = commit.sha.slice(0, 7);
                   const author = commit.author?.login ?? 'unknown';
                   const committer = commit.committer?.login ?? 'unknown';
-                  return `- ${sha}: author=${author}, committer=${committer}`;
+                  const verified = commit.commit?.verification?.verified === true;
+                  const reason = commit.commit?.verification?.reason ?? 'unknown';
+                  return `- ${sha}: author=${author}, committer=${committer}, verified=${verified}, verification_reason=${reason}`;
                 }),
               ].join('\n'));
               return;
             }
 
-            core.info(`Verified ${commits.length} Dependabot-authored commit(s).`);
+            core.info(`Verified ${commits.length} Dependabot-authored commit(s) with valid signature verification.`);
 
       - name: Approve PR
         run: gh pr review --approve "$PR_URL"
