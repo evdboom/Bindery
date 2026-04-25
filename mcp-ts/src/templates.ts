@@ -35,14 +35,14 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
     '.cursor/rules':                        { version: 7,   label: 'cursor rules',            zip: null },
     'AGENTS.md':                            { version: 7,   label: 'agents instructions',     zip: null },
     '.claude/skills/review/SKILL.md':       { version: 11,  label: 'review skill',            zip: '.claude/skills/review.zip' },
-    '.claude/skills/brainstorm/SKILL.md':   { version: 10,  label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
-    '.claude/skills/memory/SKILL.md':       { version: 9,   label: 'memory skill',            zip: '.claude/skills/memory.zip' },
+    '.claude/skills/brainstorm/SKILL.md':   { version: 11,  label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
+    '.claude/skills/memory/SKILL.md':       { version: 11,  label: 'memory skill',            zip: '.claude/skills/memory.zip' },
     '.claude/skills/translate/SKILL.md':    { version: 9,   label: 'translate skill',         zip: '.claude/skills/translate.zip' },
     '.claude/skills/status/SKILL.md':       { version: 10,  label: 'status skill',            zip: '.claude/skills/status.zip' },
-    '.claude/skills/continuity/SKILL.md':   { version: 11,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
+    '.claude/skills/continuity/SKILL.md':   { version: 12,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
     '.claude/skills/read-aloud/SKILL.md':   { version: 10,  label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
     '.claude/skills/read-in/SKILL.md':      { version: 12,  label: 'read-in skill',           zip: '.claude/skills/read-in.zip' },
-    '.claude/skills/proof-read/SKILL.md':   { version: 4,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
+    '.claude/skills/proof-read/SKILL.md':   { version: 5,   label: 'proof-read skill',        zip: '.claude/skills/proof-read.zip' },
 };
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -360,16 +360,15 @@ This skill requires a Bindery workspace. If unsure, call \`identify_book\` to ch
 User says \`/brainstorm\`, "I'm stuck", "help me think of ideas", or "Am I stuck?".
 
 ## Clarify first
-- Focus: plot beat / character moment / scene idea / chapter opening-closing?
-- Which chapter or story point?
-- Any constraints to respect?
+- Scope: plot beat | character moment | scene idea | chapter open/close
+- Chapter/story point: specify one
+- Constraints: list any
 
 ## Tools
 Use these Bindery MCP tools to gather context:
 - \`search(query, language)\` — find thematic parallels and related moments across the book
 - \`get_notes(category, name)\` — look up character profiles, world rules, or equipment details
 - \`get_chapter(chapterNumber, language)\` — read a specific chapter for reference
-- \`search(query, language)\` — search for specific terms or phrases across the book
 
 ## Steps
 
@@ -418,6 +417,24 @@ Use these Bindery MCP tools:
 - \`git_snapshot(message)\` — after updating memories, offer to save a snapshot
 
 ## Steps
+
+### 0. Cross-check assistant memory (if available)
+If the runtime has local/session memory, review entries from this session.
+Promote repo-worthy entries into Step 3 content.
+
+Promote:
+- Story/craft decisions
+- Character or world rules
+- Structural decisions needed in future sessions
+- Anything that must survive across devices
+
+Keep local only:
+- Workflow/tool preferences
+- Assistant behavior feedback
+- Setup/environment notes
+- Session-local context
+
+If no local/session memory exists, skip this step.
 
 ### 1. Identify what to save
 List the decisions, insights, or facts from the session worth preserving.
@@ -559,8 +576,8 @@ This skill requires a Bindery workspace. If unsure, call \`identify_book\` to ch
 User says \`/continuity\`, "check continuity", or "check chapter X for errors".
 
 ## Clarify first
-- Chapter number?
-- Focus: All / Characters / World rules / Timeline?
+- Chapter: number
+- Focus: all | characters | world rules | timeline
 
 ## Tools
 Use these Bindery MCP tools:
@@ -568,7 +585,6 @@ Use these Bindery MCP tools:
 - \`get_book_until(chapterNumber, language, startChapter?)\` — load prior chapters in one call for timeline/continuity context
 - \`get_notes(category, name)\` — look up character profiles or world rules
 - \`search(query, language)\` — find earlier mentions of a character detail or event
-- \`search(query, language)\` — exact-match search for names, places, or specific terms
 - \`memory_list\` — check whether a chapter-specific memory file exists (\`chXX.md\`)
 
 ## Steps
@@ -718,7 +734,7 @@ function skillProofRead(): string {
 name: proof-read
 description: Bindery workspace - Multi-perspective proofreading using isolated reader and author personas. Each persona runs as a scoped subagent with no arc, notes, or memory context — only the reading-text payload for the read-so-far experience (chapters 1..N). Use for /proof-read, "proofread chapter X", "get reader feedback", "how does this land with readers", "simulate reader reactions", or "peer review".
 ---
-# Proof-Read
+# Skill: /proof-read
 
 Simulates a panel of readers reviewing a chapter as genuine first-time readers — no arc knowledge, no notes, no memory of prior sessions. Each persona runs as an isolated subagent that only sees the reading-text payload so far (chapters 1..N) and their assigned role.
 
@@ -727,9 +743,10 @@ The value is in the isolation. A reader doesn't know what the arc says should ha
 ## Prerequisites
 This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
 
----
+## Trigger
+User says \`/proof-read\`, "proofread chapter X", "get reader feedback", "how does this land with readers", "simulate reader reactions", or "peer review".
 
-## Workflow
+## Steps
 
 ### Step 0: Load project context
 
