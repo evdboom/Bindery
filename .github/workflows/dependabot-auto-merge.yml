@@ -43,37 +43,65 @@ jobs:
               return;
             }
 
-            const invalidCommits = commits.filter((commit) => {
+            // For each commit verify via GraphQL that:
+            //   1. author and committer are dependabot[bot] (server-side resolved, not just git metadata)
+            //   2. wasSignedByGitHub is true — cryptographically proves the commit was signed by
+            //      GitHub's infrastructure keys, preventing spoofing via personal GPG keys or
+            //      forged author/committer email addresses.
+            const invalidCommits = [];
+            for (const commit of commits) {
               const authorLogin = commit.author?.login;
               const committerLogin = commit.committer?.login;
-              const verification = commit.commit?.verification;
-              const isVerified = verification?.verified === true;
-              const hasValidReason = verification?.reason === 'valid';
 
-              return (
-                authorLogin !== 'dependabot[bot]' ||
-                committerLogin !== 'dependabot[bot]' ||
-                !isVerified ||
-                !hasValidReason
-              );
-            });
+              if (authorLogin !== 'dependabot[bot]' || committerLogin !== 'dependabot[bot]') {
+                invalidCommits.push({
+                  sha: commit.sha,
+                  author: authorLogin ?? 'unknown',
+                  committer: committerLogin ?? 'unknown',
+                  reason: 'not authored/committed by dependabot[bot]',
+                });
+                continue;
+              }
+
+              const result = await github.graphql(`
+                query($owner: String!, $repo: String!, $oid: GitObjectID!) {
+                  repository(owner: $owner, name: $repo) {
+                    object(oid: $oid) {
+                      ... on Commit {
+                        signature {
+                          isValid
+                          wasSignedByGitHub
+                          state
+                        }
+                      }
+                    }
+                  }
+                }
+              `, { owner, repo, oid: commit.sha });
+
+              const signature = result?.repository?.object?.signature;
+              const isValid = signature?.isValid === true;
+              const wasSignedByGitHub = signature?.wasSignedByGitHub === true;
+
+              if (!isValid || !wasSignedByGitHub) {
+                invalidCommits.push({
+                  sha: commit.sha,
+                  author: authorLogin,
+                  committer: committerLogin,
+                  reason: `signature check failed (isValid=${isValid}, wasSignedByGitHub=${wasSignedByGitHub}, state=${signature?.state ?? 'unknown'})`,
+                });
+              }
+            }
 
             if (invalidCommits.length > 0) {
               core.setFailed([
-                'Refusing to auto-approve: PR contains commits that are not fully verified Dependabot commits.',
-                ...invalidCommits.map((commit) => {
-                  const sha = commit.sha.slice(0, 7);
-                  const author = commit.author?.login ?? 'unknown';
-                  const committer = commit.committer?.login ?? 'unknown';
-                  const verified = commit.commit?.verification?.verified === true;
-                  const reason = commit.commit?.verification?.reason ?? 'unknown';
-                  return `- ${sha}: author=${author}, committer=${committer}, verified=${verified}, verification_reason=${reason}`;
-                }),
+                'Refusing to auto-approve: PR contains commits that are not verified Dependabot commits.',
+                ...invalidCommits.map((c) => `- ${c.sha.slice(0, 7)}: author=${c.author}, committer=${c.committer}, reason=${c.reason}`),
               ].join('\n'));
               return;
             }
 
-            core.info(`Verified ${commits.length} Dependabot-authored commit(s) with valid signature verification.`);
+            core.info(`Verified ${commits.length} Dependabot-authored commit(s) — all signed by GitHub infrastructure.`);
 
       - name: Approve PR
         run: gh pr review --approve "$PR_URL"
