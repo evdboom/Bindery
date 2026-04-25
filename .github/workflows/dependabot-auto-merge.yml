@@ -23,6 +23,49 @@ jobs:
     if: github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
+      - name: Verify PR commits are only from Dependabot
+        id: verify-commits
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner,
+              repo,
+              pull_number,
+              per_page: 100,
+            });
+
+            if (commits.length === 0) {
+              core.setFailed('Refusing to auto-approve: PR has no commits.');
+              return;
+            }
+
+            const invalidCommits = commits.filter((commit) => {
+              const authorLogin = commit.author?.login;
+              const committerLogin = commit.committer?.login;
+
+              return authorLogin !== 'dependabot[bot]' || committerLogin !== 'dependabot[bot]';
+            });
+
+            if (invalidCommits.length > 0) {
+              core.setFailed([
+                'Refusing to auto-approve: PR contains non-Dependabot commits.',
+                ...invalidCommits.map((commit) => {
+                  const sha = commit.sha.slice(0, 7);
+                  const author = commit.author?.login ?? 'unknown';
+                  const committer = commit.committer?.login ?? 'unknown';
+                  return `- ${sha}: author=${author}, committer=${committer}`;
+                }),
+              ].join('\n'));
+              return;
+            }
+
+            core.info(`Verified ${commits.length} Dependabot-authored commit(s).`);
+
       - name: Approve PR
         run: gh pr review --approve "$PR_URL"
         env:
