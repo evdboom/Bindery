@@ -24,7 +24,6 @@ jobs:
 
     steps:
       - name: Verify PR commits are only from Dependabot
-        id: verify-commits
         uses: actions/github-script@v8
         with:
           script: |
