@@ -125,6 +125,13 @@ describe('renderTemplate — copilot', () => {
     expect(result).toContain('middle-grade');
   });
 
+  it('mentions shared workspace skills from the .claude folder', () => {
+    const result = renderTemplate('copilot', makeCtx());
+    expect(result).toContain('.claude/skills/');
+    expect(result).toContain('/translation-review');
+    expect(result).toContain('/read-in');
+  });
+
   it('ends with a newline', () => {
     expect(renderTemplate('copilot', makeCtx())).toMatch(/\n$/);
   });
@@ -147,6 +154,13 @@ describe('renderTemplate — cursor', () => {
   it('includes audience rule when audience is set', () => {
     const result = renderTemplate('cursor', makeCtx());
     expect(result).toContain('middle-grade');
+  });
+
+  it('mentions shared workspace skills from the .claude folder', () => {
+    const result = renderTemplate('cursor', makeCtx());
+    expect(result).toContain('.claude/skills/');
+    expect(result).toContain('/translation-review');
+    expect(result).toContain('/proof-read');
   });
 
   it('ends with a newline', () => {
@@ -177,6 +191,13 @@ describe('renderTemplate — agents', () => {
     const result = renderTemplate('agents', makeCtx());
     expect(result).toContain('.bindery/memories');
     expect(result).toContain('Arc/');
+  });
+
+  it('mentions shared workspace skills from the .claude folder', () => {
+    const result = renderTemplate('agents', makeCtx());
+    expect(result).toContain('.claude/skills/');
+    expect(result).toContain('/translation-review');
+    expect(result).toContain('/review');
   });
 
   it('ends with a newline', () => {
@@ -211,6 +232,12 @@ describe('renderTemplate — review skill', () => {
   it('includes runtime instruction to read settings', () => {
     const result = renderTemplate('review', makeCtx());
     expect(result).toContain('.bindery/settings.json');
+  });
+
+  it('offers translation-review when translated files changed', () => {
+    const result = renderTemplate('review', makeCtx());
+    expect(result).toContain('/translation-review');
+    expect(result).toContain('translated chapter files');
   });
 
   it('does not embed audience at generation time', () => {
@@ -270,6 +297,36 @@ describe('renderTemplate — translate skill', () => {
     const result = renderTemplate('translate', makeCtx());
     expect(result).toContain('get_translation');
     expect(result).toContain('add_translation');
+  });
+});
+
+describe('renderTemplate — translation-review skill', () => {
+  it('contains YAML front-matter, title, trigger, tools, and handoff rules', () => {
+    const result = renderTemplate('translation-review', makeCtx());
+    expect(result).toContain('name: translation-review');
+    expect(result).toContain('# Skill: /translation-review');
+    expect(result).toContain('## Trigger');
+    expect(result).toContain('## Not this skill');
+    expect(result).toContain('## Tools');
+    expect(result).toContain('## Cross-skill handoff');
+    expect(result).toContain('## Rules');
+  });
+
+  it('references diff review, glossary loading, and source review handoff', () => {
+    const result = renderTemplate('translation-review', makeCtx());
+    expect(result).toContain('get_review_text');
+    expect(result).toContain('get_translation');
+    expect(result).toContain('/review');
+    expect(result).toContain('line parity');
+  });
+
+  it('uses agent-agnostic context wording and glossary persistence tools', () => {
+    const result = renderTemplate('translation-review', makeCtx());
+    expect(result).toContain('recent conversation');
+    expect(result).toContain('ask the user if ambiguous');
+    expect(result).toContain('search(query, targetLanguage)');
+    expect(result).toContain('add_translation');
+    expect(result).toContain('call `add_translation` before moving on');
   });
 });
 

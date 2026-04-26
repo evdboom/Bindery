@@ -23,6 +23,7 @@ export type SkillTemplate =
     | 'brainstorm'
     | 'memory'
     | 'translate'
+    | 'translation-review'
     | 'status'
     | 'continuity'
     | 'read-aloud'
@@ -30,7 +31,7 @@ export type SkillTemplate =
     | 'proof-read';
 
 export const ALL_SKILLS: SkillTemplate[] = [
-    'review', 'brainstorm', 'memory', 'translate', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read',
+    'review', 'brainstorm', 'memory', 'translate', 'translation-review', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read',
 ];
 
 export interface AiSetupOptions {

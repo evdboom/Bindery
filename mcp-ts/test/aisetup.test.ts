@@ -32,6 +32,27 @@ afterEach(() => {
 });
 
 describe('setupAiFiles zip generation', () => {
+  it('builds the translation-review skill zip when requested', async () => {
+    const { setupAiFiles } = await loadAiSetup();
+
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }, { code: 'NL', folderName: 'NL' }],
+    }, null, 2) + '\n');
+
+    const result = setupAiFiles({
+      root,
+      targets: ['claude'],
+      skills: ['translation-review'],
+      overwrite: true,
+    });
+
+    expect(result.skillZipManifest.created).toContain('.claude/skills/translation-review.zip');
+    expect(result.regenerated).toContain('.claude/skills/translation-review/SKILL.md');
+  });
+
   it('builds skill zips in-process with normalized entry paths', async () => {
     const { setupAiFiles } = await loadAiSetup();
 
