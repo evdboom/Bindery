@@ -343,6 +343,26 @@ describe('mcp tools', () => {
     expect((settings as Record<string, unknown>)['bookTitle']).toBe('Test Book');
   });
 
+  it('setup_ai_files accepts translation-review as a valid saved skill', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }, { code: 'NL', folderName: 'NL' }],
+    }, null, 2) + '\n');
+
+    toolSetupAiFiles(root, { targets: ['claude'], skills: ['translation-review'], overwrite: true });
+
+    const settings = JSON.parse(fs.readFileSync(path.join(root, '.bindery', 'settings.json'), 'utf-8')) as {
+      aiTargets?: string[];
+      aiSkills?: string[];
+    };
+
+    expect(settings.aiTargets).toEqual(['claude']);
+    expect(settings.aiSkills).toEqual(['translation-review']);
+    expect(fs.existsSync(path.join(root, '.claude', 'skills', 'translation-review', 'SKILL.md'))).toBe(true);
+  });
+
   it('setup_ai_files does not set aiSkills when claude is not a target', () => {
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({

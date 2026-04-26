@@ -827,6 +827,7 @@ const SKILL_ITEMS: Array<{ label: string; description: string; value: SkillTempl
     { label: '/brainstorm', description: 'Generate plot / character / scene ideas',                      value: 'brainstorm' },
     { label: '/memory',     description: 'Update memory files and compact if needed',                    value: 'memory'     },
     { label: '/translate',  description: 'Assisted chapter translation',                                 value: 'translate'  },
+    { label: '/translation-review', description: 'Review hand-crafted translation against source text',  value: 'translation-review' },
     { label: '/status',     description: 'Book progress snapshot',                                       value: 'status'     },
     { label: '/continuity', description: 'Cross-check chapter for consistency errors',                   value: 'continuity' },
     { label: '/read-aloud', description: 'Reading-aloud test for a chapter or passage',                  value: 'read-aloud' },

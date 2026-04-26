@@ -30,14 +30,15 @@ export interface TemplateContext {
 // Bump FILE_VERSION_INFO[key].version so users with outdated content are prompted.
 
 export const FILE_VERSION_INFO: Record<string, { version: number; label: string; zip: string | null }> = {
-    'CLAUDE.md':                            { version: 9,   label: 'project instructions',    zip: null },
-    '.github/copilot-instructions.md':      { version: 7,   label: 'copilot instructions',    zip: null },
-    '.cursor/rules':                        { version: 7,   label: 'cursor rules',            zip: null },
-    'AGENTS.md':                            { version: 7,   label: 'agents instructions',     zip: null },
-    '.claude/skills/review/SKILL.md':       { version: 11,  label: 'review skill',            zip: '.claude/skills/review.zip' },
+    'CLAUDE.md':                            { version: 10,  label: 'project instructions',    zip: null },
+    '.github/copilot-instructions.md':      { version: 8,   label: 'copilot instructions',    zip: null },
+    '.cursor/rules':                        { version: 8,   label: 'cursor rules',            zip: null },
+    'AGENTS.md':                            { version: 8,   label: 'agents instructions',     zip: null },
+    '.claude/skills/review/SKILL.md':       { version: 12,  label: 'review skill',            zip: '.claude/skills/review.zip' },
     '.claude/skills/brainstorm/SKILL.md':   { version: 11,  label: 'brainstorm skill',        zip: '.claude/skills/brainstorm.zip' },
     '.claude/skills/memory/SKILL.md':       { version: 11,  label: 'memory skill',            zip: '.claude/skills/memory.zip' },
     '.claude/skills/translate/SKILL.md':    { version: 9,   label: 'translate skill',         zip: '.claude/skills/translate.zip' },
+    '.claude/skills/translation-review/SKILL.md': { version: 1, label: 'translation-review skill', zip: '.claude/skills/translation-review.zip' },
     '.claude/skills/status/SKILL.md':       { version: 10,  label: 'status skill',            zip: '.claude/skills/status.zip' },
     '.claude/skills/continuity/SKILL.md':   { version: 12,  label: 'continuity skill',        zip: '.claude/skills/continuity.zip' },
     '.claude/skills/read-aloud/SKILL.md':   { version: 10,  label: 'read-aloud skill',        zip: '.claude/skills/read-aloud.zip' },
@@ -52,7 +53,7 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
  *
  * Top-level file templates: 'claude', 'copilot', 'cursor', 'agents'
  * Skill templates: 'review', 'brainstorm', 'memory', 'translate',
- *                  'status', 'continuity', 'read-aloud', 'read-in', 'proof-read'
+ *                  'translation-review', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read'
  */
 export function renderTemplate(name: string, ctx: TemplateContext): string {
     switch (name) {
@@ -64,6 +65,7 @@ export function renderTemplate(name: string, ctx: TemplateContext): string {
         case 'brainstorm': return skillBrainstorm();
         case 'memory':     return skillMemory();
         case 'translate':  return skillTranslate();
+        case 'translation-review': return skillTranslationReview();
         case 'status':     return skillStatus();
         case 'continuity': return skillContinuity();
         case 'read-aloud': return skillReadAloud();
@@ -135,6 +137,7 @@ function claudeMd(ctx: TemplateContext): string {
         '| `/brainstorm` | Generate plot/character/scene ideas |',
         '| `/memory` | Update memory files and compact if needed |',
         '| `/translate` | Assist with chapter translation |',
+        '| `/translation-review` | Review a hand-crafted translation against the source |',
         '| `/status` | Book progress snapshot |',
         '| `/continuity` | Check a chapter for consistency errors |',
         '| `/read-aloud` | Test how a passage reads when spoken |',
@@ -200,6 +203,10 @@ function copilotMd(ctx: TemplateContext): string {
         ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters`),
         '```',
         '',
+        '## Shared skill workflows',
+        '- Workspace skill files live in `.claude/skills/` and may also be picked up by agents beyond Claude.',
+        '- Prefer those shared slash workflows when available: `/read-in`, `/review`, `/translation-review`, `/translate`, `/memory`, `/continuity`, `/status`, `/read-aloud`, `/proof-read`.',
+        '',
         '## Writing guidelines',
         '- HTML comments `<!-- -->` in chapter files are writer notes — treat as context only.',
         '- Quotation marks and dashes are managed by the Bindery VS Code extension. Do not normalize them.',
@@ -222,7 +229,8 @@ function cursorRules(ctx: TemplateContext): string {
         '## Context files to read',
         `- \`${memoriesFolder}/global.md\` — cross-chapter decisions (read at start of session)`,
         `- \`${arcFolder}/\` — story arc files for overall and per-act structure and beats`,
-        `- \`${notesFolder}/\` — story notes, like character profiles and world rules`,        
+        `- \`${notesFolder}/\` — story notes, like character profiles and world rules`,
+        '- Shared workflows live in `.claude/skills/`; if your runtime exposes them, prefer `/read-in`, `/review`, `/translation-review`, `/translate`, `/memory`, `/continuity`, `/status`, `/read-aloud`, and `/proof-read` for those tasks.',
         '',
         '## Rules',
         '- HTML comments `<!-- -->` in chapter files are writer notes. Treat as context, not story content.',
@@ -249,11 +257,16 @@ function agentsMd(ctx: TemplateContext): string {
         '## Start of session',
         `1. Read \`${memoriesFolder}/global.md\` for cross-chapter context.`,
         `2. If working on a specific chapter, read \`${memoriesFolder}/chXX.md\` if it exists.`,
+        '3. Check `.claude/skills/` for shared slash workflows before improvising a bespoke process.',
         '',
         '## Story files',
         `- Chapter files are \`.md\` files in \`${storyFolder}/\`, organized in act subfolders.`,
         '- HTML comments `<!-- -->` are writer notes — treat as context only, not prose.',
         '- Quotation marks and em-dashes are managed by the Bindery extension. Do not normalize them.',
+        '',
+        '## Shared skill workflows',
+        '- Shared workflows live in `.claude/skills/` and can be used by agents beyond Claude when the runtime supports workspace skills.',
+        '- Prefer `/read-in`, `/review`, `/translation-review`, `/translate`, `/memory`, `/continuity`, `/status`, `/read-aloud`, and `/proof-read` when the user is asking for one of those structured tasks.',
         '',
         '## Writing guidelines',
         '- Do not rewrite paragraphs unless explicitly asked. Suggest edits only.',
@@ -316,6 +329,7 @@ Load the right context, pick any or all as needed:
 - Use \`get_chapter\` to load the chapter
 - For a Full review, read the relevant arc file from \`Arc/\`.
 - For "review my changes", use \`get_review_text\` to get the diff
+- If the diff includes translated chapter files, flag that and offer \`/translation-review\` for source-vs-translation feedback
 
 ### 2. Perform the review
 
@@ -519,6 +533,82 @@ When the user confirms a new or corrected term translation, call \`add_translati
 ## Rules
 - Always load the translation table first — never invent translations for world-specific terms
 - Flag uncertain terms rather than guessing
+`;
+}
+
+function skillTranslationReview(): string {
+    return `---
+name: translation-review
+description: Bindery workspace - Review a hand-crafted translation against the source language for fidelity, naturalness, and glossary consistency. Use for /translation-review, "review my translation", or "what do you think" when translation is the current focus.
+---
+# Skill: /translation-review
+
+Review a hand-crafted translation against the source.
+
+Use this when the user has written or updated the target-language text and wants structured feedback.
+
+## Prerequisites
+This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
+
+## Trigger
+User says \`/translation-review\`, "review my translation", or "what do you think" when translation is the active focus.
+
+## Not this skill
+- Generating translation text from scratch -> use \`/translate\`
+- Reviewing source-language writing quality -> use \`/review\`
+
+## Tools
+Use these Bindery MCP tools:
+- \`get_review_text(autoStage: true, contextLines?: number)\` — gather newly changed lines and auto-stage reviewed changes
+- \`get_text(identifier, startLine?, endLine?)\` — fetch matching source lines or focused ranges
+- \`get_translation(language)\` — load glossary terms for the target language before reviewing
+- \`get_chapter(chapterNumber, language)\` — full chapter source/target pair for full spot-check mode
+- \`search(query, language)\` — verify how a term was used in previously translated chapters before flagging it
+- \`add_translation(targetLangCode, from, to)\` — persist a confirmed glossary correction
+
+## Mode 1 - Scoped diff review (primary)
+
+### Steps
+
+1. Call \`get_review_text(autoStage: true)\`.
+2. If the diff is empty, report that nothing new has been translated yet.
+3. Identify changed files and determine source/target language from available context: session file (for example COWORK.md), recent conversation, or ask the user if ambiguous.
+4. If the target-language file changed, capture the changed target line range.
+5. Use line parity (source line N = target line N) and call \`get_text\` for the same range in the source file.
+6. Load glossary entries via \`get_translation(targetLanguage)\`.
+7. Use \`search(query, targetLanguage)\` when a term may have an established translation elsewhere in the book.
+8. Compare source vs target and produce feedback using the table below.
+9. If source-language lines also changed, flag that and suggest \`/review\` for source-quality feedback.
+
+## Mode 2 - Full chapter spot-check
+
+Use this when the user asks for a full chapter comparison.
+
+1. Determine source language, target language, and chapter number.
+2. Load glossary with \`get_translation(targetLanguage)\`.
+3. Use \`search(query, targetLanguage)\` as needed to verify recurring terminology in earlier translated chapters.
+4. Load chapters with \`get_chapter(chapterNumber, sourceLanguage)\` and \`get_chapter(chapterNumber, targetLanguage)\`.
+5. Compare paragraph by paragraph and report findings with the same table.
+
+## Output format
+
+| Before (target) | After (target) | Reason |
+|---|---|---|
+| Keep context short; bold only the changed words | Suggested wording | Fidelity, naturalness, glossary, or terminology consistency |
+
+Also list glossary mismatches and untranslated world-specific terms explicitly.
+
+## Cross-skill handoff
+- If changed lines are only source-language files, suggest switching to \`/review\`.
+- If both source and target changed, run translation-review findings first, then prompt whether to run \`/review\` for source edits too.
+
+## Rules
+- Load glossary before reviewing and flag mismatches explicitly
+- Suggest edits only; do not rewrite entire passages unless asked
+- Bold only changed words in Before/After rows
+- Mark uncertain calls as questions for user confirmation
+- When the user confirms a corrected term, call \`add_translation\` before moving on
+- Respond in the session language (usually source language)
 `;
 }
 
