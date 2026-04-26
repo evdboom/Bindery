@@ -505,15 +505,15 @@ User says \`/translate\`, "translate chapter X", or "help me with the translatio
 ## Tools
 Use these Bindery MCP tools:
 - \`get_chapter(chapterNumber, language)\` — read a chapter in any language (source or existing translation)
-- \`get_translation(language)\` — list glossary entries for a target language (e.g. \`"nl"\`)
-- \`get_translation(language, word)\` — look up a specific term; forgiving: case-insensitive, handles plurals and inflected forms
-- \`search(query, language)\` — verify how a term was rendered in other translated chapters
-- \`add_translation(targetLangCode, from, to)\` — save a new glossary term pair when the user confirms a translation choice
+- \`get_translation(targetLanguage)\` — list glossary entries for a target language (e.g. \`"nl"\`)
+- \`get_translation(targetLanguage, word)\` — look up a specific term; forgiving: case-insensitive, handles plurals and inflected forms
+- \`search(query, targetLanguage)\` — verify how a term was rendered in other translated chapters
+- \`add_translation(targetLanguage, from, to)\` — save a new glossary term pair when the user confirms a translation choice
 
 ## Steps
 
 ### 1. Load the translation table
-Call \`get_translation(language)\` to load all known glossary term mappings for the target language before translating anything.
+Call \`get_translation(targetLanguage)\` to load all known glossary term mappings for the target language before translating anything.
 
 ### 2. Load the chapter
 Use \`get_chapter(chapterNumber, sourceLanguage)\` to read the source chapter.
@@ -559,22 +559,25 @@ User says \`/translation-review\`, "review my translation", or "what do you thin
 
 ## Tools
 Use these Bindery MCP tools:
-- \`get_review_text(autoStage: true, contextLines?: number)\` — gather newly changed lines and auto-stage reviewed changes
+- \`get_review_text(autoStage: true, contextLines: 3)\` — get the git diff of uncommitted changes, auto-staged for review. Pass more contextLines when join points to existing prose need checking
 - \`get_text(identifier, startLine?, endLine?)\` — fetch matching source lines or focused ranges
-- \`get_translation(language)\` — load glossary terms for the target language before reviewing
+- \`get_translation(targetLanguage)\` — load glossary terms for the target language before reviewing
 - \`get_chapter(chapterNumber, language)\` — full chapter source/target pair for full spot-check mode
-- \`search(query, language)\` — verify how a term was used in previously translated chapters before flagging it
-- \`add_translation(targetLangCode, from, to)\` — persist a confirmed glossary correction
+- \`search(query, targetLanguage)\` — verify how a term was used in previously translated chapters before flagging it
+- \`add_translation(targetLanguage, from, to)\` — persist a confirmed glossary correction
 
 ## Mode 1 - Scoped diff review (primary)
 
 ### Steps
 
-1. Call \`get_review_text(autoStage: true)\`.
+1. Call \`get_review_text\`.
 2. If the diff is empty, report that nothing new has been translated yet.
 3. Identify changed files and determine source/target language from available context: session file (for example COWORK.md), recent conversation, or ask the user if ambiguous.
 4. If the target-language file changed, capture the changed target line range.
-5. Use line parity (source line N = target line N) and call \`get_text\` for the same range in the source file.
+5. **Line parity matching** — attempt to fetch the corresponding source lines:
+   - First, assume line parity: call \`get_text(sourceFile, startLine, endLine)\` for the same range as the target.
+   - **If the content is a complete mismatch** (opening words differ significantly), the translation work may have added or removed lines. Search a window: fetch \`get_text(sourceFile, startLine - 5, endLine + 5)\` and scan for the target text within that range.
+   - **If still not found**, ask the user: "I couldn't locate these source lines. Can you point me to the starting line number in the source file for this translation?"
 6. Load glossary entries via \`get_translation(targetLanguage)\`.
 7. Use \`search(query, targetLanguage)\` when a term may have an established translation elsewhere in the book.
 8. Compare source vs target and produce feedback using the table below.
