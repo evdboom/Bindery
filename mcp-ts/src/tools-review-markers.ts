@@ -133,9 +133,14 @@ export function formatReviewMarkerFiles(files: FormattedMarkerFile[]): string {
             lines.push(`> warning: ${w}`);
         }
         for (const r of f.regions) {
-            const range = r.stopLine !== undefined
-                ? `lines ${r.startLine + 1}-${r.stopLine - 1}`
-                : `lines ${r.startLine + 1}-EOF`;
+            const innerStart = r.startLine + 1;
+            const innerStop  = r.stopLine !== undefined ? r.stopLine - 1 : undefined;
+            const isEmpty    = innerStop !== undefined && innerStop < innerStart;
+            const range = isEmpty
+                ? `line ${innerStart} (empty region)`
+                : innerStop !== undefined
+                    ? `lines ${innerStart}-${innerStop}`
+                    : `lines ${innerStart}-EOF`;
             const head = r.openEnded
                 ? `@@ ${range} @@ (open-ended — no stop marker)`
                 : `@@ ${range} @@`;

@@ -212,4 +212,59 @@ describe('toolGetReviewText — review markers', () => {
         expect(out).toContain('Open until EOF');
         expect(out).toContain('warning:');
     });
+
+    it('detects markers in mixed case (case-insensitive scan)', () => {
+        const root = makeGitRepo();
+        const file = path.join(root, 'Story', 'EN', 'Chapter 1.md');
+        write(file,
+            `# Chapter\n` +
+            `<!-- BINDERY: REVIEW START -->\n` +
+            `Reviewed paragraph.\n` +
+            `<!-- bindery: review stop -->\n`);
+        spawnSync('git', ['add', '.'], { cwd: root });
+        spawnSync('git', ['commit', '-m', 'add'], { cwd: root });
+
+        const out = toolGetReviewText(root, {});
+        expect(out).toContain('# Review markers');
+        expect(out).toContain('Reviewed paragraph.');
+    });
+
+    it('renders empty marker region without producing inverted ranges', () => {
+        const root = makeGitRepo();
+        const file = path.join(root, 'Story', 'EN', 'Chapter 1.md');
+        write(file,
+            `# Chapter\n` +
+            `${REVIEW_START_MARKER}\n` +
+            `${REVIEW_STOP_MARKER}\n`);
+        spawnSync('git', ['add', '.'], { cwd: root });
+        spawnSync('git', ['commit', '-m', 'add'], { cwd: root });
+
+        const out = toolGetReviewText(root, {});
+        expect(out).toContain('empty region');
+        expect(out).not.toMatch(/lines \d+-\d+/);
+    });
+
+    it('autoStage consumes markers even when not in a git repo', () => {
+        const root = makeRoot();
+        // Settings file makes contentFolders() return Story/EN
+        const settings = {
+            languages: { EN: { dialect: null } },
+            sourceLanguage: 'EN',
+            storyFolder: 'Story',
+        };
+        write(path.join(root, '.bindery', 'settings.json'), JSON.stringify(settings));
+        const file = path.join(root, 'Story', 'EN', 'Chapter 1.md');
+        write(file,
+            `# Chapter\n` +
+            `${REVIEW_START_MARKER}\n` +
+            `Reviewed.\n` +
+            `${REVIEW_STOP_MARKER}\n`);
+
+        const out = toolGetReviewText(root, { autoStage: true });
+        expect(out).toContain('Git diff unavailable');
+        const after = fs.readFileSync(file, 'utf-8');
+        expect(after).not.toContain('Bindery: Review start');
+        expect(after).not.toContain('Bindery: Review stop');
+        expect(after).toContain('Reviewed.');
+    });
 });

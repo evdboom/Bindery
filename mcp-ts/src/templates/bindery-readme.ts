@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-    version: 3,
+    version: 4,
     label:   'bindery capabilities',
     zip:     null,
 };
@@ -83,7 +83,6 @@ tagged **(writes)** modify files or git state.
 | \`add_language\` (writes) | Scaffold a new language under the story folder. |
 | \`memory_list\` / \`memory_append\` / \`memory_compact\` (reads / writes) | Manage \`.bindery/memories/\` files. |
 | \`chapter_status_get\` / \`chapter_status_update\` (reads / writes) | Per-chapter progress tracker in \`.bindery/chapter-status.json\`. |
-| \`git_snapshot\` (writes) | Save a snapshot of content folders. |
 
 ## Review markers
 

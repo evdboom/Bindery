@@ -2,7 +2,7 @@ import { audienceNote, languageSection, type TemplateContext, type TemplateMeta 
 
 export const meta: TemplateMeta = {
     file:    'CLAUDE.md',
-    version: 10,
+    version: 11,
     label:   'project instructions',
     zip:     null,
 };
@@ -84,7 +84,7 @@ export function render(ctx: TemplateContext): string {
         '| `get_notes` | Notes/ files, filterable by category or name |',
         '| `search` | BM25 full-text search with ranked snippets, optional semantic ranking |',
         '| `format` | Apply typography formatting to a file or folder |',
-        '| `get_review_text` | Structured git diff with optional auto-staging |',
+        '| `get_review_text` | Structured git diff with review-marker regions and optional auto-staging that consumes markers |',
         '| `update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |',
         '| `git_snapshot` | Git commit of story, notes, and arc changes, with optional push |',
         '| `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |',

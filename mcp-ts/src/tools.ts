@@ -1036,6 +1036,10 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
             { cwd: root, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
         );
         if (result.error) { throw result.error; }
+        // git diff exits non-zero when run outside a repo (status 128) or when
+        // the cwd is otherwise unusable. Treat that as "git unavailable" so the
+        // caller gets an explicit notice instead of a confusingly empty diff.
+        if (result.status !== 0) { throw new Error(result.stderr || 'git diff failed'); }
         raw = result.stdout;
     } catch {
         raw = '';
@@ -1060,20 +1064,27 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     }
 
     const parts: string[] = [];
-    if (diffSection)   { parts.push('# Git diff', diffSection); }
+    if (!gitAvailable) {
+        parts.push('# Git diff unavailable', 'Failed to run git diff. Is this a git repository?');
+    } else if (diffSection) {
+        parts.push('# Git diff', diffSection);
+    }
     if (markerSection) { parts.push('# Review markers', markerSection); }
     const result = parts.join('\n\n');
 
-    // ── 4. autoStage: stage diff + consume markers ─────────────────────────
-    if (args.autoStage && gitAvailable) {
-        const contentDirs = contentFolders(root);
-        if (contentDirs.length > 0) {
-            try {
-                const r = spawnSync('git', ['add', ...contentDirs], { cwd: root, encoding: 'utf-8' });
-                if (r.error) { throw r.error; }
-            } catch { /* best effort — staging failure shouldn't break the review */ }
+    // ── 4. autoStage: stage diff (if git is available) + always consume markers ─
+    if (args.autoStage) {
+        if (gitAvailable) {
+            const contentDirs = contentFolders(root);
+            if (contentDirs.length > 0) {
+                try {
+                    const r = spawnSync('git', ['add', ...contentDirs], { cwd: root, encoding: 'utf-8' });
+                    if (r.error) { throw r.error; }
+                } catch { /* best effort — staging failure shouldn't break the review */ }
+            }
         }
-        // Strip marker lines and stage the removals so the next review pass is clean.
+        // Strip marker lines so the next review pass is clean. Marker
+        // consumption doesn't require git — the file edits are local.
         if (markerFiles.length > 0) {
             consumeReviewMarkers(root, markerFiles.map(f => f.file));
         }
@@ -1103,7 +1114,6 @@ function collectReviewMarkerFiles(root: string, language: string): FormattedMark
             let content: string;
             try { content = fs.readFileSync(abs, 'utf-8'); }
             catch { return; }
-            if (!content.includes('Bindery: Review')) { return; }
             const scan = scanReviewMarkers(content);
             if (scan.regions.length === 0 && scan.warnings.length === 0) { return; }
             out.push({ file: rel, regions: scan.regions, warnings: scan.warnings });

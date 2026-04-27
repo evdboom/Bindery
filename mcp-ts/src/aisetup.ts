@@ -121,7 +121,9 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
 
     // The capabilities README is bindery-meta, not an AI target — always
     // refresh it so agents have a single canonical "what can Bindery do?" file.
-    writeFile(root, path.join('.bindery', 'README.md'), renderTemplate('bindery-readme', ctx), overwrite, versionFile, result);
+    // Forced overwrite so a stale local copy is replaced even when the version
+    // hasn't bumped.
+    writeFile(root, path.join('.bindery', 'README.md'), renderTemplate('bindery-readme', ctx), true, versionFile, result);
 
     for (const target of targets) {
         switch (target) {

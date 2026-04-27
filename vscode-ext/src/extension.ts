@@ -393,17 +393,46 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
 const REVIEW_START_MARKER = '<!-- Bindery: Review start -->';
 const REVIEW_STOP_MARKER  = '<!-- Bindery: Review stop -->';
 
+/** Returns true if the file should accept Bindery review markers. */
+function isMarkdownEditor(editor: vscode.TextEditor): boolean {
+    return editor.document.languageId === 'markdown';
+}
+
+/**
+ * Build the prefix/suffix needed so `marker` ends up on its own line.
+ * If the cursor is mid-line, we prepend a newline; if the next character
+ * is not already a newline (or EOF), we append one. That way the inserted
+ * marker is always on its own line and matches the marker scanner regex.
+ */
+function lineBoundaryWrap(doc: vscode.TextDocument, pos: vscode.Position, marker: string): string {
+    const lineText = doc.lineAt(pos.line).text;
+    const atLineStart = pos.character === 0;
+    const atLineEnd   = pos.character >= lineText.length;
+    const prefix = atLineStart ? '' : '\n';
+    const suffix = atLineEnd   ? '\n' : '\n';
+    return `${prefix}${marker}${suffix}`;
+}
+
 async function startReviewMarkerCommand() {
     const editor = vscode.window.activeTextEditor;
     if (!editor) { vscode.window.showWarningMessage('Bindery: open a markdown file first.'); return; }
+    if (!isMarkdownEditor(editor)) {
+        vscode.window.showWarningMessage('Bindery: review markers are only valid in markdown files.');
+        return;
+    }
 
     const sel = editor.selection;
     await editor.edit(eb => {
         if (!sel.isEmpty) {
-            const text = editor.document.getText(sel);
-            eb.replace(sel, `${REVIEW_START_MARKER}\n${text}\n${REVIEW_STOP_MARKER}`);
+            // Wrap selection. Snap markers to line boundaries so they match
+            // the marker scanner regex even if the selection starts/ends
+            // mid-line.
+            const text   = editor.document.getText(sel);
+            const startWrap = lineBoundaryWrap(editor.document, sel.start, REVIEW_START_MARKER);
+            const stopWrap  = lineBoundaryWrap(editor.document, sel.end,   REVIEW_STOP_MARKER);
+            eb.replace(sel, `${startWrap}${text}${stopWrap}`);
         } else {
-            eb.insert(sel.active, `${REVIEW_START_MARKER}\n`);
+            eb.insert(sel.active, lineBoundaryWrap(editor.document, sel.active, REVIEW_START_MARKER));
         }
     });
     vscode.window.setStatusBarMessage(
@@ -415,10 +444,14 @@ async function startReviewMarkerCommand() {
 async function stopReviewMarkerCommand() {
     const editor = vscode.window.activeTextEditor;
     if (!editor) { vscode.window.showWarningMessage('Bindery: open a markdown file first.'); return; }
+    if (!isMarkdownEditor(editor)) {
+        vscode.window.showWarningMessage('Bindery: review markers are only valid in markdown files.');
+        return;
+    }
 
     const sel = editor.selection;
     await editor.edit(eb => {
-        eb.insert(sel.active, `${REVIEW_STOP_MARKER}\n`);
+        eb.insert(sel.active, lineBoundaryWrap(editor.document, sel.active, REVIEW_STOP_MARKER));
     });
     vscode.window.setStatusBarMessage('Bindery: review-stop marker inserted.', 3000);
 }
