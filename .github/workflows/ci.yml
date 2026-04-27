@@ -50,6 +50,7 @@ jobs:
       # ai-setup-templates.ts and the templates/ folder copy are .gitignored
       # — always generated fresh here from the mcp-ts source of truth.
       - name: Sync templates to vscode-ext
+        shell: bash
         run: |
           cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
           rm -rf vscode-ext/src/templates
