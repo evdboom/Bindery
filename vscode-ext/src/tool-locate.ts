@@ -48,8 +48,11 @@ function wellKnownPaths(tool: ToolName): string[] {
                 path.join(programFiles86, 'Pandoc', 'pandoc.exe'),
             ];
         }
-        // libreoffice
+        // libreoffice — prefer soffice.com (console wrapper) over soffice.exe
+        // to avoid GUI prompts when probing --version.
         return [
+            path.join(programFiles, 'LibreOffice', 'program', 'soffice.com'),
+            path.join(programFiles86, 'LibreOffice', 'program', 'soffice.com'),
             path.join(programFiles, 'LibreOffice', 'program', 'soffice.exe'),
             path.join(programFiles86, 'LibreOffice', 'program', 'soffice.exe'),
         ];
@@ -80,14 +83,17 @@ function wellKnownPaths(tool: ToolName): string[] {
 /** Default command name (what `which`/`where` would look up). */
 function defaultCommand(tool: ToolName): string {
     if (tool === 'pandoc') { return 'pandoc'; }
-    return process.platform === 'win32' ? 'soffice.exe' : 'libreoffice';
+    // soffice.com is the console-subsystem wrapper on Windows — using it
+    // prevents the LibreOffice GUI from popping a console window with
+    // "Press Enter to continue..." during version probes.
+    return process.platform === 'win32' ? 'soffice.com' : 'libreoffice';
 }
 
 /** All names that can resolve via PATH for a given tool. */
 function pathCandidates(tool: ToolName): string[] {
     if (tool === 'pandoc') { return ['pandoc']; }
     return process.platform === 'win32'
-        ? ['soffice.exe', 'soffice']
+        ? ['soffice.com', 'soffice.exe', 'soffice']
         : ['libreoffice', 'soffice'];
 }
 

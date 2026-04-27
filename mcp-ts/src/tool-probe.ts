@@ -37,7 +37,12 @@ function wellKnownPaths(tool: ToolName): string[] {
             ];
         }
         if (tool === 'libreoffice') {
+            // Prefer soffice.com (console wrapper) over soffice.exe — the .exe
+            // is the Windows-subsystem binary and pops a console window with
+            // "Press Enter to continue..." when invoked with --version.
             return [
+                path.join(programFiles, 'LibreOffice', 'program', 'soffice.com'),
+                path.join(programFiles86, 'LibreOffice', 'program', 'soffice.com'),
                 path.join(programFiles, 'LibreOffice', 'program', 'soffice.exe'),
                 path.join(programFiles86, 'LibreOffice', 'program', 'soffice.exe'),
             ];
@@ -76,7 +81,9 @@ function wellKnownPaths(tool: ToolName): string[] {
 function defaultCommand(tool: ToolName): string {
     if (tool === 'git') { return process.platform === 'win32' ? 'git.exe' : 'git'; }
     if (tool === 'pandoc') { return process.platform === 'win32' ? 'pandoc.exe' : 'pandoc'; }
-    return process.platform === 'win32' ? 'soffice.exe' : 'soffice';
+    // Use soffice.com on Windows so --version doesn't open a console window
+    // and pause with "Press Enter to continue...".
+    return process.platform === 'win32' ? 'soffice.com' : 'soffice';
 }
 
 /** All command names to try on PATH for a given tool. */
@@ -84,8 +91,9 @@ function pathCandidates(tool: ToolName): string[] {
     if (tool === 'git')    { return [defaultCommand('git')]; }
     if (tool === 'pandoc') { return [defaultCommand('pandoc')]; }
     // LibreOffice installs expose either 'libreoffice' or 'soffice' on PATH.
+    // On Windows, prefer the .com console wrapper to avoid the GUI prompt.
     return process.platform === 'win32'
-        ? ['soffice.exe', 'soffice']
+        ? ['soffice.com', 'soffice.exe', 'soffice']
         : ['libreoffice', 'soffice'];
 }
 
@@ -129,7 +137,12 @@ export function probeTool(tool: ToolName): ProbeResult {
 
     for (const { p, source } of candidates) {
         try {
-            const res = cp.spawnSync(p, [versionFlag(tool)], { encoding: 'utf-8', timeout: 5000 });
+            const res = cp.spawnSync(p, [versionFlag(tool)], {
+                encoding: 'utf-8',
+                timeout: 5000,
+                stdio: ['ignore', 'pipe', 'pipe'],
+                windowsHide: true,
+            });
             if (res.status === 0) {
                 return { available: true, path: p, source, version: extractVersion(res.stdout) };
             }
