@@ -26,6 +26,7 @@ import {
 } from './search.js';
 import {
     setupAiFiles,
+    writeBinderyCapabilitiesReadme,
     ALL_SKILLS,
     readAiVersionFile,
     expectedAiVersionEntries,
@@ -35,6 +36,16 @@ import {
 import { probeTool, type ProbeResult } from './tool-probe.js';
 import { BUILTIN_EN_GB_RULES, type TranslationRule } from './tools-dialect-defaults.js';
 import { parseUnifiedDiff, formatReviewFiles } from './tools-diff.js';
+
+// Re-export so the VS Code extension can call this helper through the same
+// `mcp-ts/out/tools` module it already loads for setup/health.
+export { writeBinderyCapabilitiesReadme };
+import {
+    scanReviewMarkers,
+    stripReviewMarkers,
+    formatReviewMarkerFiles,
+    type FormattedMarkerFile,
+} from './tools-review-markers.js';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -1016,7 +1027,9 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     const contextLines = args.contextLines ?? 3;
     const language     = (args.language ?? 'ALL').toUpperCase();
 
+    // ── 1. Git diff ────────────────────────────────────────────────────────
     let raw: string;
+    let gitAvailable = true;
     try {
         const result = spawnSync(
             'git', ['diff', '--ignore-cr-at-eol', `-U${contextLines}`],
@@ -1025,38 +1038,110 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
         if (result.error) { throw result.error; }
         raw = result.stdout;
     } catch {
-        return 'Failed to run git diff. Is this a git repository?';
+        raw = '';
+        gitAvailable = false;
     }
 
-    if (!raw.trim()) { return 'No uncommitted changes.'; }
+    const diffFiles = raw.trim() ? parseUnifiedDiff(raw) : [];
+    const filteredDiff = filterByLanguage(diffFiles, language);
+    const diffSection  = filteredDiff.length > 0 ? formatReviewFiles(filteredDiff) : '';
 
-    const files = parseUnifiedDiff(raw);
+    // ── 2. Marker regions (works even with no unstaged diff — supports
+    //       reviewing committed work) ────────────────────────────────────
+    const markerFiles = collectReviewMarkerFiles(root, language);
+    const markerSection = markerFiles.length > 0 ? formatReviewMarkerFiles(markerFiles) : '';
 
-    const filtered = language === 'ALL'
-        ? files
-        : files.filter(f => {
-            const upper = f.file.toUpperCase().replaceAll('\\', '/');
-            return upper.includes(`/${language}/`);
-        });
-
-    if (filtered.length === 0) {
+    // ── 3. Compose response ────────────────────────────────────────────────
+    if (!diffSection && !markerSection) {
+        if (!gitAvailable) { return 'Failed to run git diff. Is this a git repository?'; }
         return language === 'ALL'
             ? 'No uncommitted changes.'
             : `No uncommitted changes in ${language} files.`;
     }
 
-    const result = formatReviewFiles(filtered);
+    const parts: string[] = [];
+    if (diffSection)   { parts.push('# Git diff', diffSection); }
+    if (markerSection) { parts.push('# Review markers', markerSection); }
+    const result = parts.join('\n\n');
 
-    // Stage reviewed files so the next review only shows new changes
-    if (args.autoStage) {
+    // ── 4. autoStage: stage diff + consume markers ─────────────────────────
+    if (args.autoStage && gitAvailable) {
         const contentDirs = contentFolders(root);
-        try {
-            const result = spawnSync('git', ['add', ...contentDirs], { cwd: root, encoding: 'utf-8' });
-            if (result.error) { throw result.error; }
-        } catch { /* best effort — staging failure shouldn't break the review */ }
+        if (contentDirs.length > 0) {
+            try {
+                const r = spawnSync('git', ['add', ...contentDirs], { cwd: root, encoding: 'utf-8' });
+                if (r.error) { throw r.error; }
+            } catch { /* best effort — staging failure shouldn't break the review */ }
+        }
+        // Strip marker lines and stage the removals so the next review pass is clean.
+        if (markerFiles.length > 0) {
+            consumeReviewMarkers(root, markerFiles.map(f => f.file));
+        }
     }
 
     return result;
+}
+
+function filterByLanguage<T extends { file: string }>(items: T[], language: string): T[] {
+    if (language === 'ALL') { return items; }
+    return items.filter(f => {
+        const upper = f.file.toUpperCase().replaceAll('\\', '/');
+        return upper.includes(`/${language}/`);
+    });
+}
+
+/** Walk content folders and collect every file that contains review markers. */
+function collectReviewMarkerFiles(root: string, language: string): FormattedMarkerFile[] {
+    const out: FormattedMarkerFile[] = [];
+    for (const dir of contentFolders(root)) {
+        walkMarkdown(path.join(root, dir), (abs) => {
+            const rel = path.relative(root, abs).replaceAll('\\', '/');
+            if (language !== 'ALL') {
+                const upper = rel.toUpperCase();
+                if (!upper.includes(`/${language}/`)) { return; }
+            }
+            let content: string;
+            try { content = fs.readFileSync(abs, 'utf-8'); }
+            catch { return; }
+            if (!content.includes('Bindery: Review')) { return; }
+            const scan = scanReviewMarkers(content);
+            if (scan.regions.length === 0 && scan.warnings.length === 0) { return; }
+            out.push({ file: rel, regions: scan.regions, warnings: scan.warnings });
+        });
+    }
+    return out;
+}
+
+function walkMarkdown(dir: string, visit: (abs: string) => void): void {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+    catch { return; }
+    for (const e of entries) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) { walkMarkdown(full, visit); }
+        else if (e.isFile() && e.name.toLowerCase().endsWith('.md')) { visit(full); }
+    }
+}
+
+function consumeReviewMarkers(root: string, relFiles: string[]): void {
+    const touched: string[] = [];
+    for (const rel of relFiles) {
+        const abs = path.join(root, rel);
+        let content: string;
+        try { content = fs.readFileSync(abs, 'utf-8'); }
+        catch { continue; }
+        const { text, removed } = stripReviewMarkers(content);
+        if (removed === 0 || text === content) { continue; }
+        try {
+            fs.writeFileSync(abs, text, 'utf-8');
+            touched.push(rel);
+        } catch { /* best effort */ }
+    }
+    if (touched.length > 0) {
+        try {
+            spawnSync('git', ['add', ...touched], { cwd: root, encoding: 'utf-8' });
+        } catch { /* best effort */ }
+    }
 }
 
 /** Content folders that git operations should scope to. */
@@ -1571,6 +1656,11 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
     }
 
     const engbSeeded = seedTranslations(translationsPath, languages);
+
+    // Always (re)write the capabilities README so agents have a single canonical
+    // "what can Bindery do?" reference from the moment a workspace is initialized.
+    try { writeBinderyCapabilitiesReadme(root); created.push('.bindery/README.md'); }
+    catch { /* non-fatal — setup_ai_files will write it next time */ }
 
     const action   = isNew ? 'Initialized' : 'Updated';
     const langNote = languages.map(l => (l as { code: string }).code).join(', ');

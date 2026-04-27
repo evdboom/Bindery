@@ -223,9 +223,39 @@
         "category": "Bindery"
       },
       {
+        "command": "bindery.startReviewMarker",
+        "title": "Insert Review Start Marker (or wrap selection)",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.stopReviewMarker",
+        "title": "Insert Review Stop Marker",
+        "category": "Bindery"
+      },
+      {
         "command": "bindery.registerMcp",
         "title": "Register MCP Server",
         "category": "Bindery"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "bindery.formatDocument",
+        "key": "ctrl+k ctrl+b",
+        "mac": "cmd+k cmd+b",
+        "when": "editorTextFocus && resourceLangId == markdown"
+      },
+      {
+        "command": "bindery.startReviewMarker",
+        "key": "ctrl+k ctrl+,",
+        "mac": "cmd+k cmd+,",
+        "when": "editorTextFocus && resourceLangId == markdown"
+      },
+      {
+        "command": "bindery.stopReviewMarker",
+        "key": "ctrl+k ctrl+.",
+        "mac": "cmd+k cmd+.",
+        "when": "editorTextFocus && resourceLangId == markdown"
       }
     ],
     "languageModelTools": [

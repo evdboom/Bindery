@@ -144,7 +144,7 @@ table with issue type, location, and the reference that contradicts it.
 | `get_notes` | Notes/ files, filterable by category or name |
 | `search` | Search in lexical, semantic-rerank, or full-semantic mode; semantic modes fall back to lexical with warnings |
 | `format` | Apply typography formatting to a file or folder |
-| `get_review_text` | Structured git diff with optional auto-staging |
+| `get_review_text` | Git diff of uncommitted changes plus any `<!-- Bindery: Review start/stop -->` marker regions; optional auto-staging consumes the markers |
 | `update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |
 | `git_snapshot` | Git commit of story, notes, and arc changes, with optional push |
 | `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |

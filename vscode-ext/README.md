@@ -20,6 +20,7 @@ HTML comments are preserved and not modified.
 
 **How to use:**
 
+- **Keybinding** — `Ctrl+K Ctrl+B` (markdown editors only)
 - **Right-click** a markdown file → **Format Typography**
 - **Format Document** (`Shift+Alt+F`) — registered as a markdown formatter
 - **Format on Save** — enable `bindery.formatOnSave` in settings
@@ -76,7 +77,7 @@ Bindery includes a bundled MCP server that makes your book's chapters, notes, se
 | `bindery_get_overview` | Chapter structure — acts, chapters, titles |
 | `bindery_get_notes` | Notes files, filterable by category or character name |
 | `bindery_format` | Apply typography formatting to a file or folder |
-| `bindery_get_review_text` | Structured git diff of uncommitted changes |
+| `bindery_get_review_text` | Git diff of uncommitted changes **plus** any `<!-- Bindery: Review start/stop -->` regions (works on committed work too) |
 | `bindery_update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |
 | `bindery_git_snapshot` | Save a snapshot (git commit) of story/notes/arc changes, with optional push |
 | `bindery_get_translation` | Look up cross-language glossary entries |
@@ -118,21 +119,27 @@ All commands are available from the Command Palette (`Ctrl+Shift+P`) under the *
 
 | Command | Description |
 |---------|-------------|
-| `Initialize Workspace` | Create `.bindery/settings.json` and `translations.json` |
-| `Setup AI Assistant Files` | Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md |
-| `Register MCP Server` | Write `.vscode/mcp.json` for Claude / Codex MCP discovery |
-| `Format Typography` | Apply typography formatting to the active markdown file |
-| `Format All Markdown in Folder` | Apply typography to all `.md` files in a folder |
-| `Merge Chapters → Markdown` | Merge chapters into a single `.md` file |
-| `Merge Chapters → DOCX` | Merge chapters and export via Pandoc |
-| `Merge Chapters → EPUB` | Merge chapters and export via Pandoc |
-| `Merge Chapters → PDF` | Merge chapters via Pandoc + LibreOffice |
-| `Merge Chapters → All Formats` | Export all configured formats at once |
-| `Find Probable US→UK Words` | Scan `Story/EN` for likely US spellings |
-| `Add Dialect Rule` | Add a dialect substitution rule (e.g. color→colour) |
-| `Add Translation (Glossary)` | Add a cross-language glossary entry |
-| `Add Language` | Add a new language and scaffold its story folder |
-| `Open translations.json` | Open the translations file in the editor |
+| Command | Description | Default keybinding |
+|---------|-------------|--------------------|
+| `Initialize Workspace` | Create `.bindery/settings.json` and `translations.json` | — |
+| `Setup AI Assistant Files` | Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md | — |
+| `Register MCP Server` | Write `.vscode/mcp.json` for Claude / Codex MCP discovery | — |
+| `Format Typography` | Apply typography formatting to the active markdown file | `Ctrl+K Ctrl+B` |
+| `Format All Markdown in Folder` | Apply typography to all `.md` files in a folder | — |
+| `Insert Review Start Marker (or wrap selection)` | Insert `<!-- Bindery: Review start -->`, or wrap the current selection in matched start/stop markers | `Ctrl+K Ctrl+,` |
+| `Insert Review Stop Marker` | Insert `<!-- Bindery: Review stop -->` at the cursor | `Ctrl+K Ctrl+.` |
+| `Merge Chapters → Markdown` | Merge chapters into a single `.md` file | — |
+| `Merge Chapters → DOCX` | Merge chapters and export via Pandoc | — |
+| `Merge Chapters → EPUB` | Merge chapters and export via Pandoc | — |
+| `Merge Chapters → PDF` | Merge chapters via Pandoc + LibreOffice | — |
+| `Merge Chapters → All Formats` | Export all configured formats at once | — |
+| `Find Probable US→UK Words` | Scan `Story/EN` for likely US spellings | — |
+| `Add Dialect Rule` | Add a dialect substitution rule (e.g. color→colour) | — |
+| `Add Translation (Glossary)` | Add a cross-language glossary entry | — |
+| `Add Language` | Add a new language and scaffold its story folder | — |
+| `Open translations.json` | Open the translations file in the editor | — |
+
+Keybindings only fire while editing a markdown file (`editorTextFocus && resourceLangId == markdown`); rebind via **File → Preferences → Keyboard Shortcuts** if they conflict with another extension.
 
 ## Configuration
 
