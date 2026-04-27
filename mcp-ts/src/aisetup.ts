@@ -119,6 +119,10 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
         versionStamp: versionFile,
     };
 
+    // The capabilities README is bindery-meta, not an AI target — always
+    // refresh it so agents have a single canonical "what can Bindery do?" file.
+    writeFile(root, path.join('.bindery', 'README.md'), renderTemplate('bindery-readme', ctx), overwrite, versionFile, result);
+
     for (const target of targets) {
         switch (target) {
             case 'claude':
@@ -171,6 +175,30 @@ export function expectedAiVersionEntries(): Record<string, AiVersionEntry> {
         out[file] = { version: info.version, label: info.label, zip: info.zip };
     }
     return out;
+}
+
+/**
+ * Write `.bindery/README.md` (the capabilities reference) directly, without
+ * touching any AI-target files. Used by `bindery init` so the doc exists from
+ * the moment the workspace is created. Always overwrites — this file is
+ * Bindery-managed and not meant for hand-editing.
+ */
+export function writeBinderyCapabilitiesReadme(root: string): void {
+    const settingsPath = path.join(root, '.bindery', 'settings.json');
+    if (!fs.existsSync(settingsPath)) {
+        throw new Error('settings.json not found — run init_workspace first.');
+    }
+    const settings: Settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Settings;
+    const ctx = buildContext(settings);
+
+    const versionFile = readAiVersionFile(root);
+    const result: AiSetupResult = {
+        regenerated: [], skipped: [],
+        skillZipManifest: { rebuilt: [], created: [], skipped: [], failed: [] },
+        versionStamp: versionFile,
+    };
+    writeFile(root, path.join('.bindery', 'README.md'), renderTemplate('bindery-readme', ctx), true, versionFile, result);
+    stampAiVersionFile(root, versionFile);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
