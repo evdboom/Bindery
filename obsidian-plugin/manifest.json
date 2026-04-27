@@ -1,0 +1,10 @@
+{
+  "id": "bindery",
+  "name": "Bindery",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Typography formatting and multi-format export for book projects written in Markdown.",
+  "author": "evdboom",
+  "authorUrl": "https://github.com/evdboom/Bindery",
+  "isDesktopOnly": true
+}
