@@ -47,12 +47,14 @@ jobs:
           path: mcp-ts/test-results.json
 
       # ── Template sync ─────────────────────────────────────────────────────────
-      # ai-setup-templates.ts is .gitignored — always generated fresh here.
-      # The copy-parity test in mcp-ts/test/templates-parity.test.ts then confirms
-      # the synced file is byte-for-byte identical to the source.
+      # ai-setup-templates.ts and the templates/ folder copy are .gitignored
+      # — always generated fresh here from the mcp-ts source of truth.
       - name: Sync templates to vscode-ext
+        shell: bash
         run: |
           cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+          rm -rf vscode-ext/src/templates
+          cp -R mcp-ts/src/templates vscode-ext/src/templates
           echo "Template copy synced."
 
       # ── VS Code extension ─────────────────────────────────────────────────────
@@ -98,7 +100,10 @@ jobs:
         run: cd mcp-ts && npm run test:coverage
 
       - name: Sync templates to vscode-ext
-        run: cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+        run: |
+          cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+          rm -rf vscode-ext/src/templates
+          cp -R mcp-ts/src/templates vscode-ext/src/templates
 
       - name: Install vscode-ext
         run: cd vscode-ext && npm ci

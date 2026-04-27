@@ -42,7 +42,7 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes
 
 - **BM25 full-text search** — fast lexical search across all chapters and notes via [MiniSearch](https://lucaong.github.io/minisearch/)
 - **Optional semantic search** — set `BINDERY_OLLAMA_URL` for semantic reranking, or enable a full semantic index for precomputed embedding search
-- **Version tracking** — `get_review_text` shows uncommitted changes as a structured diff; `git_snapshot` saves progress as a git commit scoped to story/notes/arc folders. Git is auto-initialized during workspace setup if available
+- **Version tracking** — `get_review_text` returns a structured git diff **plus** any regions wrapped in `<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->` markers (so committed work-in-progress can still be reviewed). `git_snapshot` saves progress as a git commit scoped to story/notes/arc folders. Git is auto-initialized during workspace setup if available
 - **Translation & dialect management** — glossary entries and dialect substitution rules in `.bindery/translations.json`, queryable and updatable by agents
 - **Session memory** — persistent `.bindery/memories/` files for cross-session decisions, with append, list, and compact operations
 - **Chapter status tracking** — per-chapter progress tracker (`draft`, `in-progress`, `done`, `needs-review`)

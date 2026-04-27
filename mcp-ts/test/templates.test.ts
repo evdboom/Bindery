@@ -244,6 +244,13 @@ describe('renderTemplate — review skill', () => {
     const result = renderTemplate('review', makeMinimalCtx());
     expect(result).not.toContain('middle-grade');
   });
+
+  it('mentions Bindery review markers and autoStage marker consumption', () => {
+    const result = renderTemplate('review', makeCtx());
+    expect(result).toContain('Bindery: Review start');
+    expect(result).toContain('Bindery: Review stop');
+    expect(result).toContain('removes the marker lines');
+  });
 });
 
 describe('renderTemplate — brainstorm skill', () => {
@@ -328,6 +335,13 @@ describe('renderTemplate — translation-review skill', () => {
     expect(result).toContain('add_translation');
     expect(result).toContain('call `add_translation` before moving on');
   });
+
+  it('mentions review markers and the two-section response shape', () => {
+    const result = renderTemplate('translation-review', makeCtx());
+    expect(result).toContain('Bindery: Review start');
+    expect(result).toContain('# Git diff');
+    expect(result).toContain('# Review markers');
+  });
 });
 
 describe('renderTemplate — status skill', () => {
@@ -408,6 +422,32 @@ describe('renderTemplate — read-in skill', () => {
   it('references the memories folder', () => {
     const result = renderTemplate('read-in', makeCtx());
     expect(result).toContain('.bindery/memories');
+  });
+});
+
+// ─── .bindery/README.md (capabilities reference) ─────────────────────────────
+
+describe('renderTemplate — bindery-readme', () => {
+  it('includes the workspace title and key capability sections', () => {
+    const result = renderTemplate('bindery-readme', makeCtx());
+    expect(result).toContain('Test Book');
+    expect(result).toContain('## VS Code commands');
+    expect(result).toContain('## MCP tools');
+    expect(result).toContain('## Skill workflows');
+    expect(result).toContain('## Review markers');
+  });
+
+  it('documents review marker syntax and consumption behavior', () => {
+    const result = renderTemplate('bindery-readme', makeCtx());
+    expect(result).toContain('<!-- Bindery: Review start -->');
+    expect(result).toContain('<!-- Bindery: Review stop -->');
+    expect(result).toContain('removes');
+  });
+
+  it('lists the new VS Code marker commands', () => {
+    const result = renderTemplate('bindery-readme', makeCtx());
+    expect(result).toContain('Insert Review Start Marker');
+    expect(result).toContain('Insert Review Stop Marker');
   });
 });
 

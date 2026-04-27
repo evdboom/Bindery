@@ -72,7 +72,7 @@
     { "name": "get_overview",     "description": "List the chapter structure (acts, chapters, titles) for one or all languages." },
     { "name": "get_notes",        "description": "Read from Notes/, optionally filtered by category or character name." },
     { "name": "format",           "description": "Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder." },
-    { "name": "get_review_text",  "description": "Structured git diff of uncommitted changes. Filter by language (EN, NL, ALL). Set autoStage to stage reviewed files." },
+    { "name": "get_review_text",  "description": "Structured review payload: git diff of uncommitted changes plus any regions wrapped in <!-- Bindery: Review start/stop --> markers (works even on committed work). Filter by language (EN, NL, ALL). autoStage stages reviewed files and consumes review markers." },
     { "name": "update_workspace", "description": "Fetch and pull the current git branch, report the current branch versus the remote default branch, and optionally switch branches before pulling." },
     { "name": "git_snapshot",     "description": "Save a snapshot (git commit) of all changes in story, notes, and arc folders. Can also push and remember push defaults." },
     { "name": "add_translation",  "description": "Add or update a cross-language glossary entry in .bindery/translations.json for agent reference (source → target term). For dialect substitution rules use add_dialect." },

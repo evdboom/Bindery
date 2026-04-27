@@ -10,6 +10,7 @@ export default defineConfig({
             include: ['src/**/*.ts'],
             exclude: [
                 'src/ai-setup-templates.ts', // generated copy of mcp-ts/src/templates.ts
+                'src/templates/**',          // generated copy of mcp-ts/src/templates/ (covered by mcp-ts tests)
                 'src/extension.ts',          // thin VS Code activation layer; exercised via integration-commands mocks
                 'src/ai-setup.ts',           // thin wrapper around mcp-ts setupAiFiles; covered by mcp-ts tests
                 'src/mcp.ts',                // vscode.lm.registerTool wiring; activation-only, not reachable in unit tests

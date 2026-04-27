@@ -64,6 +64,7 @@ function getWorkspaceRoot(): string | undefined {
 interface McpToolsForAi {
     toolHealth: (root: string) => string;
     toolSetupAiFiles: (root: string, args: { targets?: string[]; skills?: string[]; overwrite?: boolean }) => string;
+    writeBinderyCapabilitiesReadme: (root: string) => void;
 }
 
 function loadMcpToolsForAi(extensionPath: string): McpToolsForAi {
@@ -237,7 +238,7 @@ function detectLanguageFolders(storyPath: string): LanguageConfig[] {
 
 // ─── Command: Init workspace ─────────────────────────────────────────────────
 
-async function initWorkspaceCommand() {
+async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
     const root = getWorkspaceRoot();
     if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
 
@@ -326,6 +327,14 @@ async function initWorkspaceCommand() {
         fs.writeFileSync(translationsPath, JSON.stringify(translations, null, 2) + '\n', 'utf-8');
     }
 
+    // Write .bindery/README.md (capabilities reference) so agents have a single
+    // canonical answer to "what can Bindery do?" from the moment of init.
+    if (context) {
+        try {
+            loadMcpToolsForAi(context.extensionPath).writeBinderyCapabilitiesReadme(root);
+        } catch { /* non-fatal — Setup AI will refresh it later */ }
+    }
+
     // Ensure git repo exists for version tracking
     let gitNote = '';
     if (!fs.existsSync(path.join(root, '.git'))) {
@@ -372,6 +381,79 @@ async function initWorkspaceCommand() {
     } else if (action === 'Open translations.json') {
         vscode.window.showTextDocument(await vscode.workspace.openTextDocument(translationsPath));
     }
+}
+
+// ─── Command: Review markers ─────────────────────────────────────────────────
+//
+// Insert Bindery review markers around the cursor or a selection. The
+// `get_review_text` MCP tool extracts text inside these markers as part of the
+// next /review or /translation-review pass — useful when the author commits
+// work-in-progress and continues on another machine.
+
+const REVIEW_START_MARKER = '<!-- Bindery: Review start -->';
+const REVIEW_STOP_MARKER  = '<!-- Bindery: Review stop -->';
+
+/** Returns true if the file should accept Bindery review markers. */
+function isMarkdownEditor(editor: vscode.TextEditor): boolean {
+    return editor.document.languageId === 'markdown';
+}
+
+/**
+ * Build the prefix/suffix needed so `marker` ends up on its own line.
+ * If the cursor is mid-line, we prepend a newline; if the next character
+ * is not already a newline (or EOF), we append one. That way the inserted
+ * marker is always on its own line and matches the marker scanner regex.
+ */
+function lineBoundaryWrap(doc: vscode.TextDocument, pos: vscode.Position, marker: string): string {
+    const lineText = doc.lineAt(pos.line).text;
+    const atLineStart = pos.character === 0;
+    const atLineEnd   = pos.character >= lineText.length;
+    const prefix = atLineStart ? '' : '\n';
+    const suffix = atLineEnd   ? '\n' : '\n';
+    return `${prefix}${marker}${suffix}`;
+}
+
+async function startReviewMarkerCommand() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) { vscode.window.showWarningMessage('Bindery: open a markdown file first.'); return; }
+    if (!isMarkdownEditor(editor)) {
+        vscode.window.showWarningMessage('Bindery: review markers are only valid in markdown files.');
+        return;
+    }
+
+    const sel = editor.selection;
+    await editor.edit(eb => {
+        if (!sel.isEmpty) {
+            // Wrap selection. Snap markers to line boundaries so they match
+            // the marker scanner regex even if the selection starts/ends
+            // mid-line.
+            const text   = editor.document.getText(sel);
+            const startWrap = lineBoundaryWrap(editor.document, sel.start, REVIEW_START_MARKER);
+            const stopWrap  = lineBoundaryWrap(editor.document, sel.end,   REVIEW_STOP_MARKER);
+            eb.replace(sel, `${startWrap}${text}${stopWrap}`);
+        } else {
+            eb.insert(sel.active, lineBoundaryWrap(editor.document, sel.active, REVIEW_START_MARKER));
+        }
+    });
+    vscode.window.setStatusBarMessage(
+        sel.isEmpty ? 'Bindery: review-start marker inserted.' : 'Bindery: selection wrapped in review markers.',
+        3000
+    );
+}
+
+async function stopReviewMarkerCommand() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) { vscode.window.showWarningMessage('Bindery: open a markdown file first.'); return; }
+    if (!isMarkdownEditor(editor)) {
+        vscode.window.showWarningMessage('Bindery: review markers are only valid in markdown files.');
+        return;
+    }
+
+    const sel = editor.selection;
+    await editor.edit(eb => {
+        eb.insert(sel.active, lineBoundaryWrap(editor.document, sel.active, REVIEW_STOP_MARKER));
+    });
+    vscode.window.setStatusBarMessage('Bindery: review-stop marker inserted.', 3000);
 }
 
 // ─── Command: Open translations.json ─────────────────────────────────────────
@@ -845,7 +927,7 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
             'No .bindery/settings.json found. Run "Bindery: Initialize Workspace" first.',
             'Initialize now'
         );
-        if (init) { await initWorkspaceCommand(); }
+        if (init) { await initWorkspaceCommand(context); }
         return;
     }
 
@@ -1214,7 +1296,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Commands
     subscriptions.push(
-        vscode.commands.registerCommand('bindery.init',                    initWorkspaceCommand),
+        vscode.commands.registerCommand('bindery.init',                    () => initWorkspaceCommand(context)),
         vscode.commands.registerCommand('bindery.setupAI',                 () => setupAiCommand(context)),
         vscode.commands.registerCommand('bindery.formatDocument',          formatDocumentCommand),
         vscode.commands.registerCommand('bindery.formatFolder',            formatFolderCommand),
@@ -1229,6 +1311,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bindery.addLanguage',             addLanguageCommand),
         vscode.commands.registerCommand('bindery.addUkReplacement',        addDialectCommand), // backward compat alias
         vscode.commands.registerCommand('bindery.openTranslations',        openTranslationsCommand),
+        vscode.commands.registerCommand('bindery.startReviewMarker',       startReviewMarkerCommand),
+        vscode.commands.registerCommand('bindery.stopReviewMarker',        stopReviewMarkerCommand),
         vscode.commands.registerCommand('bindery.registerMcp',             () => registerMcpCommand(context)),
     );
 

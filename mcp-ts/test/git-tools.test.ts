@@ -73,10 +73,10 @@ afterEach(() => {
 // ─── toolGetReviewText ────────────────────────────────────────────────────────
 
 describe('toolGetReviewText', () => {
-    it('returns "No uncommitted changes." for a non-git directory', () => {
+    it('reports git unavailable for a non-git directory', () => {
         const root = makeRoot();
         const result = toolGetReviewText(root, {});
-        expect(result).toBe('No uncommitted changes.');
+        expect(result).toBe('Failed to run git diff. Is this a git repository?');
     });
 
     it('returns "No uncommitted changes." for a clean git repo', () => {

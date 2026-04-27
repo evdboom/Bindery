@@ -234,14 +234,16 @@ server.registerTool('format', {
 server.registerTool('get_review_text', {
     title: 'Review Text',
     description:
-        'Structured git diff of uncommitted changes with context lines. ' +
-        'Filter by language folder (EN, NL, or ALL). Ignores CR-at-EOL to avoid CRLF noise. ' +
-        'Set autoStage to true to stage reviewed files so the next call only shows new changes.',
+        'Structured review payload combining (a) the git diff of uncommitted changes and (b) any regions wrapped in Bindery review markers ' +
+        '(<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->). ' +
+        'Marker regions are included even when the surrounding lines have already been committed — useful when an author commits work-in-progress and continues on another machine. ' +
+        'A missing stop marker means the region runs to end of file. Filter by language folder (EN, NL, or ALL). Ignores CR-at-EOL to avoid CRLF noise. ' +
+        'Set autoStage to true to stage reviewed files AND remove the review-marker lines from disk (staged together) so the next call only shows new changes.',
     inputSchema: {
         book:         bookSchema,
         language:     z.string().optional().describe('Language filter: EN, NL, or ALL (default ALL)'),
         contextLines: z.number().optional().describe('Context lines around each change (default 3)'),
-        autoStage:    z.boolean().optional().describe('Stage reviewed files after producing diff (default false)'),
+        autoStage:    z.boolean().optional().describe('Stage reviewed files and consume review markers after producing the diff (default false)'),
     },
     annotations: { destructiveHint: true },
 }, async ({ book, language, contextLines, autoStage }) => {

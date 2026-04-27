@@ -77,7 +77,10 @@ jobs:
           npm run compile
 
       - name: Sync templates to vscode-ext
-        run: cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+        run: |
+          cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+          rm -rf vscode-ext/src/templates
+          cp -R mcp-ts/src/templates vscode-ext/src/templates
 
       - name: Bundle mcp-ts into extension
         run: |
