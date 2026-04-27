@@ -28,6 +28,7 @@
   "author": "Erik van der Boom",
   "license": "MIT",
   "dependencies": {
+    "@bindery/core": "*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "fflate": "^0.8.2",
     "minisearch": "^7.1.0",

@@ -1,0 +1,15 @@
+{
+  "name": "bindery-monorepo",
+  "private": true,
+  "workspaces": [
+    "bindery-core",
+    "vscode-ext",
+    "mcp-ts",
+    "obsidian-plugin"
+  ],
+  "scripts": {
+    "build": "npm run build -ws --if-present",
+    "test": "npm run test -ws --if-present",
+    "build:core": "npm run build --workspace=bindery-core"
+  }
+}

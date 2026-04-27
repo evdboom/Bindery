@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   test:
-    name: Test & template-sync check
+    name: Test & build check
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -25,19 +25,32 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: |
-            mcp-ts/package-lock.json
-            vscode-ext/package-lock.json
+          cache-dependency-path: package-lock.json
+
+      # ── Workspace install ─────────────────────────────────────────────────────
+      - name: Install all workspace dependencies
+        run: npm ci
+
+      # ── bindery-core ──────────────────────────────────────────────────────────
+      - name: Build bindery-core
+        run: npm run build --workspace=bindery-core
+
+      - name: Test bindery-core
+        run: npm run test:ci --workspace=bindery-core
+
+      - name: Upload bindery-core test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bindery-core-test-results-${{ matrix.os }}
+          path: bindery-core/test-results.json
 
       # ── MCP server ────────────────────────────────────────────────────────────
-      - name: Install mcp-ts dependencies
-        run: cd mcp-ts && npm ci
-
       - name: Compile mcp-ts
-        run: cd mcp-ts && npm run compile
+        run: npm run compile --workspace=mcp-ts
 
       - name: Run mcp-ts tests
-        run: cd mcp-ts && npm run test:ci
+        run: npm run test:ci --workspace=mcp-ts
 
       - name: Upload mcp-ts test results
         if: always()
@@ -46,26 +59,12 @@ jobs:
           name: mcp-test-results-${{ matrix.os }}
           path: mcp-ts/test-results.json
 
-      # ── Template sync ─────────────────────────────────────────────────────────
-      # ai-setup-templates.ts and the templates/ folder copy are .gitignored
-      # — always generated fresh here from the mcp-ts source of truth.
-      - name: Sync templates to vscode-ext
-        shell: bash
-        run: |
-          cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
-          rm -rf vscode-ext/src/templates
-          cp -R mcp-ts/src/templates vscode-ext/src/templates
-          echo "Template copy synced."
-
       # ── VS Code extension ─────────────────────────────────────────────────────
-      - name: Install vscode-ext dependencies
-        run: cd vscode-ext && npm ci
-
       - name: Compile vscode-ext
-        run: cd vscode-ext && npm run compile
+        run: npm run compile --workspace=vscode-ext
 
       - name: Run vscode-ext tests
-        run: cd vscode-ext && npm run test:ci
+        run: npm run test:ci --workspace=vscode-ext
 
       - name: Upload vscode-ext test results
         if: always()
@@ -73,6 +72,20 @@ jobs:
         with:
           name: vscode-ext-test-results-${{ matrix.os }}
           path: vscode-ext/test-results.json
+
+      # ── Obsidian plugin ───────────────────────────────────────────────────────
+      - name: Compile obsidian-plugin
+        run: npm run compile --workspace=obsidian-plugin
+
+      - name: Run obsidian-plugin tests
+        run: npm run test:ci --workspace=obsidian-plugin
+
+      - name: Upload obsidian-plugin test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: obsidian-plugin-test-results-${{ matrix.os }}
+          path: obsidian-plugin/test-results.json
 
   # ── Job: Coverage gates ──────────────────────────────────────────────────────
   # Runs coverage-with-thresholds on ubuntu only (one platform is enough — coverage
@@ -86,29 +99,25 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: |
-            mcp-ts/package-lock.json
-            vscode-ext/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install mcp-ts
-        run: cd mcp-ts && npm ci
-      - name: Compile mcp-ts
-        run: cd mcp-ts && npm run compile
+      - name: Install all workspace dependencies
+        run: npm ci
+
+      - name: Build bindery-core
+        run: npm run build --workspace=bindery-core
+
       - name: Tool parity guard
         run: node scripts/check-tool-parity.mjs
+
+      - name: bindery-core coverage
+        run: npm run test:coverage --workspace=bindery-core
+
       - name: mcp-ts coverage
-        run: cd mcp-ts && npm run test:coverage
+        run: npm run compile --workspace=mcp-ts && npm run test:coverage --workspace=mcp-ts
 
-      - name: Sync templates to vscode-ext
-        run: |
-          cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
-          rm -rf vscode-ext/src/templates
-          cp -R mcp-ts/src/templates vscode-ext/src/templates
-
-      - name: Install vscode-ext
-        run: cd vscode-ext && npm ci
       - name: vscode-ext coverage
-        run: cd vscode-ext && npm run test:coverage
+        run: npm run compile --workspace=vscode-ext && npm run test:coverage --workspace=vscode-ext
 
       - name: Upload coverage reports
         if: always()
@@ -116,5 +125,6 @@ jobs:
         with:
           name: coverage
           path: |
+            bindery-core/coverage/
             mcp-ts/coverage/
             vscode-ext/coverage/

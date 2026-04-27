@@ -7,32 +7,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as cp from 'node:child_process';
-import { updateTypography } from './format';
+import { updateTypography } from '@bindery/core';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface LanguageConfig {
-    code: string;
-    folderName: string;
-    /** Optional per-language export title from settings.json languages[]. */
-    bookTitle?: string;
-    chapterWord: string;
-    actPrefix: string;
-    prologueLabel: string;
-    epilogueLabel: string;
-    /** True for the primary language the book is written in. */
-    isDefault?: boolean;
-    /** Dialect exports derived from this language (e.g. en-gb from EN). No story folder of their own. */
-    dialects?: DialectConfig[];
-}
-
-/** A dialect derived from a parent language — same story folder, word substitutions applied at export. */
-export interface DialectConfig {
-    /** Dialect code, used as the key in translations.json (e.g. 'en-gb'). */
-    code: string;
-    /** Human-readable label, e.g. 'British English'. */
-    label?: string;
-}
+// LanguageConfig and DialectConfig now live in @bindery/core.
+// Re-exported here for backward compatibility.
+export type { LanguageConfig, DialectConfig, UkReplacement } from '@bindery/core';
+import type { LanguageConfig, DialectConfig, UkReplacement } from '@bindery/core';
 
 export type OutputType = 'md' | 'docx' | 'epub' | 'pdf';
 
@@ -121,11 +103,6 @@ const FIRST_H1_RE = /^(\s*)#\s+/m;
 const HEADING_LINE_RE = /^#[^\n]*\n/m;
 
 // ─── UK Conversion (US → UK) ───────────────────────────────────────────────
-
-export interface UkReplacement {
-    us: string;
-    uk: string;
-}
 
 const UK_REPLACEMENTS: UkReplacement[] = [
     { us: 'color', uk: 'colour' },
