@@ -6,6 +6,7 @@
   "scripts": {
     "compile": "tsc -p ./",
     "build": "tsc -p ./",
+    "bundle": "esbuild src/main.ts --bundle --platform=node --target=es2018 --external:obsidian --outfile=out/main.js",
     "test": "vitest run",
     "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json",
     "test:coverage": "vitest run --coverage"
@@ -16,6 +17,7 @@
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.5",
+    "esbuild": "^0.28.0",
     "typescript": "6.0.3",
     "vitest": "^4.1.5"
   },
