@@ -20,11 +20,14 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Build bindery-core
+        run: npm run build --workspace=bindery-core
+
       - name: Build mcp-ts
-        run: |
-          cd mcp-ts
-          npm ci
-          npm run compile
+        run: npm run compile --workspace=mcp-ts
 
       - name: Copy built server into mcpb
         run: |
@@ -70,17 +73,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Build mcp-ts (bundled inside extension)
-        run: |
-          cd mcp-ts
-          npm ci
-          npm run compile
+      - name: Install workspace dependencies
+        run: npm ci
 
-      - name: Sync templates to vscode-ext
-        run: |
-          cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
-          rm -rf vscode-ext/src/templates
-          cp -R mcp-ts/src/templates vscode-ext/src/templates
+      - name: Build bindery-core
+        run: npm run build --workspace=bindery-core
+
+      - name: Build mcp-ts (bundled inside extension)
+        run: npm run compile --workspace=mcp-ts
 
       - name: Bundle mcp-ts into extension
         run: |
@@ -95,7 +95,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           cd vscode-ext
-          npm ci
           npm version "$VERSION" --no-git-tag-version
           npx --yes @vscode/vsce@3.7.1 package -o "bindery-${VERSION}.vsix"
 
@@ -112,7 +111,52 @@ jobs:
           path: vscode-ext/*.vsix
           if-no-files-found: error
 
-  # ── Job 3: Publish VSIX to VS Code Marketplace ──────────────────────────────
+  # ── Job 3: Build Obsidian plugin + attach zip to release ────────────────────
+  package-obsidian:
+    name: Package Obsidian Plugin
+    needs: build-mcpb
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Build bindery-core
+        run: npm run build --workspace=bindery-core
+
+      - name: Bundle obsidian-plugin
+        # esbuild bundles src/main.ts + @bindery/core into a single main.js
+        # as required by the Obsidian community plugin format.
+        run: npm run bundle --workspace=obsidian-plugin
+
+      - name: Package Obsidian plugin zip
+        # Obsidian community plugins are installed by dropping main.js + manifest.json
+        # (+ optional styles.css) into the vault plugins folder. We zip them for the release.
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Stamp manifest.json version to match the release tag
+          jq --arg v "$VERSION" '.version = $v' obsidian-plugin/manifest.json > tmp.json && mv tmp.json obsidian-plugin/manifest.json
+          mkdir -p obsidian-plugin/dist
+          cp obsidian-plugin/out/main.js  obsidian-plugin/dist/main.js
+          cp obsidian-plugin/manifest.json obsidian-plugin/dist/manifest.json
+          cd obsidian-plugin/dist
+          zip "../../bindery-obsidian-${VERSION}.zip" main.js manifest.json
+
+      - name: Upload Obsidian plugin zip to release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: bindery-obsidian-*.zip
+          fail_on_unmatched_files: true
+
+  # ── Job 4: Publish VSIX to VS Code Marketplace ──────────────────────────────
   publish-vscode:
     name: Publish VS Code Extension
     needs: package-vscode

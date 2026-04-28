@@ -77,6 +77,9 @@ jobs:
       - name: Compile obsidian-plugin
         run: npm run compile --workspace=obsidian-plugin
 
+      - name: Bundle obsidian-plugin (validates release artefact is producible)
+        run: npm run bundle --workspace=obsidian-plugin
+
       - name: Run obsidian-plugin tests
         run: npm run test:ci --workspace=obsidian-plugin
 
