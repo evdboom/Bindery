@@ -18,7 +18,7 @@ export interface Vault {
     getName(): string;
     on(event: string, callback: (...args: unknown[]) => unknown): EventRef;
     /** Obsidian file system adapter — only present on desktop builds. */
-    adapter: { basePath: string; [key: string]: unknown };
+    adapter?: { basePath: string; [key: string]: unknown };
 }
 
 export interface EventRef {
@@ -45,11 +45,21 @@ export interface PluginSettingTab {
     hide(): void;
 }
 
-export interface Plugin {
-    app: App;
-    loadData(): Promise<unknown>;
-    saveData(data: unknown): Promise<void>;
-    addCommand(command: { id: string; name: string; callback: () => void | Promise<void> }): void;
-    addSettingTab(tab: PluginSettingTab): void;
-    registerEvent(eventRef: EventRef): void;
+/**
+ * Minimal stub for the Obsidian Plugin base class.
+ *
+ * The real implementation is injected by the Obsidian runtime. This class
+ * provides enough structure for TypeScript compilation and unit testing.
+ * `BinderyPlugin` extends this class, matching the standard Obsidian plugin shape.
+ */
+export class Plugin {
+    app!: App;
+
+    constructor(app: App) { this.app = app; }
+
+    loadData(): Promise<unknown> { return Promise.resolve(null); }
+    saveData(_data: unknown): Promise<void> { return Promise.resolve(); }
+    addCommand(_command: { id: string; name: string; callback: () => void | Promise<void> }): void {}
+    addSettingTab(_tab: PluginSettingTab): void {}
+    registerEvent(_eventRef: EventRef): void {}
 }

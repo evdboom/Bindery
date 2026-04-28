@@ -13,39 +13,29 @@ import { readWorkspaceSettings, BINDERY_FOLDER, SETTINGS_FILENAME } from '@binde
 import { formatFile } from './formatter';
 import { exportBook } from './exporter';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
-import type { App, Plugin, TFile, Vault } from './obsidian-types';
+import { Plugin } from './obsidian-types';
+import type { TFile } from './obsidian-types';
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
 
-// The real `Plugin`, `Notice`, etc. come from the Obsidian runtime.
-// We re-declare the minimal class shape here so TypeScript accepts it
-// without the npm `obsidian` package installed.
-
-export default class BinderyPlugin {
-    app: App;
+export default class BinderyPlugin extends Plugin {
     settings: BinderySettings = { ...DEFAULT_SETTINGS };
-    private plugin: Plugin;
-
-    constructor(app: App, plugin: Plugin) {
-        this.app = app;
-        this.plugin = plugin;
-    }
 
     async onload(): Promise<void> {
         await this.loadSettings();
 
         // Format on save
-        this.plugin.registerEvent(
+        this.registerEvent(
             this.app.vault.on('modify', (...args: unknown[]) => {
                 const file = args[0] as TFile;
                 if (this.settings.formatOnSave && file.extension === 'md') {
-                    void this.formatFile(file);
+                    void formatFile(this.app.vault, file);
                 }
             }),
         );
 
         // Command: format active document
-        this.plugin.addCommand({
+        this.addCommand({
             id:       'format-document',
             name:     'Bindery: Format document',
             callback: () => void this.formatActive(),
@@ -54,7 +44,7 @@ export default class BinderyPlugin {
         // Export commands
         for (const fmt of ['md', 'docx', 'epub', 'pdf'] as const) {
             const label = fmt.toUpperCase();
-            this.plugin.addCommand({
+            this.addCommand({
                 id:       `export-${fmt}`,
                 name:     `Bindery: Export → ${label}`,
                 callback: () => void exportBook(this.app, this.settings, fmt),
@@ -62,28 +52,23 @@ export default class BinderyPlugin {
         }
 
         // Init workspace
-        this.plugin.addCommand({
+        this.addCommand({
             id:       'init-workspace',
             name:     'Bindery: Initialize workspace',
             callback: () => void this.initWorkspace(),
         });
 
-        // Show MCP config snippet
-        this.plugin.addCommand({
+        // Show MCP config snippet — copies JSON to clipboard
+        this.addCommand({
             id:       'show-mcp-config',
             name:     'Bindery: Show MCP config snippet',
-            callback: () => { this.showMcpSnippet(); },
+            callback: () => {
+                const snippet = this.showMcpSnippet();
+                void navigator.clipboard.writeText(snippet);
+            },
         });
 
-        this.plugin.addSettingTab(new BinderySettingsTab(this.app, {
-            ...this.plugin,
-            settings: this.settings,
-            saveSettings: () => this.saveSettings(),
-        }));
-    }
-
-    private async formatFile(file: TFile): Promise<void> {
-        await formatFile(this.app.vault, file);
+        this.addSettingTab(new BinderySettingsTab(this.app, this));
     }
 
     private async formatActive(): Promise<void> {
@@ -92,8 +77,7 @@ export default class BinderyPlugin {
     }
 
     private async initWorkspace(): Promise<void> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const vaultPath = (this.app.vault.adapter as any).basePath as string;
+        const vaultPath     = this.app.vault.adapter!.basePath;
         const binderyFolder = path.join(vaultPath, BINDERY_FOLDER);
         const settingsPath  = path.join(binderyFolder, SETTINGS_FILENAME);
 
@@ -115,8 +99,7 @@ export default class BinderyPlugin {
     }
 
     showMcpSnippet(): string {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const vaultPath = (this.app.vault.adapter as any).basePath as string;
+        const vaultPath = this.app.vault.adapter!.basePath;
         const bookName  = this.app.vault.getName();
         const snippet   = JSON.stringify({
             mcpServers: {
@@ -134,12 +117,12 @@ export default class BinderyPlugin {
     }
 
     async loadSettings(): Promise<void> {
-        const loaded = await this.plugin.loadData() as Partial<BinderySettings> | null;
+        const loaded = await this.loadData() as Partial<BinderySettings> | null;
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
     }
 
     async saveSettings(): Promise<void> {
-        await this.plugin.saveData(this.settings);
+        await this.saveData(this.settings);
     }
 }
 

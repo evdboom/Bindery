@@ -9,8 +9,9 @@ export default defineConfig({
             reportsDirectory: './coverage',
             include: ['src/**/*.ts'],
             exclude: [
-                'src/main.ts',          // Obsidian Plugin lifecycle, not unit-testable
-                'src/settings-tab.ts',  // Obsidian UI component, not unit-testable
+                'src/main.ts',              // Obsidian Plugin lifecycle, not unit-testable
+                'src/settings-tab.ts',      // Obsidian UI component, not unit-testable
+                'src/obsidian-types.ts',    // Runtime stubs injected by Obsidian, not unit-testable
             ],
             thresholds: {
                 statements: 80,

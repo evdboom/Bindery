@@ -131,8 +131,7 @@ export async function exportBook(
     settings: BinderySettings,
     format:   ExportFormat,
 ): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vaultPath = (app.vault.adapter as any).basePath as string;
+    const vaultPath    = app.vault.adapter!.basePath;
     const bookSettings = readWorkspaceSettings(vaultPath);
 
     const title  = typeof bookSettings?.bookTitle === 'string' ? bookSettings.bookTitle : undefined;

@@ -103,7 +103,7 @@ export function getIgnoredWords(
 }
 
 /**
- * Get glossary rules for a language key (type === 'glossary' entries).
+ * Get glossary rules for a language key (type === 'glossary' entries only).
  */
 export function getGlossaryRules(
     translations: TranslationsFile | null,
@@ -112,6 +112,7 @@ export function getGlossaryRules(
     if (!translations) { return []; }
     const entry = resolveEntry(translations, langKey);
     if (!entry) { return []; }
+    if (entry.type !== 'glossary') { return []; }
     return (entry.rules ?? []).filter(r => r.from?.trim() && r.to?.trim());
 }
 
@@ -207,7 +208,9 @@ export function upsertGlossaryRule(
         };
     }
     const entry = translations[langKey];
-    // If entry exists but was previously substitution, keep it — don't downgrade
+    if (entry.type !== 'glossary') {
+        throw new Error(`Entry '${langKey}' has type '${entry.type}', expected 'glossary'.`);
+    }
     const rules = entry.rules ?? [];
     const idx = rules.findIndex(r => r.from.toLowerCase() === rule.from.toLowerCase());
     if (idx >= 0) {

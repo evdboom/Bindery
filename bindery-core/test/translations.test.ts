@@ -226,6 +226,14 @@ describe('upsertSubstitutionRule', () => {
 // ─── upsertGlossaryRule ───────────────────────────────────────────────────────
 
 describe('upsertGlossaryRule', () => {
+    it('throws when langKey already exists as a substitution entry', () => {
+        const root = makeRoot();
+        upsertSubstitutionRule(root, 'en-gb', { from: 'color', to: 'colour' });
+        expect(() => {
+            upsertGlossaryRule(root, 'en-gb', 'British', 'en', { from: 'FluxCore', to: 'FluxKern' });
+        }).toThrow(/type 'substitution'/);
+    });
+
     it('creates a glossary entry when none exists', () => {
         const root = makeRoot();
         upsertGlossaryRule(root, 'nl', 'Dutch', 'en', { from: 'FluxCore', to: 'FluxKern' });
@@ -260,6 +268,13 @@ describe('upsertGlossaryRule', () => {
 describe('getGlossaryRules', () => {
     it('returns empty array for null translations', () => {
         expect(getGlossaryRules(null, 'nl')).toEqual([]);
+    });
+
+    it('returns empty array for entries with non-glossary type', () => {
+        const translations: TranslationsFile = {
+            'en-gb': { type: 'substitution', rules: [{ from: 'color', to: 'colour' }] },
+        };
+        expect(getGlossaryRules(translations, 'en-gb')).toEqual([]);
     });
 
     it('returns rules for glossary entries', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BinderyPlugin from '../src/main';
-import type { App, Vault, Plugin } from '../src/obsidian-types';
+import type { App, Vault } from '../src/obsidian-types';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
@@ -18,24 +18,12 @@ function makeApp(vaultPath: string, vaultName = 'TestVault'): App {
     return { vault };
 }
 
-function makePlugin(): Plugin {
-    return {
-        app: null as unknown as App,
-        loadData:       vi.fn().mockResolvedValue(null),
-        saveData:       vi.fn().mockResolvedValue(undefined),
-        addCommand:     vi.fn(),
-        addSettingTab:  vi.fn(),
-        registerEvent:  vi.fn(),
-    } as unknown as Plugin;
-}
-
 // ─── showMcpSnippet ───────────────────────────────────────────────────────────
 
 describe('showMcpSnippet', () => {
     it('returns valid JSON containing the vault path and name', () => {
         const app = makeApp('/my/vault', 'MyBook');
-        const plugin = makePlugin();
-        const bp = new BinderyPlugin(app, plugin);
+        const bp = new BinderyPlugin(app);
 
         const snippet = bp.showMcpSnippet();
         const parsed = JSON.parse(snippet) as { mcpServers: { bindery: { args: string[] } } };
@@ -45,8 +33,7 @@ describe('showMcpSnippet', () => {
 
     it('returns a JSON string with mcpServers key', () => {
         const app = makeApp('/some/path');
-        const plugin = makePlugin();
-        const bp = new BinderyPlugin(app, plugin);
+        const bp = new BinderyPlugin(app);
 
         const snippet = bp.showMcpSnippet();
         expect(() => JSON.parse(snippet)).not.toThrow();
@@ -66,8 +53,7 @@ describe('initWorkspace (via onload side-effect)', () => {
 
     it('creates .bindery/settings.json when it does not exist', async () => {
         const app = makeApp(tmpRoot, 'NewBook');
-        const plugin = makePlugin();
-        const bp = new BinderyPlugin(app, plugin);
+        const bp = new BinderyPlugin(app);
 
         await bp['initWorkspace']();
 
@@ -85,8 +71,7 @@ describe('initWorkspace (via onload side-effect)', () => {
         fs.writeFileSync(settingsPath, original, 'utf-8');
 
         const app = makeApp(tmpRoot, 'NewBook');
-        const plugin = makePlugin();
-        const bp = new BinderyPlugin(app, plugin);
+        const bp = new BinderyPlugin(app);
 
         await bp['initWorkspace']();
 

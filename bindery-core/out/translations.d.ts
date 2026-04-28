@@ -47,7 +47,7 @@ export declare function getSubstitutionRules(translations: TranslationsFile | nu
  */
 export declare function getIgnoredWords(translations: TranslationsFile | null, langKey: string): Set<string>;
 /**
- * Get glossary rules for a language key (type === 'glossary' entries).
+ * Get glossary rules for a language key (type === 'glossary' entries only).
  */
 export declare function getGlossaryRules(translations: TranslationsFile | null, langKey: string): TranslationRule[];
 /**
