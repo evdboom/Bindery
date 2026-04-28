@@ -9,7 +9,6 @@ export default defineConfig({
             reportsDirectory: './coverage',
             include: ['src/**/*.ts'],
             exclude: [
-                'src/templates.ts',          // large code-as-data blob
                 'src/index.ts',              // server bootstrap, exercised by integration-stdio tests
             ],
             thresholds: {
