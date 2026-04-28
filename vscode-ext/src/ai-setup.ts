@@ -9,57 +9,13 @@
  *   cursor    → .cursor/rules
  *   agents    → AGENTS.md  (OpenAI Agents, Aider, Codex, etc.)
  *
- * Templates live in mcp-ts/src/templates.ts — the single source of truth.
- * ai-setup-templates.ts is only an optional generated copy used by packaged
- * builds and some local test/build flows.
+ * Templates and TemplateContext live in @bindery/core (single source of truth).
  */
 
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
 import type { WorkspaceSettings } from './workspace';
-import type { LanguageConfig }    from './merge';
-
-// ─── Resilient template loader ────────────────────────────────────────────────
-// mcp-ts/src/templates.ts is the source of truth inside the mono-repo.
-// ai-setup-templates.ts is an optional generated copy for packaged builds.
-// That means the copy should be removable in normal repo development.
-
-// Forward-reference is fine in TypeScript — TemplateContext is defined below.
-// eslint-disable-next-line @typescript-eslint/no-use-before-define
-type RenderTemplateFn = (name: string, ctx: TemplateContext) => string;
-
-function loadRenderTemplate(): RenderTemplateFn {
-    // 1. Preferred in the mono-repo: the source-of-truth template file.
-    //    __dirname is `vscode-ext/out/` in compiled output and `vscode-ext/src/`
-    //    in ts-node/vitest, so two levels up lands at the repo root.
-    const fallbackPath = path.resolve(__dirname, '..', '..', 'mcp-ts', 'src', 'templates');
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const mod = require(fallbackPath) as { renderTemplate: RenderTemplateFn };
-        return mod.renderTemplate;
-    } catch {
-        // source not available — fall through to packaged-copy fallback
-    }
-
-    // 2. Packaged-build fallback: generated copy inside vscode-ext/src.
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const mod = require('./ai-setup-templates') as { renderTemplate: RenderTemplateFn };
-        return mod.renderTemplate;
-    } catch {
-        // copy also missing — give a clear, actionable error
-    }
-
-    throw new Error(
-        'Bindery: template file not found.\n' +
-        'Expected either the repo source template at mcp-ts/src/templates.ts\n' +
-        'or the optional generated copy at vscode-ext/src/ai-setup-templates.ts.\n' +
-        'In normal repo development, the generated copy can be absent.\n' +
-        'If you are running a packaged/local build that depends on the copy, regenerate it or build from the repo root.',
-    );
-}
-
-const renderTemplate = loadRenderTemplate();
+import { renderTemplate, type TemplateContext } from '@bindery/core';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -131,20 +87,7 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
     return result;
 }
 
-interface TemplateContext {
-    title:          string;
-    author:         string;
-    description:    string;
-    genre:          string;
-    audience:       string;
-    storyFolder:    string;
-    notesFolder:    string;
-    arcFolder:      string;
-    memoriesFolder: string;
-    languages:      LanguageConfig[];
-    langList:       string;
-    hasMultiLang:   boolean;
-}
+// ─── Context builder ──────────────────────────────────────────────────────────
 
 function buildContext(s: WorkspaceSettings): TemplateContext {
     const title       = (typeof s.bookTitle === 'string' ? s.bookTitle : undefined) ?? 'Untitled';
@@ -155,7 +98,7 @@ function buildContext(s: WorkspaceSettings): TemplateContext {
     const storyFolder = s.storyFolder  ?? 'Story';
     const notesFolder = 'Notes';
     const arcFolder   = 'Arc';
-    const languages   = s.languages   ?? [];
+    const languages: Array<{ code: string; folderName: string }> = s.languages ?? [];
 
     const langList = languages.length > 0
         ? languages.map((l, i) => i === 0 ? `${l.code} (source)` : `${l.code} (translation)`).join(', ')

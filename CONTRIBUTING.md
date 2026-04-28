@@ -46,6 +46,23 @@ The `test:ci` script writes a `test-results.json` file in each package directory
 
 ---
 
+## Test Ownership Policy
+
+To keep tests maintainable as packages grow, place tests where the production code
+lives:
+
+1. **Unit tests live in the owning package.**
+	 - Example: template rendering logic in `bindery-core/src/templates/**` should be
+		 tested primarily in `bindery-core/test/`.
+2. **Cross-package tests validate wiring, contracts, and integration only.**
+	 - Example: `mcp-ts` should keep a thin shim/contract test for re-exports, not
+		 duplicate full behavior suites owned by `bindery-core`.
+3. **Coverage exclusions should reflect testability, not ownership drift.**
+	 - Do not exclude files from package coverage solely because tests were placed in
+		 a different package.
+
+---
+
 ## MCP stdio integration tests (`mcp-ts/test/integration-stdio.test.ts`)
 
 These tests spawn `node out/index.js` as a real child process and drive it over

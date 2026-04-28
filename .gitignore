@@ -4,6 +4,8 @@ node_modules/
 # Build outputs
 vscode-ext/out/
 mcp-ts/out/
+bindery-core/out/
+obsidian-plugin/out/
 mcp-rust/target/
 
 # Packaged extensions
@@ -31,7 +33,3 @@ Thumbs.db
 *.swp
 *.swo
 *~
-
-# misc - added in pipeline
-ai-setup-templates.ts
-vscode-ext/src/templates/

@@ -9,7 +9,7 @@ export default defineConfig({
             reportsDirectory: './coverage',
             include: ['src/**/*.ts'],
             exclude: [
-                'src/index.ts',              // server bootstrap, exercised by integration-stdio tests
+                'src/index.ts',          // barrel re-export only
             ],
             thresholds: {
                 statements: 80,
