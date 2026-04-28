@@ -119,6 +119,9 @@ jobs:
       - name: vscode-ext coverage
         run: npm run compile --workspace=vscode-ext && npm run test:coverage --workspace=vscode-ext
 
+      - name: obsidian-plugin coverage
+        run: npm run compile --workspace=obsidian-plugin && npm run test:coverage --workspace=obsidian-plugin
+
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -128,3 +131,4 @@ jobs:
             bindery-core/coverage/
             mcp-ts/coverage/
             vscode-ext/coverage/
+            obsidian-plugin/coverage/
