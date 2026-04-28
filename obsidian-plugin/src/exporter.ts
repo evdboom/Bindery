@@ -47,6 +47,24 @@ const LIBREOFFICE_WELL_KNOWN: string[] = process.platform === 'win32'
         '/usr/bin/soffice',
     ];
 
+// ─── Book root resolution ───────────────────────────────────────────────────────
+
+/**
+ * Resolve the absolute path to the book root folder.
+ *
+ * When `bookRoot` is empty the vault root is the book root (dedicated-vault mode).
+ * When set it must be a vault-relative path, e.g. "MyNovel" or "Books/Novel1".
+ *
+ * @param vaultPath - Absolute path to the vault as provided by Obsidian.
+ * @param bookRoot  - Vault-relative subfolder, or empty string for vault root.
+ */
+export function resolveBookRoot(vaultPath: string, bookRoot: string): string {
+    if (!bookRoot || bookRoot.trim() === '') {
+        return vaultPath;
+    }
+    return path.join(vaultPath, bookRoot.trim());
+}
+
 // ─── Path resolution ──────────────────────────────────────────────────────────
 
 /**
@@ -132,14 +150,15 @@ export async function exportBook(
     format:   ExportFormat,
 ): Promise<void> {
     const vaultPath    = app.vault.adapter!.basePath;
-    const bookSettings = readWorkspaceSettings(vaultPath);
+    const bookPath     = resolveBookRoot(vaultPath, settings.bookRoot);
+    const bookSettings = readWorkspaceSettings(bookPath);
 
     const title  = typeof bookSettings?.bookTitle === 'string' ? bookSettings.bookTitle : undefined;
     const author = bookSettings?.author;
     const outputDir = bookSettings?.mergedOutputDir ?? 'Merged';
     const prefix    = bookSettings?.mergeFilePrefix ?? 'Book';
 
-    const outputDirFull = path.join(vaultPath, outputDir);
+    const outputDirFull = path.join(bookPath, outputDir);
     if (!fs.existsSync(outputDirFull)) {
         fs.mkdirSync(outputDirFull, { recursive: true });
     }

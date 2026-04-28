@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { buildPandocArgs, resolveToolPath, resolvePandocPath, resolveLibreOfficePath, exportBook } from '../src/exporter';
-import type { App, Vault } from '../src/obsidian-types';
-import type { BinderySettings } from '../src/settings-tab';
+import * as fs   from 'node:fs';
 import * as os   from 'node:os';
 import * as path from 'node:path';
-import * as fs   from 'node:fs';
+import { buildPandocArgs, resolveToolPath, resolvePandocPath, resolveLibreOfficePath, resolveBookRoot, exportBook } from '../src/exporter';
+import type { App, Vault } from '../src/obsidian-types';
+import type { BinderySettings } from '../src/settings-tab';
 
 // ─── resolveToolPath ──────────────────────────────────────────────────────────
 
@@ -50,22 +50,26 @@ describe('resolveToolPath', () => {
 // ─── resolvePandocPath / resolveLibreOfficePath ───────────────────────────────
 
 describe('resolvePandocPath', () => {
-    it('returns "pandoc" when settings path is the default', () => {
+    it('returns a path that refers to pandoc when settings override equals default', () => {
         const settings: BinderySettings = {
             pandocPath: 'pandoc', libreOfficePath: 'libreoffice',
             formatOnSave: false, defaultFormat: 'docx',
+            bookRoot: '',
         };
-        expect(resolvePandocPath(settings)).toBe('pandoc');
+        // May return 'pandoc' (fallback) or an absolute path if pandoc is installed;
+        // either way it must reference pandoc.
+        expect(resolvePandocPath(settings)).toMatch(/pandoc/i);
     });
 });
 
 describe('resolveLibreOfficePath', () => {
-    it('returns "libreoffice" when settings path is the default', () => {
+    it('returns a path that refers to libreoffice or soffice when settings override equals default', () => {
         const settings: BinderySettings = {
             pandocPath: 'pandoc', libreOfficePath: 'libreoffice',
             formatOnSave: false, defaultFormat: 'docx',
+            bookRoot: '',
         };
-        expect(resolveLibreOfficePath(settings)).toBe('libreoffice');
+        expect(resolveLibreOfficePath(settings)).toMatch(/libreoffice|soffice/i);
     });
 });
 
@@ -131,7 +135,35 @@ function makeApp(vaultPath: string): App {
 const DEFAULT_SETTINGS: BinderySettings = {
     pandocPath: 'pandoc', libreOfficePath: 'libreoffice',
     formatOnSave: false, defaultFormat: 'docx',
+    bookRoot: '',
 };
+
+// ─── resolveBookRoot ───────────────────────────────────────────────────────
+
+describe('resolveBookRoot', () => {
+    it('returns vaultPath unchanged when bookRoot is empty', () => {
+        expect(resolveBookRoot('/vault', '')).toBe('/vault');
+    });
+
+    it('returns vaultPath unchanged when bookRoot is whitespace', () => {
+        expect(resolveBookRoot('/vault', '  ')).toBe('/vault');
+    });
+
+    it('joins vaultPath with bookRoot when set', () => {
+        const result = resolveBookRoot('/vault', 'MyNovel');
+        expect(result).toBe(path.join('/vault', 'MyNovel'));
+    });
+
+    it('handles nested bookRoot paths', () => {
+        const result = resolveBookRoot('/vault', 'Books/Novel1');
+        expect(result).toBe(path.join('/vault', 'Books', 'Novel1'));
+    });
+
+    it('trims whitespace from bookRoot', () => {
+        const result = resolveBookRoot('/vault', '  MyNovel  ');
+        expect(result).toBe(path.join('/vault', 'MyNovel'));
+    });
+});
 
 describe('exportBook', () => {
     let tmpRoot: string;
@@ -164,7 +196,8 @@ describe('exportBook', () => {
 
         expect(execMock).toHaveBeenCalledOnce();
         const [cmd, args] = execMock.mock.calls[0] as [string, string[], unknown];
-        expect(cmd).toBe('pandoc');
+        // Tool path may be an absolute path on systems where pandoc is installed
+        expect(cmd).toMatch(/pandoc/i);
         expect(args).toContain('--to=docx');
     });
 
@@ -200,8 +233,8 @@ describe('exportBook', () => {
         expect(execMock).toHaveBeenCalledTimes(2);
         const [cmd1] = execMock.mock.calls[0] as [string, string[], unknown];
         const [cmd2] = execMock.mock.calls[1] as [string, string[], unknown];
-        expect(cmd1).toBe('pandoc');
-        expect(cmd2).toBe('libreoffice');
+        expect(cmd1).toMatch(/pandoc/i);
+        expect(cmd2).toMatch(/libreoffice|soffice/i);
     });
 
     it('skips pandoc for pdf when docx already exists', async () => {
@@ -220,7 +253,7 @@ describe('exportBook', () => {
         // Only libreoffice called (docx already present)
         expect(execMock).toHaveBeenCalledOnce();
         const [cmd] = execMock.mock.calls[0] as [string, string[], unknown];
-        expect(cmd).toBe('libreoffice');
+        expect(cmd).toMatch(/libreoffice|soffice/i);
     });
 
     it('rejects when execFile reports an error', async () => {
@@ -236,7 +269,8 @@ describe('exportBook', () => {
         fs.writeFileSync(path.join(outputDir, 'Book_Merged.md'), '# Chapter', 'utf-8');
 
         const app = makeApp(tmpRoot);
-        await expect(exportBook(app, DEFAULT_SETTINGS, 'docx')).rejects.toThrow('pandoc failed');
+        // Error message includes the resolved tool path (may be absolute on systems with pandoc)
+        await expect(exportBook(app, DEFAULT_SETTINGS, 'docx')).rejects.toThrow('command not found');
     });
 
     it('reads title and author from workspace settings when present', async () => {
@@ -263,5 +297,34 @@ describe('exportBook', () => {
         const [, args] = execMock.mock.calls[0] as [string, string[], unknown];
         expect(args.some((a: string) => a.includes('My Novel'))).toBe(true);
         expect(args.some((a: string) => a.includes('Jane Doe'))).toBe(true);
+    });
+
+    it('reads settings and output from bookRoot subfolder when bookRoot is set', async () => {
+        const { execFile } = await import('node:child_process');
+        const execMock = vi.mocked(execFile);
+        execMock.mockClear();
+
+        // Create book in a subfolder of the vault
+        const bookDir = path.join(tmpRoot, 'MyNovel');
+        const binderyDir = path.join(bookDir, '.bindery');
+        fs.mkdirSync(binderyDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(binderyDir, 'settings.json'),
+            JSON.stringify({ bookTitle: 'My Novel', author: 'Jane Doe' }),
+            'utf-8',
+        );
+
+        const outputDir = path.join(bookDir, 'Merged');
+        fs.mkdirSync(outputDir, { recursive: true });
+        fs.writeFileSync(path.join(outputDir, 'Book_Merged.md'), '# Chapter', 'utf-8');
+
+        const app = makeApp(tmpRoot);
+        const settings: BinderySettings = { ...DEFAULT_SETTINGS, bookRoot: 'MyNovel' };
+        await exportBook(app, settings, 'docx');
+
+        const [, args] = execMock.mock.calls[0] as [string, string[], unknown];
+        // Output file should be inside the bookRoot subfolder
+        expect(args.some((a: string) => a.includes('MyNovel'))).toBe(true);
+        expect(args.some((a: string) => a.includes('My Novel'))).toBe(true);
     });
 });

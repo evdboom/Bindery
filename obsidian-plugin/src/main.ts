@@ -11,7 +11,7 @@
 
 import { readWorkspaceSettings, BINDERY_FOLDER, SETTINGS_FILENAME } from '@bindery/core';
 import { formatFile } from './formatter';
-import { exportBook } from './exporter';
+import { exportBook, resolveBookRoot } from './exporter';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
 import { Plugin } from './obsidian-types';
 import type { TFile } from './obsidian-types';
@@ -24,13 +24,17 @@ export default class BinderyPlugin extends Plugin {
     async onload(): Promise<void> {
         await this.loadSettings();
 
-        // Format on save
+        // Format on save — only fires for files inside the configured book root
         this.registerEvent(
             this.app.vault.on('modify', (...args: unknown[]) => {
                 const file = args[0] as TFile;
-                if (this.settings.formatOnSave && file.extension === 'md') {
-                    void formatFile(this.app.vault, file);
-                }
+                if (!this.settings.formatOnSave || file.extension !== 'md') { return; }
+                const vaultPath = this.app.vault.adapter!.basePath;
+                const bookRoot  = resolveBookRoot(vaultPath, this.settings.bookRoot);
+                // Normalise separators for reliable prefix matching
+                const absFile = path.join(vaultPath, file.path);
+                if (!absFile.startsWith(bookRoot + path.sep) && absFile !== bookRoot) { return; }
+                void formatFile(this.app.vault, file);
             }),
         );
 
@@ -78,7 +82,8 @@ export default class BinderyPlugin extends Plugin {
 
     private async initWorkspace(): Promise<void> {
         const vaultPath     = this.app.vault.adapter!.basePath;
-        const binderyFolder = path.join(vaultPath, BINDERY_FOLDER);
+        const bookPath      = resolveBookRoot(vaultPath, this.settings.bookRoot);
+        const binderyFolder = path.join(bookPath, BINDERY_FOLDER);
         const settingsPath  = path.join(binderyFolder, SETTINGS_FILENAME);
 
         if (fs.existsSync(settingsPath)) {
@@ -86,7 +91,10 @@ export default class BinderyPlugin extends Plugin {
         }
 
         fs.mkdirSync(binderyFolder, { recursive: true });
-        const vaultName = this.app.vault.getName();
+        // Derive the default book title from the folder name (or vault name for root mode)
+        const vaultName = this.settings.bookRoot
+            ? path.basename(bookPath)
+            : this.app.vault.getName();
         const defaultSettings = {
             bookTitle:   vaultName,
             author:      '',
@@ -100,7 +108,10 @@ export default class BinderyPlugin extends Plugin {
 
     showMcpSnippet(): string {
         const vaultPath = this.app.vault.adapter!.basePath;
-        const bookName  = this.app.vault.getName();
+        const bookPath  = resolveBookRoot(vaultPath, this.settings.bookRoot);
+        const bookName  = this.settings.bookRoot
+            ? path.basename(bookPath)
+            : this.app.vault.getName();
         const snippet   = JSON.stringify({
             mcpServers: {
                 bindery: {
@@ -108,7 +119,7 @@ export default class BinderyPlugin extends Plugin {
                     args: [
                         '/path/to/bindery-mcp/out/index.js',
                         '--book',
-                        `${bookName}=${vaultPath}`,
+                        `${bookName}=${bookPath}`,
                     ],
                 },
             },

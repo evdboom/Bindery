@@ -8,6 +8,16 @@ export interface BinderySettings {
     libreOfficePath:  string;
     formatOnSave:     boolean;
     defaultFormat:    ExportFormat;
+    /**
+     * Vault-relative path to the book root folder.
+     *
+     * Leave empty to treat the entire vault as the book root (dedicated-vault mode).
+     * Set to a subfolder (e.g. "MyNovel") to scope all Bindery operations — formatting,
+     * export, and MCP config — to that folder inside a shared vault.
+     *
+     * The folder must contain a `.bindery/settings.json` created by "Initialize workspace".
+     */
+    bookRoot:         string;
 }
 
 export const DEFAULT_SETTINGS: BinderySettings = {
@@ -15,6 +25,7 @@ export const DEFAULT_SETTINGS: BinderySettings = {
     libreOfficePath: 'libreoffice',
     formatOnSave:    false,
     defaultFormat:   'docx',
+    bookRoot:        '',
 };
 
 /**
