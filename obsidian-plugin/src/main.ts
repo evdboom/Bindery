@@ -21,6 +21,14 @@ import * as path from 'node:path';
 export default class BinderyPlugin extends Plugin {
     settings: BinderySettings = { ...DEFAULT_SETTINGS };
 
+    private getVaultBasePath(): string {
+        const basePath = this.app.vault.adapter?.basePath;
+        if (typeof basePath !== 'string' || !basePath.trim()) {
+            throw new Error('Vault adapter basePath is unavailable. Desktop vault path is required.');
+        }
+        return basePath;
+    }
+
     async onload(): Promise<void> {
         await this.loadSettings();
 
@@ -29,12 +37,22 @@ export default class BinderyPlugin extends Plugin {
             this.app.vault.on('modify', (...args: unknown[]) => {
                 const file = args[0] as TFile;
                 if (!this.settings.formatOnSave || file.extension !== 'md') { return; }
-                const vaultPath = this.app.vault.adapter!.basePath;
-                const bookRoot  = resolveBookRoot(vaultPath, this.settings.bookRoot);
+
+                let vaultPath: string;
+                let bookRoot: string;
+                try {
+                    vaultPath = this.getVaultBasePath();
+                    bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+                } catch {
+                    return;
+                }
+
                 // Normalise separators for reliable prefix matching
                 const absFile = path.join(vaultPath, file.path);
                 if (!absFile.startsWith(bookRoot + path.sep) && absFile !== bookRoot) { return; }
-                void formatFile(this.app.vault, file);
+                void formatFile(this.app.vault, file).catch(() => {
+                    // Keep save hooks resilient; formatting errors should not break save flow.
+                });
             }),
         );
 
@@ -66,10 +84,7 @@ export default class BinderyPlugin extends Plugin {
         this.addCommand({
             id:       'show-mcp-config',
             name:     'Bindery: Show MCP config snippet',
-            callback: () => {
-                const snippet = this.showMcpSnippet();
-                void navigator.clipboard.writeText(snippet);
-            },
+            callback: () => void this.copyMcpSnippet(),
         });
 
         this.addSettingTab(new BinderySettingsTab(this.app, this));
@@ -81,8 +96,9 @@ export default class BinderyPlugin extends Plugin {
     }
 
     private async initWorkspace(): Promise<void> {
-        const vaultPath     = this.app.vault.adapter!.basePath;
-        const bookPath      = resolveBookRoot(vaultPath, this.settings.bookRoot);
+        const vaultPath     = this.getVaultBasePath();
+        const trimmedBookRoot = this.settings.bookRoot.trim();
+        const bookPath      = resolveBookRoot(vaultPath, trimmedBookRoot);
         const binderyFolder = path.join(bookPath, BINDERY_FOLDER);
         const settingsPath  = path.join(binderyFolder, SETTINGS_FILENAME);
 
@@ -92,7 +108,7 @@ export default class BinderyPlugin extends Plugin {
 
         fs.mkdirSync(binderyFolder, { recursive: true });
         // Derive the default book title from the folder name (or vault name for root mode)
-        const vaultName = this.settings.bookRoot
+        const vaultName = trimmedBookRoot
             ? path.basename(bookPath)
             : this.app.vault.getName();
         const defaultSettings = {
@@ -106,10 +122,22 @@ export default class BinderyPlugin extends Plugin {
         fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2) + '\n', 'utf-8');
     }
 
+    private async copyMcpSnippet(): Promise<void> {
+        const snippet = this.showMcpSnippet();
+        const clipboard = globalThis.navigator?.clipboard;
+        if (clipboard?.writeText) {
+            await clipboard.writeText(snippet);
+            return;
+        }
+        // Fallback when clipboard API is unavailable in runtime/tests.
+        console.log(snippet);
+    }
+
     showMcpSnippet(): string {
-        const vaultPath = this.app.vault.adapter!.basePath;
-        const bookPath  = resolveBookRoot(vaultPath, this.settings.bookRoot);
-        const bookName  = this.settings.bookRoot
+        const vaultPath = this.getVaultBasePath();
+        const trimmedBookRoot = this.settings.bookRoot.trim();
+        const bookPath  = resolveBookRoot(vaultPath, trimmedBookRoot);
+        const bookName  = trimmedBookRoot
             ? path.basename(bookPath)
             : this.app.vault.getName();
         const snippet   = JSON.stringify({

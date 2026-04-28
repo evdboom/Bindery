@@ -22,13 +22,14 @@ function makeApp(vaultPath: string, vaultName = 'TestVault'): App {
 
 describe('showMcpSnippet', () => {
     it('returns valid JSON containing the vault path and name', () => {
-        const app = makeApp('/my/vault', 'MyBook');
+        const vaultPath = path.resolve('/my/vault');
+        const app = makeApp(vaultPath, 'MyBook');
         const bp = new BinderyPlugin(app);
 
         const snippet = bp.showMcpSnippet();
         const parsed = JSON.parse(snippet) as { mcpServers: { bindery: { args: string[] } } };
 
-        expect(parsed.mcpServers.bindery.args).toContain('MyBook=/my/vault');
+        expect(parsed.mcpServers.bindery.args).toContain(`MyBook=${vaultPath}`);
     });
 
     it('returns a JSON string with mcpServers key', () => {
@@ -42,7 +43,8 @@ describe('showMcpSnippet', () => {
     });
 
     it('uses bookRoot folder name and resolved path when bookRoot is set', () => {
-        const app = makeApp('/my/vault', 'MyVault');
+        const vaultPath = path.resolve('/my/vault');
+        const app = makeApp(vaultPath, 'MyVault');
         const bp = new BinderyPlugin(app);
         bp.settings.bookRoot = 'MyNovel';
 
@@ -52,8 +54,16 @@ describe('showMcpSnippet', () => {
         // Should use folder name "MyNovel", not vault name "MyVault"
         const bookArg = parsed.mcpServers.bindery.args.find((a: string) => a.includes('='));
         expect(bookArg).toContain('MyNovel=');
-        expect(bookArg).toContain(path.join('/my/vault', 'MyNovel'));
+        expect(bookArg).toContain(path.join(vaultPath, 'MyNovel'));
         expect(bookArg).not.toContain('MyVault=');
+    });
+
+    it('throws when vault adapter basePath is unavailable', () => {
+        const app = makeApp('/some/path');
+        const bp = new BinderyPlugin(app);
+        app.vault.adapter = undefined;
+
+        expect(() => bp.showMcpSnippet()).toThrow(/basePath is unavailable/);
     });
 });
 

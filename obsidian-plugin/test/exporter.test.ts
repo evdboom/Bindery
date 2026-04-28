@@ -45,6 +45,11 @@ describe('resolveToolPath', () => {
         fs.rmSync(tmp, { recursive: true, force: true });
         expect(result).toBe(fakeBin);
     });
+
+    it('returns non-path command override as-is', () => {
+        const result = resolveToolPath('soffice', 'libreoffice', []);
+        expect(result).toBe('soffice');
+    });
 });
 
 // ─── resolvePandocPath / resolveLibreOfficePath ───────────────────────────────
@@ -142,26 +147,36 @@ const DEFAULT_SETTINGS: BinderySettings = {
 
 describe('resolveBookRoot', () => {
     it('returns vaultPath unchanged when bookRoot is empty', () => {
-        expect(resolveBookRoot('/vault', '')).toBe('/vault');
+        const vaultPath = path.resolve('/vault');
+        expect(resolveBookRoot(vaultPath, '')).toBe(vaultPath);
     });
 
     it('returns vaultPath unchanged when bookRoot is whitespace', () => {
-        expect(resolveBookRoot('/vault', '  ')).toBe('/vault');
+        const vaultPath = path.resolve('/vault');
+        expect(resolveBookRoot(vaultPath, '  ')).toBe(vaultPath);
     });
 
     it('joins vaultPath with bookRoot when set', () => {
-        const result = resolveBookRoot('/vault', 'MyNovel');
-        expect(result).toBe(path.join('/vault', 'MyNovel'));
+        const vaultPath = path.resolve('/vault');
+        const result = resolveBookRoot(vaultPath, 'MyNovel');
+        expect(result).toBe(path.join(vaultPath, 'MyNovel'));
     });
 
     it('handles nested bookRoot paths', () => {
-        const result = resolveBookRoot('/vault', 'Books/Novel1');
-        expect(result).toBe(path.join('/vault', 'Books', 'Novel1'));
+        const vaultPath = path.resolve('/vault');
+        const result = resolveBookRoot(vaultPath, 'Books/Novel1');
+        expect(result).toBe(path.join(vaultPath, 'Books', 'Novel1'));
     });
 
     it('trims whitespace from bookRoot', () => {
-        const result = resolveBookRoot('/vault', '  MyNovel  ');
-        expect(result).toBe(path.join('/vault', 'MyNovel'));
+        const vaultPath = path.resolve('/vault');
+        const result = resolveBookRoot(vaultPath, '  MyNovel  ');
+        expect(result).toBe(path.join(vaultPath, 'MyNovel'));
+    });
+
+    it('throws when bookRoot escapes the vault', () => {
+        const vaultPath = path.resolve('/vault');
+        expect(() => resolveBookRoot(vaultPath, '../outside')).toThrow(/must stay inside the vault/);
     });
 });
 
@@ -179,6 +194,12 @@ describe('exportBook', () => {
     it('throws when merged markdown input does not exist', async () => {
         const app = makeApp(tmpRoot);
         await expect(exportBook(app, DEFAULT_SETTINGS, 'docx')).rejects.toThrow('Merged markdown not found');
+    });
+
+    it('throws when vault basePath is missing', async () => {
+        const app = makeApp(tmpRoot);
+        app.vault.adapter = undefined;
+        await expect(exportBook(app, DEFAULT_SETTINGS, 'docx')).rejects.toThrow(/basePath is unavailable/);
     });
 
     it('calls pandoc with correct args for docx export', async () => {
@@ -215,6 +236,21 @@ describe('exportBook', () => {
 
         const [, args] = execMock.mock.calls[0] as [string, string[], unknown];
         expect(args).toContain('--to=epub');
+    });
+
+    it('does not invoke pandoc for markdown export', async () => {
+        const { execFile } = await import('node:child_process');
+        const execMock = vi.mocked(execFile);
+        execMock.mockClear();
+
+        const outputDir = path.join(tmpRoot, 'Merged');
+        fs.mkdirSync(outputDir, { recursive: true });
+        fs.writeFileSync(path.join(outputDir, 'Book_Merged.md'), '# Chapter', 'utf-8');
+
+        const app = makeApp(tmpRoot);
+        await exportBook(app, DEFAULT_SETTINGS, 'md');
+
+        expect(execMock).not.toHaveBeenCalled();
     });
 
     it('calls pandoc then libreoffice for pdf export', async () => {

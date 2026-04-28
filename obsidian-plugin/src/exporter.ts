@@ -59,10 +59,18 @@ const LIBREOFFICE_WELL_KNOWN: string[] = process.platform === 'win32'
  * @param bookRoot  - Vault-relative subfolder, or empty string for vault root.
  */
 export function resolveBookRoot(vaultPath: string, bookRoot: string): string {
-    if (!bookRoot || bookRoot.trim() === '') {
-        return vaultPath;
+    const resolvedVaultPath = path.resolve(vaultPath);
+    const trimmed = bookRoot.trim();
+    if (!trimmed) {
+        return resolvedVaultPath;
     }
-    return path.join(vaultPath, bookRoot.trim());
+
+    const candidate = path.resolve(resolvedVaultPath, trimmed);
+    const isInsideVault = candidate === resolvedVaultPath || candidate.startsWith(resolvedVaultPath + path.sep);
+    if (!isInsideVault) {
+        throw new Error(`bookRoot must stay inside the vault: '${bookRoot}'`);
+    }
+    return candidate;
 }
 
 // ─── Path resolution ──────────────────────────────────────────────────────────
@@ -76,8 +84,11 @@ export function resolveBookRoot(vaultPath: string, bookRoot: string): string {
  *   3. Falls back to the default command name (let PATH resolve it).
  */
 export function resolveToolPath(override: string, defaultCmd: string, wellKnown: string[]): string {
-    if (override && override !== defaultCmd && fs.existsSync(override)) {
-        return override;
+    const trimmed = override.trim();
+    if (trimmed && trimmed !== defaultCmd) {
+        // Respect explicit user overrides. This supports command aliases like
+        // "soffice" in addition to absolute paths.
+        return trimmed;
     }
     for (const p of wellKnown) {
         if (fs.existsSync(p)) { return p; }
@@ -134,6 +145,14 @@ function execFileAsync(cmd: string, args: string[]): Promise<void> {
     });
 }
 
+function getVaultBasePath(app: App): string {
+    const basePath = app.vault.adapter?.basePath;
+    if (typeof basePath !== 'string' || !basePath.trim()) {
+        throw new Error('Vault adapter basePath is unavailable. Desktop vault path is required for export.');
+    }
+    return basePath;
+}
+
 /**
  * Export the book to the requested format using Pandoc.
  *
@@ -149,7 +168,7 @@ export async function exportBook(
     settings: BinderySettings,
     format:   ExportFormat,
 ): Promise<void> {
-    const vaultPath    = app.vault.adapter!.basePath;
+    const vaultPath    = getVaultBasePath(app);
     const bookPath     = resolveBookRoot(vaultPath, settings.bookRoot);
     const bookSettings = readWorkspaceSettings(bookPath);
 
@@ -169,6 +188,12 @@ export async function exportBook(
 
     if (!fs.existsSync(inputFile)) {
         throw new Error(`Merged markdown not found: ${inputFile}\nRun "Export → Markdown" first.`);
+    }
+
+    // Markdown export is a no-op: the merged markdown already is the output.
+    // Avoid invoking pandoc with identical input/output paths.
+    if (format === 'md') {
+        return;
     }
 
     if (format === 'pdf') {
