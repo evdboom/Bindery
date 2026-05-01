@@ -14,7 +14,7 @@ import { execFile } from 'node:child_process';
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
 import { readWorkspaceSettings } from '@bindery/core';
-import type { App }             from './obsidian-types';
+import type { App }             from 'obsidian';
 import type { BinderySettings, ExportFormat } from './settings-tab';
 
 // ─── Well-known install paths (mirrors vscode-ext/src/tool-locate.ts) ────────

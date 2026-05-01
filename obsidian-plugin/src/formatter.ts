@@ -6,7 +6,7 @@
  */
 
 import { applyTypography } from '@bindery/core';
-import type { TFile, Vault } from './obsidian-types';
+import type { TFile, Vault } from 'obsidian';
 
 /**
  * Apply typography formatting to a markdown file in the vault.

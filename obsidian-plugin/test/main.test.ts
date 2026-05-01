@@ -1,9 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BinderyPlugin from '../src/main';
-import type { App, Vault } from '../src/obsidian-types';
+import type { App, Vault } from 'obsidian';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+
+vi.mock('obsidian', () => {
+    class Plugin {
+        app: App;
+
+        constructor(app: App) {
+            this.app = app;
+        }
+
+        loadData(): Promise<unknown> {
+            return Promise.resolve(null);
+        }
+
+        saveData(_data: unknown): Promise<void> {
+            return Promise.resolve();
+        }
+
+        addCommand(_command: { id: string; name: string; callback: () => void | Promise<void> }): void {}
+
+        addSettingTab(_tab: unknown): void {}
+
+        registerEvent(_eventRef: unknown): void {}
+    }
+
+    return { Plugin };
+});
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 

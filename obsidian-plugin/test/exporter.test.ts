@@ -3,7 +3,7 @@ import * as fs   from 'node:fs';
 import * as os   from 'node:os';
 import * as path from 'node:path';
 import { buildPandocArgs, resolveToolPath, resolvePandocPath, resolveLibreOfficePath, resolveBookRoot, exportBook } from '../src/exporter';
-import type { App, Vault } from '../src/obsidian-types';
+import type { App, Vault } from 'obsidian';
 import type { BinderySettings } from '../src/settings-tab';
 
 // ─── resolveToolPath ──────────────────────────────────────────────────────────
