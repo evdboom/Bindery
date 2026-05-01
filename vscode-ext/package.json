@@ -1097,7 +1097,7 @@
     "bundle": "node ./esbuild.mjs",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "build:core": "npm run build --workspace=bindery-core",
+    "build:core": "cd ../bindery-core && npm run build",
     "build:mcp": "cd ../mcp-ts && npm ci && npm run compile",
     "test": "vitest run",
     "test:watch": "vitest",
