@@ -1098,7 +1098,7 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
     "build:core": "cd ../bindery-core && npm run build",
-    "build:mcp": "cd ../mcp-ts && npm ci && npm run compile",
+    "build:mcp": "cd ../mcp-ts && npm run compile",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ci": "vitest run --reporter=verbose --reporter=json --outputFile=test-results.json",

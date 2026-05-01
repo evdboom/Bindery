@@ -63,6 +63,12 @@ jobs:
       - name: Compile vscode-ext
         run: npm run compile --workspace=vscode-ext
 
+      - name: VSIX packaging smoke check
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd vscode-ext
+          npx --yes @vscode/vsce@3.7.1 package --no-dependencies -o bindery-ci-smoke.vsix
+
       - name: Run vscode-ext tests
         run: npm run test:ci --workspace=vscode-ext
 
