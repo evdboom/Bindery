@@ -1,9 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import BinderyPlugin from '../src/main';
-import type { App, Vault } from '../src/obsidian-types';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+
+// ─── Mock obsidian ────────────────────────────────────────────────────────────
+// Must be declared before any imports that pull in obsidian transitively.
+
+vi.mock('obsidian', () => {
+    class Plugin {
+        app: App;
+
+        constructor(app: App) {
+            this.app = app;
+        }
+
+        loadData(): Promise<unknown> {
+            return Promise.resolve(null);
+        }
+
+        saveData(_data: unknown): Promise<void> {
+            return Promise.resolve();
+        }
+
+        addCommand(_command: { id: string; name: string; callback: () => void | Promise<void> }): void {}
+
+        addSettingTab(_tab: unknown): void {}
+
+        registerEvent(_eventRef: unknown): void {}
+    }
+
+    return { Plugin };
+});
+
+import BinderyPlugin from '../src/main';
+import type { App, Vault } from 'obsidian';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 import { applyTypography } from '@bindery/core';
-import type { App, Plugin, PluginSettingTab } from './obsidian-types';
+import type { App, Plugin } from 'obsidian';
 
 export type ExportFormat = 'md' | 'docx' | 'epub' | 'pdf';
 

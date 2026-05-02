@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { formatFile, formatText } from '../src/formatter';
-import type { TFile, Vault } from '../src/obsidian-types';
+import type { TFile, Vault } from 'obsidian';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

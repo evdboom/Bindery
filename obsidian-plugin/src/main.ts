@@ -13,8 +13,8 @@ import { readWorkspaceSettings, BINDERY_FOLDER, SETTINGS_FILENAME } from '@binde
 import { formatFile } from './formatter';
 import { exportBook, resolveBookRoot } from './exporter';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
-import { Plugin } from './obsidian-types';
-import type { TFile } from './obsidian-types';
+import { Plugin } from 'obsidian';
+import type { TFile } from 'obsidian';
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
 

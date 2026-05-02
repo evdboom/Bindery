@@ -63,6 +63,19 @@ jobs:
       - name: Compile vscode-ext
         run: npm run compile --workspace=vscode-ext
 
+      - name: Bundle mcp-ts into extension
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p vscode-ext/mcp-ts/out
+          npx --yes esbuild@0.28.0 mcp-ts/out/tools.js --bundle --platform=node --format=cjs --target=node18 --outfile=vscode-ext/mcp-ts/out/tools.js
+          npx --yes esbuild@0.28.0 mcp-ts/out/index.js --bundle --platform=node --format=cjs --target=node18 --outfile=vscode-ext/mcp-ts/out/index.js
+
+      - name: VSIX packaging smoke check
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd vscode-ext
+          npx --yes @vscode/vsce@3.7.1 package --no-dependencies -o bindery-ci-smoke.vsix
+
       - name: Run vscode-ext tests
         run: npm run test:ci --workspace=vscode-ext
 
