@@ -121,6 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v6
@@ -143,13 +144,16 @@ jobs:
         # as required by the Obsidian community plugin format.
         run: npm run bundle --workspace=obsidian-plugin
 
+      - name: Sync Obsidian manifest metadata from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm run obsidian:sync-version -- "$VERSION"
+
       - name: Package Obsidian plugin zip
         # Obsidian community plugins are installed by dropping main.js + manifest.json
         # (+ optional styles.css) into the vault plugins folder. We zip them for the release.
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          # Stamp manifest.json version to match the release tag
-          jq --arg v "$VERSION" '.version = $v' obsidian-plugin/manifest.json > tmp.json && mv tmp.json obsidian-plugin/manifest.json
           mkdir -p obsidian-plugin/dist
           cp obsidian-plugin/out/main.js  obsidian-plugin/dist/main.js
           cp obsidian-plugin/manifest.json obsidian-plugin/dist/manifest.json
@@ -161,6 +165,36 @@ jobs:
         with:
           files: bindery-obsidian-*.zip
           fail_on_unmatched_files: true
+
+      - name: Switch to main for metadata PR
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          git fetch origin main
+          git checkout main
+          npm run obsidian:sync-version -- "$VERSION"
+
+      - name: Create PR to sync Obsidian release metadata on main
+        continue-on-error: true
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore(obsidian): sync metadata for ${{ github.ref_name }}"
+          branch: "chore/obsidian-sync-${{ github.ref_name }}"
+          delete-branch: true
+          title: "chore(obsidian): sync manifests for ${{ github.ref_name }}"
+          body: |
+            This automated PR keeps Obsidian plugin metadata in sync with the tagged release.
+
+            Updated files:
+            - manifest.json
+            - obsidian-plugin/manifest.json
+            - obsidian-plugin/versions.json
+
+            Triggered by release tag `${{ github.ref_name }}`.
+          base: main
+          add-paths: |
+            manifest.json
+            obsidian-plugin/manifest.json
+            obsidian-plugin/versions.json
 
   # ── Job 4: Publish VSIX to VS Code Marketplace ──────────────────────────────
   publish-vscode:

@@ -117,6 +117,34 @@ jobs:
           name: obsidian-plugin-test-results-${{ matrix.os }}
           path: obsidian-plugin/test-results.json
 
+      - name: Obsidian version sync smoke check
+        shell: bash
+        run: |
+          # Happy path: valid stable version
+          node scripts/sync-obsidian-version.mjs 99.99.99
+          node -e "const m=JSON.parse(require('fs').readFileSync('manifest.json','utf8')); if(m.version!=='99.99.99') process.exit(1);"
+          node -e "const m=JSON.parse(require('fs').readFileSync('obsidian-plugin/manifest.json','utf8')); if(m.version!=='99.99.99') process.exit(1);"
+          node -e "const v=JSON.parse(require('fs').readFileSync('obsidian-plugin/versions.json','utf8')); if(!v['99.99.99']) process.exit(1);"
+
+          # Re-running with same version should overwrite (idempotent update)
+          node scripts/sync-obsidian-version.mjs 99.99.99
+          node -e "const v=JSON.parse(require('fs').readFileSync('obsidian-plugin/versions.json','utf8')); if(!v['99.99.99']) process.exit(1);"
+
+          # Happy path: pre-release semver
+          node scripts/sync-obsidian-version.mjs 99.99.99-beta.1
+          node -e "const v=JSON.parse(require('fs').readFileSync('obsidian-plugin/versions.json','utf8')); if(!v['99.99.99-beta.1']) process.exit(1);"
+
+          # Non-happy path: various invalid version formats must exit non-zero
+          for bad in bad-version 1.2 1.2.3.4 1.2.3-; do
+            if node scripts/sync-obsidian-version.mjs "$bad" 2>/dev/null; then
+              echo "ERROR: script should have failed for version: $bad"
+              exit 1
+            fi
+          done
+
+          # Restore files modified by the smoke test
+          git checkout -- manifest.json obsidian-plugin/manifest.json obsidian-plugin/versions.json
+
   # ── Job: Coverage gates ──────────────────────────────────────────────────────
   # Runs coverage-with-thresholds on ubuntu only (one platform is enough — coverage
   # numbers don't depend on OS, and per-OS coverage runs would triple CI time).
