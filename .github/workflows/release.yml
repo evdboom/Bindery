@@ -79,6 +79,9 @@ jobs:
       - name: Build bindery-core
         run: npm run build --workspace=bindery-core
 
+      - name: Build bindery-merge
+        run: npm run build --workspace=bindery-merge
+
       - name: Build mcp-ts (bundled inside extension)
         run: npm run compile --workspace=mcp-ts
 
@@ -131,6 +134,9 @@ jobs:
 
       - name: Build bindery-core
         run: npm run build --workspace=bindery-core
+
+      - name: Build bindery-merge
+        run: npm run build --workspace=bindery-merge
 
       - name: Bundle obsidian-plugin
         # esbuild bundles src/main.ts + @bindery/core into a single main.js
