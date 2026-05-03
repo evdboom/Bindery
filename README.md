@@ -51,6 +51,30 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes
 
 See [mcpb/README.md](mcpb/README.md) for the full 27-tool reference and usage examples.
 
+### [obsidian-plugin/](obsidian-plugin/) — Obsidian Plugin
+
+The **Bindery** Obsidian plugin provides the same feature set as the VS Code extension for Obsidian vault users:
+
+- **Typography formatting** — curly quotes, em-dashes, ellipses, smart apostrophes (on save or on demand)
+- **Chapter merge & export** — Markdown, DOCX, EPUB, PDF output via Pandoc + LibreOffice
+- **Dialect & translation management** — extensible substitution rules and glossaries
+- **Multi-language support** — configurable per-language chapter labelling
+- **Workspace config** — `.bindery/settings.json` for vault-level settings
+- **AI instruction generation** — Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md
+- **Review markers** — Mark regions for agent feedback
+- **MCP snippet generator** — Copy JSON for Claude Desktop integration
+
+Build and install:
+
+```bash
+cd obsidian-plugin
+npm install
+npm run compile
+npm run bundle
+# out/main.js is ready for manual Obsidian installation
+```
+
+Then in Obsidian: Settings → Community plugins (if not restricted) → Install from folder or manual install from `out/main.js`.
 
 ### [mcpb/](mcpb/) — Claude Desktop Extension
 
@@ -86,18 +110,33 @@ The VS Code extension works standalone — no server setup needed for typography
 ## Project Structure
 
 ```
-├── vscode-ext/          VS Code extension (TypeScript)
-│   ├── src/             Extension source
-│   ├── package.json     Extension manifest
-│   └── README.md        Extension docs
-├── mcp-ts/              MCP server (Node.js / TypeScript)
-│   ├── src/             Server source
-│   └── package.json     Package manifest
-├── mcpb/                Claude Desktop extension package (.mcpb)
-│   ├── manifest.json    Extension metadata and tool list
-│   └── server/          Populated by CI (mcp-ts build output)
-└── LICENSE              MIT
+├── bindery-core/        Shared templates & types (TS)
+│   ├── src/
+│   │   └── templates/   AI instruction templates (claude, copilot, cursor, agents, skills)
+│   └── package.json
+├── bindery-merge/       Shared merge logic (TS)
+│   ├── src/
+│   │   ├── merge.ts     Chapter discovery, merge, export via Pandoc/LibreOffice
+│   │   └── tool-locate.ts   Cross-platform tool path resolution
+│   └── package.json
+├── vscode-ext/          VS Code extension (TS)
+│   ├── src/
+│   ├── package.json
+│   └── README.md
+├── obsidian-plugin/     Obsidian plugin (TS)
+│   ├── src/
+│   ├── package.json
+│   └── README.md
+├── mcp-ts/              MCP server (Node.js / TS)
+│   ├── src/
+│   └── package.json
+├── mcpb/                Claude Desktop extension
+│   ├── manifest.json
+│   └── server/          (CI-populated)
+└── LICENSE
 ```
+
+Shared logic in `bindery-core` and `bindery-merge` ensures both `vscode-ext` and `obsidian-plugin` implement identical functionality.
 
 ## Prerequisites
 
@@ -146,14 +185,21 @@ MIT — see [LICENSE](LICENSE).
 
 ## Host Parity Reminder
 
-`vscode-ext/` and `obsidian-plugin/` target the same Bindery authoring feature
-set. The Obsidian plugin currently implements a subset of VS Code commands
-(export, review markers, init workspace, and MCP snippet); `format-document` is
-still a placeholder and commands such as setup AI, translation/dialect/language
-management, open translations, and register MCP are VS Code-only for now.
+`vscode-ext/` and `obsidian-plugin/` are **two equal implementations** of the same Bindery authoring toolkit. Both support:
 
-Unless a change is intentionally host-specific, functional additions to one host
-should be mirrored in the other in the same PR or a clearly linked follow-up PR.
+- **Typography formatting** (curly quotes, em-dashes, ellipses)
+- **Chapter merge & export** (MD, DOCX, EPUB, PDF via Pandoc + LibreOffice)
+- **Dialect & translation management** — extensible substitution rules and glossaries
+- **Multi-language support** — configurable chapter labels and folder structures
+- **Workspace initialization** — `.bindery/settings.json` and `.bindery/translations.json`
+- **AI instruction generation** — CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md
+- **Review markers** — wrap text in `<!-- Bindery: Review start/stop -->` for agent feedback
+- **MCP config snippet** — JSON for Claude Desktop / Cowork integration
+- **Workspace management** — add languages, dialects, and translation entries
+
+Both plugins share all core logic via `@bindery/merge` (chapter discovery, merge execution, tool path resolution) to minimize duplication and ensure consistent behavior. Shared templates in `@bindery/core/src/templates/` feed both VS Code and Obsidian workflows.
+
+Unless a change is intentionally host-specific, functional additions to one should be mirrored in the other in the same PR or a clearly linked follow-up PR.
 
 The AI instruction file templates are maintained in **one place only**:
 

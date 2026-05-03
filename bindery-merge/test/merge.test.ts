@@ -1,30 +1,7 @@
 /**
  * Unit tests for merge.ts — pure/filesystem functions only.
  * Does NOT invoke pandoc (only 'md' outputType is exercised here).
- *
- * VS Code is mocked because workspace.ts (imported transitively for its
- * exported types) may resolve vscode at module-load time.
  */
-
-import { vi } from 'vitest';
-
-// ─── Mock vscode (must precede all transitive imports) ────────────────────────
-vi.mock('vscode', () => ({
-    workspace: {
-        getConfiguration: () => ({ get: (_key: string) => undefined }),
-        workspaceFolders: undefined,
-    },
-    window: {
-        showErrorMessage:       vi.fn(),
-        showInformationMessage: vi.fn(),
-        showInputBox:           vi.fn(),
-        showQuickPick:          vi.fn(),
-    },
-    Uri: { file: (p: string) => ({ fsPath: p }) },
-    ConfigurationTarget: { Global: 1, Workspace: 2 },
-    LanguageModelToolResult: class { constructor(public readonly content: unknown[]) {} },
-    LanguageModelTextPart:   class { constructor(public readonly value: string) {} },
-}));
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
@@ -44,7 +21,7 @@ import {
 const tempRoots: string[] = [];
 
 function makeRoot(): string {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-vscode-merge-test-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-merge-test-'));
     tempRoots.push(root);
     return root;
 }

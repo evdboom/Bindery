@@ -10,8 +10,12 @@
  */
 
 import { BINDERY_FOLDER, SETTINGS_FILENAME } from '@bindery/core';
+import type { OutputType } from '@bindery/merge';
+import { mergeBook } from './merge';
 import { formatFile } from './formatter';
 import { exportBook, resolveBookRoot } from './exporter';
+import { setupAiFiles, type AiTarget, ALL_SKILLS } from './ai-setup';
+import { readSettings, writeSettings, readTranslations, addDialectRule, addTranslationEntry, addLanguage, findProbableUsWords } from './workspace';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
 import { Plugin } from 'obsidian';
 import type { Editor, TFile } from 'obsidian';
@@ -88,11 +92,56 @@ export default class BinderyPlugin extends Plugin {
             });
         }
 
+        // Merge commands (NEW: discover chapters and merge them)
+        for (const fmt of ['md', 'docx', 'epub', 'pdf', 'all'] as const) {
+            const outputTypes = fmt === 'all' ? ['md', 'docx', 'epub', 'pdf'] : [fmt];
+            const label = fmt === 'all' ? 'All Formats' : fmt.toUpperCase();
+            this.addCommand({
+                id:       `merge-${fmt}`,
+                name:     `Bindery: Merge Chapters → ${label}`,
+                callback: () => void this.mergeBook(outputTypes as any),
+            });
+        }
+
         // Init workspace
         this.addCommand({
             id:       'init-workspace',
             name:     'Bindery: Initialize workspace',
             callback: () => void this.initWorkspace(),
+        });
+
+        // AI setup command
+        this.addCommand({
+            id:       'setup-ai-files',
+            name:     'Bindery: Generate AI Assistant Files',
+            callback: () => void this.setupAiCommand(),
+        });
+
+        // Workspace management commands
+        this.addCommand({
+            id:       'add-dialect',
+            name:     'Bindery: Add Dialect Rule',
+            callback: () => void this.addDialectCommand(),
+        });
+        this.addCommand({
+            id:       'add-translation',
+            name:     'Bindery: Add Translation Glossary Entry',
+            callback: () => void this.addTranslationCommand(),
+        });
+        this.addCommand({
+            id:       'add-language',
+            name:     'Bindery: Add Language',
+            callback: () => void this.addLanguageCommand(),
+        });
+        this.addCommand({
+            id:       'open-translations',
+            name:     'Bindery: Open Translations File',
+            callback: () => void this.openTranslationsCommand(),
+        });
+        this.addCommand({
+            id:       'find-us-to-uk-words',
+            name:     'Bindery: Find Probable US → UK Words',
+            callback: () => void this.findUsToUkCommand(),
         });
 
         // Show MCP config snippet — copies JSON to clipboard
@@ -105,9 +154,170 @@ export default class BinderyPlugin extends Plugin {
         this.addSettingTab(new BinderySettingsTab(this.app, this));
     }
 
+    private async mergeBook(outputTypes: OutputType[]): Promise<void> {
+        try {
+            const vaultPath = this.getVaultBasePath();
+            const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+
+            console.log('Bindery: Merging chapters…');
+            const result = await mergeBook(
+                this.app,
+                this.app.vault,
+                vaultPath,
+                bookRoot,
+                this.settings,
+                outputTypes
+            );
+
+            const names = result.outputs.map((p: string) => path.basename(p)).join(', ');
+            console.log(`✓ Merged → ${names}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ Merge failed: ${message}`);
+        }
+    }
+
     private async formatActive(): Promise<void> {
-        // In the real Obsidian plugin, get the active file via workspace.getActiveFile().
-        // This is a placeholder; full implementation requires the Obsidian runtime API.
+        const file = this.app.workspace?.getActiveFile?.();
+        if (!file || file.extension !== 'md') {
+            console.log('No markdown file active');
+            return;
+        }
+        try {
+            await formatFile(this.app.vault, file);
+            console.log('✓ Formatted');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ Format failed: ${message}`);
+        }
+    }
+
+    private async setupAiCommand(): Promise<void> {
+        try {
+            const vaultPath = this.getVaultBasePath();
+            const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+
+            const result = await setupAiFiles(this.app, bookRoot, ['claude', 'copilot'], ALL_SKILLS, false);
+            const msg = `Generated: ${result.created.length}, Skipped: ${result.skipped.length}`;
+            console.log(`✓ AI setup: ${msg}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ AI setup failed: ${message}`);
+        }
+    }
+
+    private async addDialectCommand(): Promise<void> {
+        try {
+            const vaultPath = this.getVaultBasePath();
+            const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+
+            const language = await this.promptString('Language code (e.g. EN, NL):', 'EN');
+            if (!language) return;
+
+            const from = await this.promptString('US spelling:', '');
+            if (!from) return;
+
+            const to = await this.promptString('UK/Target spelling:', '');
+            if (!to) return;
+
+            addDialectRule(bookRoot, language, from, to);
+            console.log(`✓ Added dialect rule: ${from} → ${to}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ Failed: ${message}`);
+        }
+    }
+
+    private async addTranslationCommand(): Promise<void> {
+        try {
+            const vaultPath = this.getVaultBasePath();
+            const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+            const settings = readSettings(bookRoot);
+            if (!settings?.languages) throw new Error('No languages configured');
+
+            const term = await this.promptString('Term to add:', '');
+            if (!term) return;
+
+            const translations: Record<string, string> = {};
+            for (const lang of settings.languages) {
+                const trans = await this.promptString(`Translation in ${lang.code}:`, '');
+                if (trans) translations[lang.code] = trans;
+            }
+
+            addTranslationEntry(bookRoot, term, translations);
+            console.log(`✓ Added translation entry: ${term}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ Failed: ${message}`);
+        }
+    }
+
+    private async addLanguageCommand(): Promise<void> {
+        try {
+            const vaultPath = this.getVaultBasePath();
+            const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+
+            const code = await this.promptString('Language code (e.g. NL, FR, DE):', '');
+            if (!code) return;
+
+            const folderName = await this.promptString('Folder name:', code);
+            if (!folderName) return;
+
+            addLanguage(bookRoot, code, folderName);
+            console.log(`✓ Added language: ${code}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ Failed: ${message}`);
+        }
+    }
+
+    private async openTranslationsCommand(): Promise<void> {
+        try {
+            const vaultPath = this.getVaultBasePath();
+            const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+            const translationsPath = path.join(bookRoot, '.bindery', 'translations.json');
+
+            if (!fs.existsSync(translationsPath)) {
+                console.log('translations.json not found');
+                return;
+            }
+
+            console.log('Translations file:', translationsPath);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ Failed: ${message}`);
+        }
+    }
+
+    private async findUsToUkCommand(): Promise<void> {
+        try {
+            const file = this.app.workspace?.getActiveFile?.();
+            if (!file) {
+                console.log('No file active');
+                return;
+            }
+
+            const content = await this.app.vault.read(file);
+            const words = findProbableUsWords(content);
+
+            if (words.length === 0) {
+                console.log('No probable US words found');
+                return;
+            }
+
+            const list = words.slice(0, 10).join(', ') + (words.length > 10 ? `, +${words.length - 10} more` : '');
+            console.log(`Found: ${list}`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ Failed: ${message}`);
+        }
+    }
+
+    private async promptString(prompt: string, defaultValue: string = ''): Promise<string | null> {
+        return new Promise((resolve) => {
+            const result = window.prompt(prompt, defaultValue);
+            resolve(result);
+        });
     }
 
     private insertStartReviewMarker(editor: Editor): void {

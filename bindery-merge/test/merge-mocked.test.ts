@@ -10,24 +10,6 @@
 
 import { vi } from 'vitest';
 
-// ─── Mock vscode ──────────────────────────────────────────────────────────────
-vi.mock('vscode', () => ({
-    workspace: {
-        getConfiguration: () => ({ get: (_key: string) => undefined }),
-        workspaceFolders: undefined,
-    },
-    window: {
-        showErrorMessage:       vi.fn(),
-        showInformationMessage: vi.fn(),
-        showInputBox:           vi.fn(),
-        showQuickPick:          vi.fn(),
-    },
-    Uri: { file: (p: string) => ({ fsPath: p }) },
-    ConfigurationTarget: { Global: 1, Workspace: 2 },
-    LanguageModelToolResult: class { constructor(public readonly content: unknown[]) {} },
-    LanguageModelTextPart:   class { constructor(public readonly value: string) {} },
-}));
-
 // ─── Mock child_process ───────────────────────────────────────────────────────
 vi.mock('node:child_process', () => {
     type ExecFileCallback = (err: Error | null, stdout: string, stderr: string) => void;
@@ -99,7 +81,7 @@ import {
 const tempRoots: string[] = [];
 
 function makeRoot(): string {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-merge-mock-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-merge-test-'));
     tempRoots.push(root);
     return root;
 }

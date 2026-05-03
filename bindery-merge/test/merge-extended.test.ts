@@ -48,7 +48,7 @@ import {
 const tempRoots: string[] = [];
 
 function makeRoot(): string {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-merge-ext-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-merge-test-'));
     tempRoots.push(root);
     return root;
 }
