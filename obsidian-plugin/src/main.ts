@@ -137,10 +137,12 @@ export default class BinderyPlugin extends Plugin {
         editor.replaceRange(this.lineBoundaryWrap(editor, pos.line, pos.ch, REVIEW_STOP_MARKER), pos);
     }
 
-    private lineBoundaryWrap(_editor: Editor, _line: number, ch: number, marker: string): string {
+    private lineBoundaryWrap(editor: Editor, line: number, ch: number, marker: string): string {
+        const lineText = editor.getLine(line);
         const atLineStart = ch === 0;
+        const atLineEnd = ch === lineText.length;
         const prefix = atLineStart ? '' : '\n';
-        const suffix = '\n';
+        const suffix = atLineEnd ? '' : '\n';
         return `${prefix}${marker}${suffix}`;
     }
 
