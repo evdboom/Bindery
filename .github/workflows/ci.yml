@@ -118,6 +118,7 @@ jobs:
           path: obsidian-plugin/test-results.json
 
       - name: Obsidian version sync smoke check
+        shell: bash
         run: |
           # Happy path: valid stable version
           node scripts/sync-obsidian-version.mjs 99.99.99
