@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "bindery-core",
+    "bindery-merge",
     "vscode-ext",
     "mcp-ts",
     "obsidian-plugin"

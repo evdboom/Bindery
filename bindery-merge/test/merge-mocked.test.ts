@@ -8,25 +8,7 @@
  * isMissingPdfEngineError, formatDirectory.
  */
 
-import { vi } from 'vitest';
-
-// ─── Mock vscode ──────────────────────────────────────────────────────────────
-vi.mock('vscode', () => ({
-    workspace: {
-        getConfiguration: () => ({ get: (_key: string) => undefined }),
-        workspaceFolders: undefined,
-    },
-    window: {
-        showErrorMessage:       vi.fn(),
-        showInformationMessage: vi.fn(),
-        showInputBox:           vi.fn(),
-        showQuickPick:          vi.fn(),
-    },
-    Uri: { file: (p: string) => ({ fsPath: p }) },
-    ConfigurationTarget: { Global: 1, Workspace: 2 },
-    LanguageModelToolResult: class { constructor(public readonly content: unknown[]) {} },
-    LanguageModelTextPart:   class { constructor(public readonly value: string) {} },
-}));
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Mock child_process ───────────────────────────────────────────────────────
 vi.mock('node:child_process', () => {
@@ -34,7 +16,7 @@ vi.mock('node:child_process', () => {
 
     return {
         execFile: vi.fn((
-            cmd: string,
+            _cmd: string,
             args: string[],
             opts: Record<string, unknown>,
             cb: ExecFileCallback
@@ -68,8 +50,6 @@ vi.mock('node:child_process', () => {
                     const fs = require('node:fs');
                     const path = require('node:path');
                     const outdir = args[outdirIdx + 1];
-                    // Find the docx argument (before --outdir)
-                    const docxPath = args[pdfIdx + 1]; // actually it's: --convert-to pdf <docx> --outdir <dir>
                     // Actually the args are: ['--headless', '--convert-to', 'pdf', docxPath, '--outdir', outputDir]
                     const docxArg = args[3]; // docxPath
                     const basename = path.basename(docxArg, '.docx');
@@ -88,18 +68,17 @@ vi.mock('node:child_process', () => {
 import * as fs   from 'node:fs';
 import * as os   from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
     clearPandocCapabilityCache,
     mergeBook,
-    type LanguageConfig,
     type MergeOptions,
 } from '../src/merge';
+import type { LanguageConfig } from '@bindery/core';
 
 const tempRoots: string[] = [];
 
 function makeRoot(): string {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-merge-mock-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-merge-test-'));
     tempRoots.push(root);
     return root;
 }

@@ -6,21 +6,39 @@ Thank you for contributing! This document explains how to run the tests and what
 
 ## Running Tests Locally
 
-### Quick test (both packages)
+### Quick test (all packages)
 
 ```bash
-cd mcp-ts && npm test
-cd ../vscode-ext && npm test
+npm test  # runs all packages in parallel
+```
+
+Or test individual packages:
+
+```bash
+npm run test --workspace=bindery-core
+npm run test --workspace=bindery-merge
+npm run test --workspace=mcp-ts
+npm run test --workspace=vscode-ext
+npm run test --workspace=obsidian-plugin
 ```
 
 ### Watch mode (auto-rerun on file change)
 
 ```bash
 # Terminal 1
-cd mcp-ts && npm run test:watch
+npm run test:watch --workspace=bindery-core
 
 # Terminal 2
-cd vscode-ext && npm run test:watch
+npm run test:watch --workspace=bindery-merge
+
+# Terminal 3
+npm run test:watch --workspace=mcp-ts
+
+# Terminal 4
+npm run test:watch --workspace=vscode-ext
+
+# Terminal 5
+npm run test:watch --workspace=obsidian-plugin
 ```
 
 ### CI reporter (as GitHub Actions runs it)
@@ -38,11 +56,18 @@ The `test:ci` script writes a `test-results.json` file in each package directory
 
 | Layer | Location | What is tested |
 |---|---|---|
+| **bindery-core unit tests** | `bindery-core/test/` | Templates, settings, translations, formatting logic |
+| **bindery-merge unit tests** | `bindery-merge/test/merge.test.ts` | Pure merge functions, chapter discovery, dialect conversion |
+| **bindery-merge mocked tests** | `bindery-merge/test/merge-mocked.test.ts` | Pandoc/LibreOffice paths (with child_process mocked) |
+| **bindery-merge extended tests** | `bindery-merge/test/merge-extended.test.ts` | Internal functions, Pandoc helpers, typography integration |
 | **MCP unit tests** | `mcp-ts/test/tools.test.ts` | Tool logic, path safety, search indexing |
 | **MCP contract tests** | `mcp-ts/test/index-contract.test.ts` | Every registered tool has exactly one annotation hint |
 | **MCP stdio integration** | `mcp-ts/test/integration-stdio.test.ts` | Spawn real server, JSON-RPC handshake, tool calls, path-traversal defence, error handling |
 | **VS Code unit tests** | `vscode-ext/test/workspace.test.ts`, `vscode-ext/test/mcp.test.ts` | Workspace helpers, MCP JSON writer |
 | **VS Code integration** | `vscode-ext/test/integration-commands.test.ts` | Init workflow, registerMcp, formatDocument, settings precedence |
+| **Obsidian plugin tests** | `obsidian-plugin/test/` | Plugin lifecycle, workspace management, AI setup, merge execution, formatter integration |
+| **Obsidian exporter** | `obsidian-plugin/test/exporter.test.ts` | Export orchestration, multi-format output |
+| **Obsidian merge** | `obsidian-plugin/test/merge.test.ts` | Chapter discovery, dialect handling, Obsidian Vault API integration |
 
 ---
 
@@ -65,20 +90,25 @@ lives:
 
 ## Host Feature Parity Policy
 
-`vscode-ext/` and `obsidian-plugin/` target the same Bindery authoring feature
-set. The Obsidian plugin currently implements a subset of VS Code commands
-(export, review markers, init workspace, and MCP snippet); `format-document` is
-still a placeholder and commands such as setup AI, translation/dialect/language
-management, open translations, and register MCP are VS Code-only for now.
+**Feature parity is complete.** Both `vscode-ext/` and `obsidian-plugin/` implement
+identical Bindery authoring workflows:
 
-Unless a feature is explicitly host-specific, any functional change added to one
-host should be implemented in the other host in the same PR (or in a clearly
-linked follow-up PR).
+- **Shared logic**: All merge, export, tool-location, and typography logic lives in
+  `bindery-merge/` and is consumed by both hosts.
+- **Equivalent commands**: Both hosts provide all 17+ authoring commands (format,
+  merge, AI setup, workspace management, dialect/translation/language management).
+- **Equivalent tests**: Each host has a full test suite covering its command wiring
+  and host-specific integration (Obsidian Vault API, VS Code Workspace API).
+
+Unless a feature is **explicitly host-specific** (e.g., VS Code's Language Model Tool API),
+any functional change or bug fix added to one host must be implemented in the other
+host in the same PR.
 
 When adding or changing commands:
-- update command wiring in both hosts
-- add or update tests in both hosts
-- document intentional host-specific exceptions in the PR description
+- **Update logic**: If logic lives in `bindery-merge/` or `bindery-core/`, update there once
+- **Update command wiring**: Update in both `vscode-ext/src/extension.ts` and `obsidian-plugin/src/main.ts`
+- **Add tests**: Add to both host test suites to validate host-specific integration
+- **Document exceptions**: Clearly note any intentional host-specific behavior in the PR description
 
 ---
 
@@ -112,22 +142,28 @@ Tests cover:
 
 ## CI pipeline (`.github/workflows/ci.yml`)
 
-The workflow runs on every push and pull request on all branches.
+The workflow runs on every push and pull request on all branches, on all three major platforms
+(Ubuntu, Windows, macOS).
 
-A single `test` job runs the steps sequentially:
+A single `test` job runs the build and test steps sequentially:
 
 | Step | What it does |
 |---|---|
-| Install + compile bindery-core | `npm ci` → `npm run compile` |
-| Run bindery-core tests | `npm run test:ci` → uploads `test-results.json` artifact |
-| Install + compile mcp-ts | `npm ci` → `npm run compile` |
-| Run mcp-ts tests | `npm run test:ci` → uploads `test-results.json` artifact |
-| Install + compile vscode-ext | `npm ci` → `npm run compile` |
-| Run vscode-ext tests | `npm run test:ci` → uploads `test-results.json` artifact |
-| Install + compile obsidian-plugin | `npm ci` → `npm run compile` |
-| Run obsidian-plugin tests | `npm run test:ci` → uploads `test-results.json` artifact |
+| Install all workspace deps | `npm ci` |
+| Build + test bindery-core | `npm run build` → `npm run test:ci` → uploads `test-results.json` |
+| Build + test bindery-merge | `npm run build` → `npm run test:ci` → uploads `test-results.json` |
+| Compile + test mcp-ts | `npm run compile` → `npm run test:ci` → uploads `test-results.json` |
+| Compile + test vscode-ext | `npm run compile` → `npm run test:ci` (+ VSIX smoke check on ubuntu-latest) |
+| Compile + test obsidian-plugin | `npm run compile` → `npm run bundle` → `npm run test:ci` → uploads `test-results.json` |
 
-PRs **cannot be merged** unless the `test` job passes.
+A separate `coverage` job runs on ubuntu-latest only (coverage metrics don't vary by OS):
+
+| Step | What it does |
+|---|---|
+| Build + coverage for each package | `npm run compile` → `npm run test:coverage` |
+| Upload coverage reports | Artifacts collected for each package |
+
+**PRs cannot be merged** unless the `test` job passes on all platforms.
 
 ---
 
@@ -140,8 +176,20 @@ PRs **cannot be merged** unless the `test` job passes.
 
 ---
 
+## Troubleshooting
+
+### Merge tests won't compile
+The merge tests have moved from `vscode-ext/test/` to `bindery-merge/test/`. If you have
+local references to the old paths, update imports to point to `bindery-merge` instead.
+
+### CI passes locally but fails in GitHub Actions
+Ensure your `package-lock.json` was generated with the same npm major version as the one
+used in `.github/workflows/ci.yml`. This prevents lockfile skew across platforms.
+
+---
+
 ## Future Enhancements
 
 - E2E tests with real pandoc/LibreOffice invocation
-- Cross-platform CI matrix (Windows, macOS)
-- Code coverage reporting and threshold enforcement
+- Code coverage reporting dashboards
+- Per-commit performance benchmarks (merge speed, search latency)

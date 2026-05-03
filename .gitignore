@@ -5,6 +5,7 @@ node_modules/
 vscode-ext/out/
 mcp-ts/out/
 bindery-core/out/
+bindery-merge/out/
 obsidian-plugin/out/
 mcp-rust/target/
 

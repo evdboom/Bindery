@@ -35,7 +35,12 @@ declare module 'obsidian' {
         vault: Vault;
         workspace?: {
             getActiveFile(): TFile | null;
+            on(event: string, callback: (...args: unknown[]) => unknown): EventRef;
         };
+    }
+
+    export class Notice {
+        constructor(message: string, timeout?: number);
     }
 
     export interface Command {
@@ -50,6 +55,7 @@ declare module 'obsidian' {
         constructor(app: App);
         loadData(): Promise<unknown>;
         saveData(data: unknown): Promise<void>;
+        addRibbonIcon(icon: string, title: string, callback: () => void): HTMLElement;
         addCommand(command: Command): void;
         addSettingTab(tab: unknown): void;
         registerEvent(eventRef: EventRef): void;

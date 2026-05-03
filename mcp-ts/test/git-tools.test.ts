@@ -101,6 +101,22 @@ describe('toolGetReviewText', () => {
         expect(result).not.toBe('No uncommitted changes.');
     });
 
+    it('ignores unstaged non-chapter files in diff output', () => {
+        const root = makeGitRepo();
+
+        write(path.join(root, 'Story', 'EN', 'Chapter 1.md'), '# Chapter\nOriginal text.\n');
+        write(path.join(root, '.obsidian', 'workspace.json'), '{"v":1}\n');
+        spawnSync('git', ['add', '.'], { cwd: root });
+        spawnSync('git', ['commit', '-m', 'Seed files'], { cwd: root });
+
+        fs.writeFileSync(path.join(root, 'Story', 'EN', 'Chapter 1.md'), '# Chapter\nModified text.\n', 'utf-8');
+        fs.writeFileSync(path.join(root, '.obsidian', 'workspace.json'), '{"v":2}\n', 'utf-8');
+
+        const result = toolGetReviewText(root, {});
+        expect(result).toContain('Chapter 1.md');
+        expect(result).not.toContain('.obsidian/workspace.json');
+    });
+
     it('filters diff output by language (EN)', () => {
         const root = makeGitRepo();
 

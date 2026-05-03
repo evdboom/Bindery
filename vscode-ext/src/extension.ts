@@ -865,6 +865,36 @@ async function findProbableUsToUkWordsCommand() {
     }
 }
 
+// ─── Command: Quick actions (status-bar ribbon entry point) ─────────────────
+
+async function quickActionsCommand() {
+    const picked = await vscode.window.showQuickPick(
+        [
+            { label: 'Merge chapters → All formats', command: 'bindery.mergeAll' },
+            { label: 'Merge chapters → Markdown', command: 'bindery.mergeMarkdown' },
+            { label: 'Merge chapters → DOCX', command: 'bindery.mergeDocx' },
+            { label: 'Merge chapters → EPUB', command: 'bindery.mergeEpub' },
+            { label: 'Merge chapters → PDF', command: 'bindery.mergePdf' },
+            { label: 'Format document', command: 'bindery.formatDocument' },
+            { label: 'Format folder', command: 'bindery.formatFolder' },
+            { label: 'Setup AI assistant files', command: 'bindery.setupAI' },
+            { label: 'Find probable US to UK words', command: 'bindery.findProbableUsToUkWords' },
+            { label: 'Add dialect rule', command: 'bindery.addDialect' },
+            { label: 'Add translation (glossary)', command: 'bindery.addTranslation' },
+            { label: 'Add language', command: 'bindery.addLanguage' },
+            { label: 'Open translations.json', command: 'bindery.openTranslations' },
+            { label: 'Initialize workspace', command: 'bindery.init' },
+            { label: 'Register MCP server', command: 'bindery.registerMcp' },
+        ],
+        {
+            title: 'Bindery quick actions',
+            placeHolder: 'Choose an action',
+        }
+    );
+    if (!picked) { return; }
+    await vscode.commands.executeCommand(picked.command);
+}
+
 // ─── Merge helpers ────────────────────────────────────────────────────────────
 
 function buildMergeOptions(
@@ -1298,6 +1328,7 @@ export function activate(context: vscode.ExtensionContext) {
     subscriptions.push(
         vscode.commands.registerCommand('bindery.init',                    () => initWorkspaceCommand(context)),
         vscode.commands.registerCommand('bindery.setupAI',                 () => setupAiCommand(context)),
+        vscode.commands.registerCommand('bindery.quickActions',            quickActionsCommand),
         vscode.commands.registerCommand('bindery.formatDocument',          formatDocumentCommand),
         vscode.commands.registerCommand('bindery.formatFolder',            formatFolderCommand),
         vscode.commands.registerCommand('bindery.mergeMarkdown',           () => mergeCommand(['md'])),
@@ -1345,8 +1376,8 @@ export function activate(context: vscode.ExtensionContext) {
     // Status bar — shown when a markdown file is active
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBar.text    = '$(book) Bindery';
-    statusBar.tooltip = 'Bindery: Merge Chapters → All Formats';
-    statusBar.command = 'bindery.mergeAll';
+    statusBar.tooltip = 'Bindery: Quick actions';
+    statusBar.command = 'bindery.quickActions';
     subscriptions.push(statusBar);
 
     const updateStatusBar = () => {

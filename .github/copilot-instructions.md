@@ -1,30 +1,60 @@
 # GitHub Copilot — Bindery
 
-Bindery is a **VS Code extension** + **MCP server** for markdown book authoring.
-TypeScript throughout. Two independent packages — keep them in sync when adding features.
+Bindery is an open-source suite for markdown book authoring with **feature parity** across hosts:
+- **VS Code extension** (published to Marketplace) — full-featured IDE integration
+- **Obsidian plugin** — fully-featured Obsidian integration
+- **MCP server** (Claude Desktop, Cursor, etc.) — standalone server for AI assistants
+
+TypeScript throughout. Shared logic in `bindery-merge/` and `bindery-core/`; hosts consume
+the shared libraries and add their own host-specific wiring. Keep implementations in sync.
 
 ---
 
 ## Repo layout
 
 ```
+bindery-core/      ← Shared templates, settings, typography, translations
+  src/
+    templates/     ← AI setup instruction templates (per-host)
+    index.ts       ← exports shared types and helpers
+    settings.ts    ← Bindery workspace settings schema and helpers
+    formatting.ts  ← typography transforms (shared across all hosts)
+    translations.ts ← dialect and glossary management
+
+bindery-merge/     ← Shared merge logic (chapter discovery, export orchestration)
+  src/
+    merge.ts       ← mergeBook() — main export orchestrator (950+ lines)
+    tool-locate.ts ← platform-aware path resolution for pandoc, libreoffice (250+ lines)
+    index.ts       ← barrel exports for public API
+    format.ts      ← typography helpers (used during merge)
+
 vscode-ext/        ← VS Code extension (published to Marketplace)
   src/
-    extension.ts   ← activation, all commands, format-on-save handler
+    extension.ts   ← activation, all 17+ commands, format-on-save handler
     workspace.ts   ← reads/writes .bindery/settings.json + translations.json
-    merge.ts       ← chapter discovery, markdown assembly, pandoc/LibreOffice
-    format.ts      ← typography transforms (curly quotes, em-dash, ellipsis)
+    merge.ts       ← re-exports from @bindery/merge (pure delegation)
+    format.ts      ← typography transforms via @bindery/core
     mcp.ts         ← vscode.lm.registerTool registrations + mcp.json writer
-    ai-setup.ts    ← generates CLAUDE.md, copilot-instructions.md, skills, etc.
+    ai-setup.ts    ← generates per-target instruction files
+  mcp-ts/          ← bundled copy of mcp-ts/out/ (for packaging)
 
-mcp-ts/            ← Standalone MCP server (also bundled inside vscode-ext)
+Obsidian-plugin/   ← Obsidian plugin (Community Plugins marketplace)
+  src/
+    main.ts        ← activation, all 17+ commands (feature parity with vscode-ext)
+    workspace.ts   ← Vault I/O, settings management (Obsidian-specific)
+    merge.ts       ← Obsidian-specific wrapper around @bindery/merge
+    ai-setup.ts    ← per-target instruction file generation
+    formatter.ts   ← typography formatting via @bindery/core
+    exporter.ts    ← export orchestration (Obsidian-specific UI)
+
+mcp-ts/            ← Standalone MCP server (Claude Desktop, Cursor, etc.)
   src/
     index.ts       ← McpServer entry point, all server.registerTool() calls
     tools.ts       ← one exported function per tool (pure: root + args → string)
     registry.ts    ← book registry (--book flags + BINDERY_BOOKS env var)
     search.ts      ← BM25 index build/load/search + optional Ollama reranking
     docstore.ts    ← file discovery and chunking
-    format.ts      ← typography (shared logic, duplicated from vscode-ext)
+    format.ts      ← typography (shared with @bindery/core)
 
 mcpb/              ← Claude Desktop extension package (mcpb manifest + bundled server)
   manifest.json    ← mcpb manifest v0.3 — tools list, user_config, privacy_policies
@@ -82,28 +112,37 @@ see `mcp-ts/src/index.ts` for implementation details and input schemas and `mcpb
 ## VS Code extension — key design rules
 
 - **Generic**: no project-specific strings in source (use "Book", not a title)
-- **Config priority**: `.bindery/settings.json` → VS Code workspace settings → VS Code user settings → code defaults
+- **Host-agnostic logic**: Shared logic lives in `bindery-merge/` and `bindery-core/`; hosts re-export or wrap
+- **Config priority**: `.bindery/settings.json` → host-specific settings → code defaults
 - **Machine paths only in user settings**: `pandocPath`, `libreOfficePath` — never in workspace settings
-- **Substitution tiers**: built-in (`merge.ts`) → user-general (`bindery.generalSubstitutions`) → project (`.bindery/translations.json`). Later tiers win.
+- **Substitution tiers**: built-in (from `@bindery/merge`) → user-general → project (`.bindery/translations.json`). Later tiers win.
 - **formatOnSave**: only fires for files inside the configured `storyFolder`
 - **Activation**: `onStartupFinished` (to ensure LM tools register at launch) + `onLanguage:markdown`
 - **Command namespace**: all commands are `bindery.*` — must match in both `package.json` and `extension.ts`
 
-## VS Code extension — commands
+## Authoring commands (feature parity across hosts)
 
-| Command | Description |
-|---|---|
-| `bindery.init` | Create `.bindery/settings.json` + `translations.json` |
-| `bindery.setupAI` | Generate CLAUDE.md / copilot-instructions.md / skills / AGENTS.md |
-| `bindery.formatDocument` / `bindery.formatFolder` | Typography formatting |
-| `bindery.mergeMarkdown/Docx/Epub/Pdf/All` | Merge chapters → output format |
-| `bindery.findProbableUsToUkWords` | Surface probable US spellings in EN source |
-| `bindery.addDialect` | Add a dialect substitution rule (auto-applied at export) |
-| `bindery.addTranslation` | Add a cross-language glossary entry |
-| `bindery.addLanguage` | Add a new language and scaffold its story folder |
-| `bindery.addUkReplacement` | Alias for `addDialect` (backward compat) |
-| `bindery.openTranslations` | Open translations.json |
-| `bindery.registerMcp` | Write .vscode/mcp.json for Claude/Codex MCP discovery |
+Both VS Code and Obsidian plugins expose these equivalent commands (identical functionality,
+host-specific UI/activation):
+
+| Command | VS Code | Obsidian | Description |
+|---|---|---|---|
+| `bindery.init` | ✅ | ✅ | Create `.bindery/settings.json` + `translations.json` |
+| `bindery.setupAI` | ✅ | ✅ | Generate CLAUDE.md / copilot-instructions.md / skills / AGENTS.md |
+| `bindery.formatDocument` | ✅ | ✅ | Typography formatting (curly quotes, em-dash, ellipsis) |
+| `bindery.formatFolder` | ✅ | ✅ | Recursively format all .md files in a folder |
+| `bindery.mergeMarkdown` | ✅ | ✅ | Merge chapters → .md |
+| `bindery.mergeDocx` | ✅ | ✅ | Merge chapters → .docx (via pandoc) |
+| `bindery.mergeEpub` | ✅ | ✅ | Merge chapters → .epub (via pandoc) |
+| `bindery.mergePdf` | ✅ | ✅ | Merge chapters → .pdf (via pandoc + LibreOffice) |
+| `bindery.mergeAll` | ✅ | ✅ | Merge chapters → all supported formats |
+| `bindery.findProbableUsToUkWords` | ✅ | ✅ | Surface probable US spellings in EN source |
+| `bindery.addDialect` | ✅ | ✅ | Add a dialect substitution rule (auto-applied at export) |
+| `bindery.addTranslation` | ✅ | ✅ | Add a cross-language glossary entry |
+| `bindery.addLanguage` | ✅ | ✅ | Add a new language and scaffold its story folder |
+| `bindery.openTranslations` | ✅ | ✅ | Show path to translations.json (edit in host editor) |
+| `bindery.registerMcp` | ✅ | — | Write .vscode/mcp.json for Claude/Codex MCP discovery (VS Code-only) |
+| `bindery.showMcpConfig` | — | ✅ | Display MCP configuration snippet (Obsidian-only) |
 
 ---
 
@@ -149,18 +188,48 @@ Format of an appended entry (stamped by `memory_append`, not the caller):
 ## Build
 
 ```bash
-# MCP server
-cd mcp-ts && npm run build          # outputs to mcp-ts/out/
+# Individual packages
+npm run build --workspace=bindery-core        # outputs to bindery-core/out/
+npm run build --workspace=bindery-merge       # outputs to bindery-merge/out/
+npm run compile --workspace=mcp-ts            # outputs to mcp-ts/out/
+npm run compile --workspace=vscode-ext        # outputs to vscode-ext/out/
+npm run compile --workspace=obsidian-plugin   # outputs to obsidian-plugin/out/
 
-# VS Code extension
-cd vscode-ext && npm run compile    # outputs to vscode-ext/out/
+# All packages at once
+npm run build  # builds bindery-core, bindery-merge, compiles all others
 
 # Type-check only (no emit)
-cd mcp-ts    && npx tsc --noEmit
-cd vscode-ext && npx tsc --noEmit
+npx tsc --noEmit
 ```
 
-Before releasing mcpb: copy `mcp-ts/out/` → `mcpb/server/`.
+### Release workflow
+
+**For MCPB (Claude Desktop):**
+1. `npm run build --workspace=mcp-ts`
+2. Copy `mcp-ts/out/` → `mcpb/server/`
+3. Update `mcpb/manifest.json` version
+4. Submit to Anthropic MCPB directory
+
+**For VS Code Marketplace:**
+1. `npm run compile --workspace=vscode-ext`
+2. Bundle mcp-ts into vscode-ext:
+   ```bash
+   mkdir -p vscode-ext/mcp-ts/out
+   npx esbuild mcp-ts/out/tools.js --bundle --platform=node --format=cjs --target=node18 --outfile=vscode-ext/mcp-ts/out/tools.js
+   npx esbuild mcp-ts/out/index.js --bundle --platform=node --format=cjs --target=node18 --outfile=vscode-ext/mcp-ts/out/index.js
+   ```
+3. Package VSIX: `cd vscode-ext && npx @vscode/vsce package`
+4. Upload to Marketplace
+
+**For Obsidian Community Plugins:**
+1. `npm run compile --workspace=obsidian-plugin`
+2. `npm run bundle --workspace=obsidian-plugin` (outputs bundled main.js to `obsidian-plugin/out/`)
+3. Testing: copy `obsidian-plugin/` to Obsidian vault plugins folder:
+   ```
+   ~/.obsidian/plugins/bindery/   (on Linux/macOS)
+   %APPDATA%\\Obsidian\\plugins\\bindery\\  (on Windows)
+   ```
+4. Submit PR to Obsidian Community Plugins repo
 
 # Hygiene rules for generated files
 
