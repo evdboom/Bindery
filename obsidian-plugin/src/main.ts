@@ -14,10 +14,10 @@ import type { OutputType } from '@bindery/merge';
 import { mergeBook } from './merge';
 import { formatFile } from './formatter';
 import { exportBook, resolveBookRoot } from './exporter';
-import { setupAiFiles, type AiTarget, ALL_SKILLS } from './ai-setup';
-import { readSettings, writeSettings, readTranslations, addDialectRule, addTranslationEntry, addLanguage, findProbableUsWords } from './workspace';
+import { setupAiFiles, ALL_SKILLS } from './ai-setup';
+import { readSettings, addDialectRule, addTranslationEntry, addLanguage, findProbableUsWords } from './workspace';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import type { Editor, TFile } from 'obsidian';
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
@@ -27,6 +27,50 @@ const REVIEW_STOP_MARKER  = '<!-- Bindery: Review stop -->';
 
 export default class BinderyPlugin extends Plugin {
     settings: BinderySettings = { ...DEFAULT_SETTINGS };
+
+    private notify(message: string): void {
+        // Prefer user-facing notices to console logs to keep the developer console clean.
+        new Notice(message);
+    }
+
+    private addContextMenuItems(menu: unknown, forEditor: boolean): void {
+        const m = menu as {
+            addSeparator?: () => void;
+            addItem: (cb: (item: {
+                setTitle: (title: string) => unknown;
+                setIcon?: (icon: string) => unknown;
+                onClick: (fn: () => void) => unknown;
+            }) => void) => void;
+        };
+
+        m.addSeparator?.();
+
+        m.addItem((item) => {
+            item.setTitle('Bindery: Merge chapters to all formats');
+            item.setIcon?.('book-open');
+            item.onClick(() => { void this.mergeBook(['md', 'docx', 'epub', 'pdf']); });
+        });
+
+        if (forEditor) {
+            m.addItem((item) => {
+                item.setTitle('Bindery: Format document');
+                item.setIcon?.('wand');
+                item.onClick(() => { void this.formatActive(); });
+            });
+        }
+
+        m.addItem((item) => {
+            item.setTitle('Bindery: Find probable US to UK words');
+            item.setIcon?.('languages');
+            item.onClick(() => { void this.findUsToUkCommand(); });
+        });
+
+        m.addItem((item) => {
+            item.setTitle('Bindery: Generate AI assistant files');
+            item.setIcon?.('sparkles');
+            item.onClick(() => { void this.setupAiCommand(); });
+        });
+    }
 
     private getVaultBasePath(): string {
         const basePath = this.app.vault.adapter?.basePath;
@@ -151,6 +195,27 @@ export default class BinderyPlugin extends Plugin {
             callback: () => void this.copyMcpSnippet(),
         });
 
+        this.addRibbonIcon('book-open', 'Bindery: Merge chapters to all formats', () => {
+            void this.mergeBook(['md', 'docx', 'epub', 'pdf']);
+        });
+        this.addRibbonIcon('wand', 'Bindery: Format active note', () => {
+            void this.formatActive();
+        });
+        this.addRibbonIcon('languages', 'Bindery: Find probable US to UK words', () => {
+            void this.findUsToUkCommand();
+        });
+
+        // Right-click menus in editor and file explorer.
+        const workspaceOn = this.app.workspace?.on;
+        if (workspaceOn) {
+            this.registerEvent(workspaceOn.call(this.app.workspace, 'editor-menu', (menu: unknown) => {
+                this.addContextMenuItems(menu, true);
+            }));
+            this.registerEvent(workspaceOn.call(this.app.workspace, 'file-menu', (menu: unknown) => {
+                this.addContextMenuItems(menu, false);
+            }));
+        }
+
         this.addSettingTab(new BinderySettingsTab(this.app, this));
     }
 
@@ -159,7 +224,6 @@ export default class BinderyPlugin extends Plugin {
             const vaultPath = this.getVaultBasePath();
             const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
 
-            console.log('Bindery: Merging chapters…');
             const result = await mergeBook(
                 this.app,
                 this.app.vault,
@@ -170,25 +234,27 @@ export default class BinderyPlugin extends Plugin {
             );
 
             const names = result.outputs.map((p: string) => path.basename(p)).join(', ');
-            console.log(`✓ Merged → ${names}`);
+            this.notify(`Merged: ${names}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Merge failed: ${message}`);
+            this.notify(`Merge failed: ${message}`);
         }
     }
 
     private async formatActive(): Promise<void> {
         const file = this.app.workspace?.getActiveFile?.();
-        if (!file || file.extension !== 'md') {
-            console.log('No markdown file active');
+        if (file?.extension !== 'md') {
+            this.notify('No markdown file active');
             return;
         }
         try {
             await formatFile(this.app.vault, file);
-            console.log('✓ Formatted');
+            this.notify('Formatted active note');
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Format failed: ${message}`);
+            this.notify(`Format failed: ${message}`);
         }
     }
 
@@ -199,10 +265,11 @@ export default class BinderyPlugin extends Plugin {
 
             const result = await setupAiFiles(this.app, bookRoot, ['claude', 'copilot'], ALL_SKILLS, false);
             const msg = `Generated: ${result.created.length}, Skipped: ${result.skipped.length}`;
-            console.log(`✓ AI setup: ${msg}`);
+            this.notify(`AI setup complete. ${msg}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ AI setup failed: ${message}`);
+            this.notify(`AI setup failed: ${message}`);
         }
     }
 
@@ -221,10 +288,11 @@ export default class BinderyPlugin extends Plugin {
             if (!to) return;
 
             addDialectRule(bookRoot, language, from, to);
-            console.log(`✓ Added dialect rule: ${from} → ${to}`);
+            this.notify(`Added dialect rule: ${from} -> ${to}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Failed: ${message}`);
+            this.notify(`Action failed: ${message}`);
         }
     }
 
@@ -245,10 +313,11 @@ export default class BinderyPlugin extends Plugin {
             }
 
             addTranslationEntry(bookRoot, term, translations);
-            console.log(`✓ Added translation entry: ${term}`);
+            this.notify(`Added translation entry: ${term}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Failed: ${message}`);
+            this.notify(`Action failed: ${message}`);
         }
     }
 
@@ -264,10 +333,11 @@ export default class BinderyPlugin extends Plugin {
             if (!folderName) return;
 
             addLanguage(bookRoot, code, folderName);
-            console.log(`✓ Added language: ${code}`);
+            this.notify(`Added language: ${code}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Failed: ${message}`);
+            this.notify(`Action failed: ${message}`);
         }
     }
 
@@ -278,14 +348,15 @@ export default class BinderyPlugin extends Plugin {
             const translationsPath = path.join(bookRoot, '.bindery', 'translations.json');
 
             if (!fs.existsSync(translationsPath)) {
-                console.log('translations.json not found');
+                this.notify('translations.json not found');
                 return;
             }
 
-            console.log('Translations file:', translationsPath);
+            this.notify(`Translations file: ${translationsPath}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Failed: ${message}`);
+            this.notify(`Action failed: ${message}`);
         }
     }
 
@@ -293,7 +364,7 @@ export default class BinderyPlugin extends Plugin {
         try {
             const file = this.app.workspace?.getActiveFile?.();
             if (!file) {
-                console.log('No file active');
+                this.notify('No file active');
                 return;
             }
 
@@ -301,21 +372,22 @@ export default class BinderyPlugin extends Plugin {
             const words = findProbableUsWords(content);
 
             if (words.length === 0) {
-                console.log('No probable US words found');
+                this.notify('No probable US words found');
                 return;
             }
 
             const list = words.slice(0, 10).join(', ') + (words.length > 10 ? `, +${words.length - 10} more` : '');
-            console.log(`Found: ${list}`);
+            this.notify(`Found: ${list}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Failed: ${message}`);
+            this.notify(`Action failed: ${message}`);
         }
     }
 
     private async promptString(prompt: string, defaultValue: string = ''): Promise<string | null> {
         return new Promise((resolve) => {
-            const result = window.prompt(prompt, defaultValue);
+            const result = globalThis.prompt(prompt, defaultValue);
             resolve(result);
         });
     }
@@ -395,8 +467,7 @@ export default class BinderyPlugin extends Plugin {
             await clipboard.writeText(snippet);
             return;
         }
-        // Fallback when clipboard API is unavailable in runtime/tests.
-        console.log(snippet);
+        this.notify('Clipboard unavailable; unable to copy MCP snippet.');
     }
 
     showMcpSnippet(): string {

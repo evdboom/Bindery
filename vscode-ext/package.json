@@ -158,6 +158,11 @@
         "category": "Bindery"
       },
       {
+        "command": "bindery.quickActions",
+        "title": "Quick Actions",
+        "category": "Bindery"
+      },
+      {
         "command": "bindery.formatDocument",
         "title": "Format Typography",
         "category": "Bindery"
@@ -1001,6 +1006,11 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "bindery.quickActions",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@95"
+        },
         {
           "submenu": "bindery.exportMenu",
           "when": "resourceLangId == markdown",

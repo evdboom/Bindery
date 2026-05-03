@@ -10,6 +10,16 @@ import * as fs from 'node:fs';
 // Must be declared before any imports that pull in obsidian transitively.
 
 vi.mock('obsidian', () => {
+    class Notice {
+        message: string;
+        timeout?: number;
+
+        constructor(message: string, timeout?: number) {
+            this.message = message;
+            this.timeout = timeout;
+        }
+    }
+
     class Plugin {
         app: App;
 
@@ -32,16 +42,20 @@ vi.mock('obsidian', () => {
             editorCallback?: (editor: unknown) => void;
         }): void { return; }
 
+        addRibbonIcon(_icon: string, _title: string, _callback: () => void): HTMLElement {
+            return {} as HTMLElement;
+        }
+
         addSettingTab(_tab: unknown): void { return; }
 
         registerEvent(_eventRef: unknown): void { return; }
     }
 
-    return { Plugin };
+    return { Plugin, Notice };
 });
 
 import BinderyPlugin from '../src/main';
-import type { App, Vault, Command, Editor } from 'obsidian';
+import type { App, Vault, Editor } from 'obsidian';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 
@@ -53,7 +67,13 @@ function makeApp(vaultPath: string, vaultName = 'TestVault'): App {
         on:      vi.fn().mockReturnValue({}),
         adapter: { basePath: vaultPath },
     } as unknown as Vault;
-    return { vault };
+    return {
+        vault,
+        workspace: {
+            getActiveFile: () => null,
+            on: vi.fn().mockReturnValue({}),
+        },
+    } as unknown as App;
 }
 
 function makeEditor(lineText: string, cursorCh: number, selection = ''): Editor {
@@ -238,13 +258,14 @@ describe('review marker commands', () => {
         const app = makeApp('/vault', 'MyVault');
         app.workspace = {
             getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+            on: vi.fn().mockReturnValue({}),
         };
         const bp = new BinderyPlugin(app);
 
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
-        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
         const ids = commands.map((c) => c.id);
         expect(ids).toContain('start-review-marker');
         expect(ids).toContain('stop-review-marker');
@@ -254,12 +275,13 @@ describe('review marker commands', () => {
         const app = makeApp('/vault', 'MyVault');
         app.workspace = {
             getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+            on: vi.fn().mockReturnValue({}),
         };
         const bp = new BinderyPlugin(app);
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
-        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
         const start = commands.find((c) => c.id === 'start-review-marker');
         const editor = makeEditor('abc', 0, '');
 
@@ -275,12 +297,13 @@ describe('review marker commands', () => {
         const app = makeApp('/vault', 'MyVault');
         app.workspace = {
             getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+            on: vi.fn().mockReturnValue({}),
         };
         const bp = new BinderyPlugin(app);
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
-        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
         const start = commands.find((c) => c.id === 'start-review-marker');
         const editor = makeEditor('abc', 0, 'X');
 
@@ -295,12 +318,13 @@ describe('review marker commands', () => {
         const app = makeApp('/vault', 'MyVault');
         app.workspace = {
             getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+            on: vi.fn().mockReturnValue({}),
         };
         const bp = new BinderyPlugin(app);
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
-        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
         const stop = commands.find((c) => c.id === 'stop-review-marker');
         const editor = makeEditor('abc', 0, '');
 
@@ -316,12 +340,13 @@ describe('review marker commands', () => {
         const app = makeApp('/vault', 'MyVault');
         app.workspace = {
             getActiveFile: () => ({ path: 'Story/ch1.txt', extension: 'txt', name: 'ch1.txt', basename: 'ch1' }),
+            on: vi.fn().mockReturnValue({}),
         };
         const bp = new BinderyPlugin(app);
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
-        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
         const start = commands.find((c) => c.id === 'start-review-marker');
         const editor = makeEditor('abc', 0, '');
 
@@ -335,12 +360,13 @@ describe('review marker commands', () => {
         const app = makeApp('/vault', 'MyVault');
         app.workspace = {
             getActiveFile: () => ({ path: 'Story/ch1.txt', extension: 'txt', name: 'ch1.txt', basename: 'ch1' }),
+            on: vi.fn().mockReturnValue({}),
         };
         const bp = new BinderyPlugin(app);
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
-        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
         const stop = commands.find((c) => c.id === 'stop-review-marker');
         const editor = makeEditor('abc', 0, '');
 
@@ -353,12 +379,13 @@ describe('review marker commands', () => {
         const app = makeApp('/vault', 'MyVault');
         app.workspace = {
             getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+            on: vi.fn().mockReturnValue({}),
         };
         const bp = new BinderyPlugin(app);
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
-        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
         const stop = commands.find((c) => c.id === 'stop-review-marker');
         // Cursor at end of 'abc' (ch=3 === lineText.length=3)
         const editor = makeEditor('abc', 3, '');
@@ -375,12 +402,13 @@ describe('review marker commands', () => {
         const app = makeApp('/vault', 'MyVault');
         app.workspace = {
             getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+            on: vi.fn().mockReturnValue({}),
         };
         const bp = new BinderyPlugin(app);
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
-        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
         const start = commands.find((c) => c.id === 'start-review-marker');
         // Cursor at end of 'abc' (ch=3 === lineText.length=3)
         const editor = makeEditor('abc', 3, '');
@@ -391,5 +419,34 @@ describe('review marker commands', () => {
             '\n<!-- Bindery: Review start -->',
             { line: 0, ch: 3 },
         );
+    });
+});
+
+describe('ribbon actions', () => {
+    it('registers ribbon shortcuts for merge, format, and word scan', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        const bp = new BinderyPlugin(app);
+        const ribbonSpy = vi.spyOn(bp, 'addRibbonIcon');
+
+        await bp.onload();
+
+        const titles = ribbonSpy.mock.calls.map((call) => call[1]);
+        expect(titles).toContain('Bindery: Merge chapters to all formats');
+        expect(titles).toContain('Bindery: Format active note');
+        expect(titles).toContain('Bindery: Find probable US to UK words');
+    });
+});
+
+describe('context menu actions', () => {
+    it('registers editor-menu and file-menu hooks', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        const bp = new BinderyPlugin(app);
+
+        await bp.onload();
+
+        const workspaceOn = app.workspace?.on as ReturnType<typeof vi.fn>;
+        const events = workspaceOn.mock.calls.map((c: unknown[]) => c[0]);
+        expect(events).toContain('editor-menu');
+        expect(events).toContain('file-menu');
     });
 });
