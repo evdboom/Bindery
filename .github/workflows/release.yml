@@ -160,7 +160,21 @@ jobs:
           cd obsidian-plugin/dist
           zip "../../bindery-obsidian-${VERSION}.zip" main.js manifest.json
 
+      - name: Upload Obsidian plugin zip to release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: bindery-obsidian-*.zip
+          fail_on_unmatched_files: true
+
+      - name: Switch to main for metadata PR
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          git fetch origin main
+          git checkout main
+          npm run obsidian:sync-version -- "$VERSION"
+
       - name: Create PR to sync Obsidian release metadata on main
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v7
         with:
           commit-message: "chore(obsidian): sync metadata for ${{ github.ref_name }}"
@@ -181,12 +195,6 @@ jobs:
             manifest.json
             obsidian-plugin/manifest.json
             obsidian-plugin/versions.json
-
-      - name: Upload Obsidian plugin zip to release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: bindery-obsidian-*.zip
-          fail_on_unmatched_files: true
 
   # ── Job 4: Publish VSIX to VS Code Marketplace ──────────────────────────────
   publish-vscode:
