@@ -1,3 +1,6 @@
+/// <reference types="node" />
+/// <reference path="../src/obsidian.d.ts" />
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -22,18 +25,23 @@ vi.mock('obsidian', () => {
             return Promise.resolve();
         }
 
-        addCommand(_command: { id: string; name: string; callback: () => void | Promise<void> }): void {}
+        addCommand(_command: {
+            id: string;
+            name: string;
+            callback?: () => void | Promise<void>;
+            editorCallback?: (editor: unknown) => void;
+        }): void { return; }
 
-        addSettingTab(_tab: unknown): void {}
+        addSettingTab(_tab: unknown): void { return; }
 
-        registerEvent(_eventRef: unknown): void {}
+        registerEvent(_eventRef: unknown): void { return; }
     }
 
     return { Plugin };
 });
 
 import BinderyPlugin from '../src/main';
-import type { App, Vault } from 'obsidian';
+import type { App, Vault, Command, Editor } from 'obsidian';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 
@@ -46,6 +54,21 @@ function makeApp(vaultPath: string, vaultName = 'TestVault'): App {
         adapter: { basePath: vaultPath },
     } as unknown as Vault;
     return { vault };
+}
+
+function makeEditor(lineText: string, cursorCh: number, selection = ''): Editor {
+    return {
+        getCursor: vi.fn((which?: 'from' | 'to' | 'head' | 'anchor') => {
+            if (which === 'to') {
+                return { line: 0, ch: cursorCh + selection.length };
+            }
+            return { line: 0, ch: cursorCh };
+        }),
+        getLine: vi.fn(() => lineText),
+        getSelection: vi.fn(() => selection),
+        replaceSelection: vi.fn(),
+        replaceRange: vi.fn(),
+    };
 }
 
 // ─── showMcpSnippet ───────────────────────────────────────────────────────────
@@ -160,7 +183,7 @@ describe('formatOnSave bookRoot scoping', () => {
 
         // Capture the vault.on callback before onload
         let savedCallback: ((...args: unknown[]) => void) | undefined;
-        vi.spyOn(app.vault, 'on').mockImplementation((_event, cb) => {
+        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (...args: unknown[]) => unknown) => {
             savedCallback = cb as (...args: unknown[]) => void;
             return {};
         });
@@ -184,7 +207,7 @@ describe('formatOnSave bookRoot scoping', () => {
         const bp = new BinderyPlugin(app);
 
         let savedCallback: ((...args: unknown[]) => void) | undefined;
-        vi.spyOn(app.vault, 'on').mockImplementation((_event, cb) => {
+        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (...args: unknown[]) => unknown) => {
             savedCallback = cb as (...args: unknown[]) => void;
             return {};
         });
@@ -207,5 +230,85 @@ describe('formatOnSave bookRoot scoping', () => {
         expect(app.vault.read).toHaveBeenCalledWith(insideFile);
 
         fs.rmSync(vaultPath, { recursive: true, force: true });
+    });
+});
+
+describe('review marker commands', () => {
+    it('registers start/stop review commands', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        app.workspace = {
+            getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+        };
+        const bp = new BinderyPlugin(app);
+
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const ids = commands.map((c) => c.id);
+        expect(ids).toContain('start-review-marker');
+        expect(ids).toContain('stop-review-marker');
+    });
+
+    it('start-review-marker inserts review start marker at cursor', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        app.workspace = {
+            getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+        };
+        const bp = new BinderyPlugin(app);
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const start = commands.find((c) => c.id === 'start-review-marker');
+        const editor = makeEditor('abc', 0, '');
+
+        start?.editorCallback?.(editor);
+
+        expect(editor.replaceRange).toHaveBeenCalledWith(
+            '<!-- Bindery: Review start -->\n',
+            { line: 0, ch: 0 },
+        );
+    });
+
+    it('start-review-marker wraps selection with start/stop markers', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        app.workspace = {
+            getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+        };
+        const bp = new BinderyPlugin(app);
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const start = commands.find((c) => c.id === 'start-review-marker');
+        const editor = makeEditor('abc', 0, 'X');
+
+        start?.editorCallback?.(editor);
+
+        expect(editor.replaceSelection).toHaveBeenCalledWith(
+            '<!-- Bindery: Review start -->\nX\n<!-- Bindery: Review stop -->\n',
+        );
+    });
+
+    it('stop-review-marker inserts review stop marker at cursor', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        app.workspace = {
+            getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+        };
+        const bp = new BinderyPlugin(app);
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const stop = commands.find((c) => c.id === 'stop-review-marker');
+        const editor = makeEditor('abc', 0, '');
+
+        stop?.editorCallback?.(editor);
+
+        expect(editor.replaceRange).toHaveBeenCalledWith(
+            '<!-- Bindery: Review stop -->\n',
+            { line: 0, ch: 0 },
+        );
     });
 });

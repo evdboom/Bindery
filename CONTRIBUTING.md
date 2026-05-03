@@ -63,6 +63,20 @@ lives:
 
 ---
 
+## Host Feature Parity Policy
+
+`vscode-ext/` and `obsidian-plugin/` are two host implementations of the same
+authoring feature set. Unless a feature is explicitly host-specific, any
+functional change added to one host should be implemented in the other host in
+the same PR (or in a clearly linked follow-up PR).
+
+When adding or changing commands:
+- update command wiring in both hosts
+- add or update tests in both hosts
+- document intentional host-specific exceptions in the PR description
+
+---
+
 ## MCP stdio integration tests (`mcp-ts/test/integration-stdio.test.ts`)
 
 These tests spawn `node out/index.js` as a real child process and drive it over
@@ -95,16 +109,18 @@ Tests cover:
 
 The workflow runs on every push and pull request on all branches.
 
-A single `test` job runs the steps sequentially (the template-sync step must
-occur between the mcp-ts and vscode-ext builds):
+A single `test` job runs the steps sequentially:
 
 | Step | What it does |
 |---|---|
+| Install + compile bindery-core | `npm ci` → `npm run compile` |
+| Run bindery-core tests | `npm run test:ci` → uploads `test-results.json` artifact |
 | Install + compile mcp-ts | `npm ci` → `npm run compile` |
 | Run mcp-ts tests | `npm run test:ci` → uploads `test-results.json` artifact |
-| Sync templates | Copies `mcp-ts/src/templates.ts` → `vscode-ext/src/ai-setup-templates.ts` |
 | Install + compile vscode-ext | `npm ci` → `npm run compile` |
 | Run vscode-ext tests | `npm run test:ci` → uploads `test-results.json` artifact |
+| Install + compile obsidian-plugin | `npm ci` → `npm run compile` |
+| Run obsidian-plugin tests | `npm run test:ci` → uploads `test-results.json` artifact |
 
 PRs **cannot be merged** unless the `test` job passes.
 

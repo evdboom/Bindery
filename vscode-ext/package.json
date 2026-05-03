@@ -1034,6 +1034,16 @@
           "group": "2_dialect@3"
         },
         {
+          "command": "bindery.startReviewMarker",
+          "when": "resourceLangId == markdown",
+          "group": "2_review@1"
+        },
+        {
+          "command": "bindery.stopReviewMarker",
+          "when": "resourceLangId == markdown",
+          "group": "2_review@2"
+        },
+        {
           "command": "bindery.mergeMarkdown",
           "group": "3_export@1"
         },

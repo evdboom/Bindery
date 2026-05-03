@@ -5,8 +5,8 @@
  * AGENTS.md, and .claude/skills/<skill>/SKILL.md from the book's
  * .bindery/settings.json.
  *
- * Templates live in templates.ts — the single source of truth.
- * vscode-ext/src/ai-setup.ts imports its copy via ai-setup-templates.ts.
+ * Templates are owned by bindery-core/src/templates.ts (single source of truth).
+ * mcp-ts/src/templates.ts is a local re-export shim for stable imports.
  */
 
 import * as fs   from 'node:fs';
