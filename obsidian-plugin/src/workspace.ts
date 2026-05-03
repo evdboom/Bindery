@@ -53,7 +53,7 @@ export function addDialectRule(bookRoot: string, language: string, from: string,
     const settings = readSettings(bookRoot);
     const languages = settings?.languages ?? [];
 
-    const lang = languages.find((l: LanguageConfig) => l.code.toUpperCase() === language.toUpperCase());
+    const lang = languages.find(l => l.code.toUpperCase() === language.toUpperCase());
     if (!lang) {
         throw new Error(`Language "${language}" not found in settings`);
     }
@@ -84,7 +84,7 @@ export function addLanguage(
     const settings = readSettings(bookRoot) || { languages: [] };
     settings.languages ??= [];
 
-    if (settings.languages.some((l: LanguageConfig) => l.code === code)) {
+    if (settings.languages.some(l => l.code === code)) {
         throw new Error(`Language "${code}" already exists`);
     }
 

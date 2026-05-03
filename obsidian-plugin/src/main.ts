@@ -9,7 +9,7 @@
  * inside the Obsidian app itself.
  */
 
-import { BINDERY_FOLDER, SETTINGS_FILENAME, upsertGlossaryRule, getDefaultLanguage } from '@bindery/core';
+import { BINDERY_FOLDER, SETTINGS_FILENAME, upsertGlossaryRule, getDefaultLanguage, type LanguageConfig } from '@bindery/core';
 import type { OutputType } from '@bindery/merge';
 import { mergeBook } from './merge';
 import { formatFile } from './formatter';
@@ -307,7 +307,7 @@ export default class BinderyPlugin extends Plugin {
             if (!sourceLang) throw new Error('No default language configured. Run Bindery: Initialize Workspace first.');
 
             const targetLangs = settings.languages.filter(
-                (l: { isDefault?: boolean; code: string }) => !l.isDefault && l.code !== sourceLang.code
+                (l: LanguageConfig) => !l.isDefault && l.code !== sourceLang.code
             );
             if (targetLangs.length === 0) {
                 throw new Error('No target languages configured. Use Bindery: Add Language to add one.');
