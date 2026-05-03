@@ -144,46 +144,54 @@ MIT — see [LICENSE](LICENSE).
 
 ## Contributing — template source of truth
 
+## Host Parity Reminder
+
+`vscode-ext/` and `obsidian-plugin/` target the same Bindery authoring feature
+set. The Obsidian plugin currently implements a subset of VS Code commands
+(export, review markers, init workspace, and MCP snippet); `format-document` is
+still a placeholder and commands such as setup AI, translation/dialect/language
+management, open translations, and register MCP are VS Code-only for now.
+
+Unless a change is intentionally host-specific, functional additions to one host
+should be mirrored in the other in the same PR or a clearly linked follow-up PR.
+
 The AI instruction file templates are maintained in **one place only**:
 
 ```
-mcp-ts/src/templates.ts   ← SINGLE SOURCE OF TRUTH
+bindery-core/src/templates/*.ts   ← SINGLE SOURCE OF TRUTH (one file per template)
 ```
 
-`vscode-ext/src/ai-setup-templates.ts` is a generated copy and **must never be edited directly**.
-CI syncs it automatically before every publish step.
+`mcp-ts/src/templates.ts` is now a thin re-export shim to keep existing imports
+stable. Consumers should continue importing from their local package entrypoint,
+but template edits belong in the matching file under `bindery-core/src/templates/`.
 
 ### Syncing locally
 
-After changing `mcp-ts/src/templates.ts`, copy it to the VS Code extension:
+After changing files under `bindery-core/src/templates/`, rebuild and test the workspace
+(no template copy step is required):
 
 ```bash
-cp mcp-ts/src/templates.ts vscode-ext/src/ai-setup-templates.ts
+npm run build --workspace=bindery-core
+npm test --workspace=bindery-core
+npm test --workspace=mcp-ts
+npm test --workspace=vscode-ext
+npm test --workspace=obsidian-plugin
 ```
 
 ### Running tests
 
 ```bash
-# MCP server (includes template contract tests + copy-parity check)
+# MCP server
 cd mcp-ts && npm test
 
 # VS Code extension
 cd vscode-ext && npm test
 ```
 
-The copy-parity test (`mcp-ts/test/templates-parity.test.ts`) skips gracefully when
-`ai-setup-templates.ts` is absent (normal in fresh checkouts) and **fails** when it exists
-but differs from the source — this is what CI catches.
-
 ### What CI does
 
 The CI workflow (`.github/workflows/ci.yml`) runs on every push and pull request:
 
-1. Builds and tests the MCP server (Ubuntu, Windows, macOS).
-2. Copies `mcp-ts/src/templates.ts` → `vscode-ext/src/ai-setup-templates.ts`.
-3. Verifies the copy is identical to the source (fails with a clear remediation message if not).
-4. Builds and tests the VS Code extension.
-5. Runs the **tool parity guard** (`scripts/check-tool-parity.mjs`) — verifies all MCP tools are registered consistently across all 5 surfaces (server, VS Code LM tools, package.json, mcpb manifest, implementation).
-6. Enforces **coverage thresholds** (statements 80%, branches 65%, functions 90%, lines 80%) for both packages.
-
-If CI fails on the sync check, fix it by running the copy command above and committing the result.
+1. Builds and tests `bindery-core`, `mcp-ts`, `vscode-ext`, and `obsidian-plugin` (Ubuntu, Windows, macOS).
+2. Runs the **tool parity guard** (`scripts/check-tool-parity.mjs`) on coverage job.
+3. Enforces **coverage thresholds** (statements 80%, branches 65%, functions 90%, lines 80%) across packages.

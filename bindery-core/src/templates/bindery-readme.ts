@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-    version: 4,
+    version: 5,
     label:   'bindery capabilities',
     zip:     null,
 };
@@ -26,7 +26,7 @@ may fetch it for context; otherwise, treat this file as the complete answer.
 
 Bindery is a markdown book authoring toolkit with three surfaces:
 
-1. **VS Code extension** — commands, format-on-save, export to DOCX/EPUB/PDF.
+1. **VS Code / Obsidian extension** — commands, format-on-save, export to DOCX/EPUB/PDF.
 2. **MCP server** — programmatic tools for AI assistants (Claude, Copilot, Codex, Cursor).
 3. **Skill workflows** — opinionated slash-commands like \`/review\`, \`/translate\`, \`/memory\`.
 
@@ -34,7 +34,7 @@ All three operate on the same workspace state: \`.bindery/settings.json\`,
 \`.bindery/translations.json\`, the story folder, \`Notes/\`, \`Arc/\`, and
 \`.bindery/memories/\`.
 
-## VS Code commands (Command Palette → "Bindery: …")
+## VS Code / Obsidian commands (Command Palette → "Bindery: …")
 
 | Command | What it does |
 |---|---|
@@ -98,7 +98,7 @@ work-in-progress and continue on another machine.
 
 - The stop marker is **optional** — an unclosed start runs to end of file.
 - Multiple regions per file are supported.
-- Insert markers via the VS Code commands above, or just type them.
+- Insert markers via the VS Code / Obsidian commands above, or just type them.
 - \`get_review_text(autoStage: true)\` returns marker regions in addition to the
   git diff and **removes** the marker lines as part of staging, so the next
   review pass starts clean.

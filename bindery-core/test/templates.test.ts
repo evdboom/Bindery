@@ -431,7 +431,7 @@ describe('renderTemplate — bindery-readme', () => {
   it('includes the workspace title and key capability sections', () => {
     const result = renderTemplate('bindery-readme', makeCtx());
     expect(result).toContain('Test Book');
-    expect(result).toContain('## VS Code commands');
+    expect(result).toContain('## VS Code / Obsidian commands');
     expect(result).toContain('## MCP tools');
     expect(result).toContain('## Skill workflows');
     expect(result).toContain('## Review markers');

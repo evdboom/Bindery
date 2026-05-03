@@ -1,4 +1,17 @@
 declare module 'obsidian' {
+    export interface EditorPosition {
+        line: number;
+        ch: number;
+    }
+
+    export interface Editor {
+        getCursor(which?: 'from' | 'to' | 'head' | 'anchor'): EditorPosition;
+        getLine(line: number): string;
+        getSelection(): string;
+        replaceSelection(text: string): void;
+        replaceRange(text: string, from: EditorPosition, to?: EditorPosition): void;
+    }
+
     export interface EventRef {
         [key: string]: unknown;
     }
@@ -20,6 +33,16 @@ declare module 'obsidian' {
 
     export interface App {
         vault: Vault;
+        workspace?: {
+            getActiveFile(): TFile | null;
+        };
+    }
+
+    export interface Command {
+        id: string;
+        name: string;
+        callback?: () => void | Promise<void>;
+        editorCallback?: (editor: Editor) => void;
     }
 
     export class Plugin {
@@ -27,7 +50,7 @@ declare module 'obsidian' {
         constructor(app: App);
         loadData(): Promise<unknown>;
         saveData(data: unknown): Promise<void>;
-        addCommand(command: { id: string; name: string; callback: () => void | Promise<void> }): void;
+        addCommand(command: Command): void;
         addSettingTab(tab: unknown): void;
         registerEvent(eventRef: EventRef): void;
     }

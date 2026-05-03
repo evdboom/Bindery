@@ -9,14 +9,17 @@
  * inside the Obsidian app itself.
  */
 
-import { readWorkspaceSettings, BINDERY_FOLDER, SETTINGS_FILENAME } from '@bindery/core';
+import { BINDERY_FOLDER, SETTINGS_FILENAME } from '@bindery/core';
 import { formatFile } from './formatter';
 import { exportBook, resolveBookRoot } from './exporter';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
 import { Plugin } from 'obsidian';
-import type { TFile } from 'obsidian';
+import type { Editor, TFile } from 'obsidian';
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
+
+const REVIEW_START_MARKER = '<!-- Bindery: Review start -->';
+const REVIEW_STOP_MARKER  = '<!-- Bindery: Review stop -->';
 
 export default class BinderyPlugin extends Plugin {
     settings: BinderySettings = { ...DEFAULT_SETTINGS };
@@ -63,6 +66,18 @@ export default class BinderyPlugin extends Plugin {
             callback: () => void this.formatActive(),
         });
 
+        // Review marker commands
+        this.addCommand({
+            id:   'start-review-marker',
+            name: 'Bindery: Insert Review Start Marker (or wrap selection)',
+            editorCallback: (editor) => this.insertStartReviewMarker(editor),
+        });
+        this.addCommand({
+            id:   'stop-review-marker',
+            name: 'Bindery: Insert Review Stop Marker',
+            editorCallback: (editor) => this.insertStopReviewMarker(editor),
+        });
+
         // Export commands
         for (const fmt of ['md', 'docx', 'epub', 'pdf'] as const) {
             const label = fmt.toUpperCase();
@@ -93,6 +108,47 @@ export default class BinderyPlugin extends Plugin {
     private async formatActive(): Promise<void> {
         // In the real Obsidian plugin, get the active file via workspace.getActiveFile().
         // This is a placeholder; full implementation requires the Obsidian runtime API.
+    }
+
+    private insertStartReviewMarker(editor: Editor): void {
+        if (!this.isMarkdownActive()) {
+            return;
+        }
+
+        const selection = editor.getSelection();
+        if (selection.length > 0) {
+            const start = editor.getCursor('from');
+            const end = editor.getCursor('to');
+            const startWrap = this.lineBoundaryWrap(editor, start.line, start.ch, REVIEW_START_MARKER);
+            const stopWrap = this.lineBoundaryWrap(editor, end.line, end.ch, REVIEW_STOP_MARKER);
+            editor.replaceSelection(`${startWrap}${selection}${stopWrap}`);
+            return;
+        }
+
+        const pos = editor.getCursor();
+        editor.replaceRange(this.lineBoundaryWrap(editor, pos.line, pos.ch, REVIEW_START_MARKER), pos);
+    }
+
+    private insertStopReviewMarker(editor: Editor): void {
+        if (!this.isMarkdownActive()) {
+            return;
+        }
+        const pos = editor.getCursor();
+        editor.replaceRange(this.lineBoundaryWrap(editor, pos.line, pos.ch, REVIEW_STOP_MARKER), pos);
+    }
+
+    private lineBoundaryWrap(editor: Editor, line: number, ch: number, marker: string): string {
+        const lineText = editor.getLine(line);
+        const atLineStart = ch === 0;
+        const atLineEnd = ch === lineText.length;
+        const prefix = atLineStart ? '' : '\n';
+        const suffix = atLineEnd ? '' : '\n';
+        return `${prefix}${marker}${suffix}`;
+    }
+
+    private isMarkdownActive(): boolean {
+        const active = this.app.workspace?.getActiveFile();
+        return active?.extension === 'md';
     }
 
     private async initWorkspace(): Promise<void> {
@@ -157,7 +213,9 @@ export default class BinderyPlugin extends Plugin {
 
     async loadSettings(): Promise<void> {
         const loaded = await this.loadData() as Partial<BinderySettings> | null;
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
+        this.settings = loaded
+            ? { ...DEFAULT_SETTINGS, ...loaded }
+            : { ...DEFAULT_SETTINGS };
     }
 
     async saveSettings(): Promise<void> {
@@ -166,4 +224,4 @@ export default class BinderyPlugin extends Plugin {
 }
 
 // Re-export for consumers (e.g. settings tab, tests)
-export { readWorkspaceSettings };
+export { readWorkspaceSettings } from '@bindery/core';
