@@ -5,8 +5,9 @@
  * AGENTS.md, and .claude/skills/<skill>/SKILL.md from the book's
  * .bindery/settings.json.
  *
- * Templates are owned by bindery-core/src/templates.ts (single source of truth).
- * mcp-ts/src/templates.ts is a local re-export shim for stable imports.
+ * Template content is maintained in bindery-core/src/templates/*.ts
+ * (each template lives under ./templates/ there). mcp-ts/src/templates.ts
+ * is a local re-export shim for stable imports.
  */
 
 import * as fs   from 'node:fs';
