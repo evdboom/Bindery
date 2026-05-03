@@ -9,13 +9,13 @@
  * inside the Obsidian app itself.
  */
 
-import { BINDERY_FOLDER, SETTINGS_FILENAME } from '@bindery/core';
+import { BINDERY_FOLDER, SETTINGS_FILENAME, upsertGlossaryRule, getDefaultLanguage, type LanguageConfig } from '@bindery/core';
 import type { OutputType } from '@bindery/merge';
 import { mergeBook } from './merge';
 import { formatFile } from './formatter';
 import { exportBook, resolveBookRoot } from './exporter';
 import { setupAiFiles, ALL_SKILLS } from './ai-setup';
-import { readSettings, addDialectRule, addTranslationEntry, addLanguage, findProbableUsWords } from './workspace';
+import { readSettings, addDialectRule, addLanguage, findProbableUsWords } from './workspace';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
 import { Notice, Plugin } from 'obsidian';
 import type { Editor, TFile } from 'obsidian';
@@ -263,7 +263,7 @@ export default class BinderyPlugin extends Plugin {
             const vaultPath = this.getVaultBasePath();
             const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
 
-            const result = await setupAiFiles(this.app, bookRoot, ['claude', 'copilot'], ALL_SKILLS, false);
+            const result = await setupAiFiles(this.app, bookRoot, ['claude', 'copilot', 'cursor', 'agents'], ALL_SKILLS, false);
             const msg = `Generated: ${result.created.length}, Skipped: ${result.skipped.length}`;
             this.notify(`AI setup complete. ${msg}`);
         } catch (err) {
@@ -303,17 +303,27 @@ export default class BinderyPlugin extends Plugin {
             const settings = readSettings(bookRoot);
             if (!settings?.languages) throw new Error('No languages configured');
 
-            const term = await this.promptString('Term to add:', '');
-            if (!term) return;
+            const sourceLang = getDefaultLanguage(settings);
+            if (!sourceLang) throw new Error('No default language configured. Run Bindery: Initialize Workspace first.');
 
-            const translations: Record<string, string> = {};
-            for (const lang of settings.languages) {
-                const trans = await this.promptString(`Translation in ${lang.code}:`, '');
-                if (trans) translations[lang.code] = trans;
+            const targetLangs = settings.languages.filter(
+                (l: LanguageConfig) => !l.isDefault && l.code !== sourceLang.code
+            );
+            if (targetLangs.length === 0) {
+                throw new Error('No target languages configured. Use Bindery: Add Language to add one.');
             }
 
-            addTranslationEntry(bookRoot, term, translations);
-            this.notify(`Added translation entry: ${term}`);
+            const fromWord = await this.promptString(`Term in ${sourceLang.code}:`, '');
+            if (!fromWord) return;
+
+            for (const lang of targetLangs) {
+                const toWord = await this.promptString(`${lang.code} equivalent for "${fromWord}":`, '');
+                if (!toWord) continue;
+                const langKey = lang.code.toLowerCase();
+                upsertGlossaryRule(bookRoot, langKey, lang.folderName, sourceLang.code, { from: fromWord, to: toWord });
+            }
+
+            this.notify(`Added glossary entry: ${fromWord}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Failed: ${message}`);

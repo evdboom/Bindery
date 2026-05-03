@@ -16,7 +16,7 @@ import * as path from 'node:path';
 
 export type ToolName = 'pandoc' | 'libreoffice';
 
-interface ResolvedTool {
+export interface ResolvedTool {
     path: string;
     source: 'setting' | 'path' | 'default' | 'fallback';
 }
