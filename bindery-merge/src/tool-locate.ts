@@ -32,8 +32,8 @@ function wellKnownPaths(tool: ToolName): string[] {
     const home = env.HOME || env.USERPROFILE || '';
 
     if (process.platform === 'win32') {
-        const programFiles = env['ProgramFiles'] || 'C:\\Program Files';
-        const programFiles86 = env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+        const programFiles = env['ProgramFiles'] || String.raw`C:\Program Files`;
+        const programFiles86 = env['ProgramFiles(x86)'] || String.raw`C:\Program Files (x86)`;
         const localAppData = env['LOCALAPPDATA'] || path.join(home, 'AppData', 'Local');
 
         if (tool === 'pandoc') {
@@ -107,7 +107,7 @@ function resolveOnPath(cmd: string): string | null {
 
 export function locateTool(tool: ToolName, setting: string | undefined): ResolvedTool {
     const cached = cache.get(tool);
-    if (cached && cached.source === 'setting' && (setting ?? '').trim() === cached.path) {
+    if (cached?.source === 'setting' && (setting ?? '').trim() === cached.path) {
         return cached;
     }
     if (cached && cached.source !== 'setting' && isSettingDefault(tool, setting)) {

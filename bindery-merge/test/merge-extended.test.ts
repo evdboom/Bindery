@@ -8,7 +8,7 @@
  * parseActFolder, formatActTitle, imageMarkdownFor, buildPandocContent.
  */
 
-import { vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Mock vscode (must precede transitive imports) ───────────────────────────
 vi.mock('vscode', () => ({
@@ -28,20 +28,17 @@ vi.mock('vscode', () => ({
     LanguageModelTextPart:   class { constructor(public readonly value: string) {} },
 }));
 
-import * as cp   from 'node:child_process';
 import * as fs   from 'node:fs';
 import * as os   from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
     checkPandoc,
     clearPandocCapabilityCache,
-    getBuiltInUkReplacements,
     getPandocOutputFormats,
     mergeBook,
-    type LanguageConfig,
     type MergeOptions,
 } from '../src/merge';
+import type { LanguageConfig } from '@bindery/core';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -328,7 +325,7 @@ describe('mergeBook — dialect preserves code fences', () => {
         // Inside fence: "color" is preserved (not replaced with "colour")
         // Typography formatting may convert straight quotes to curly inside the fence,
         // but the word "color" inside the fence should NOT become "colour".
-        const fenceMatch = merged.match(/```python\n(.+)\n```/s);
+        const fenceMatch = /```python\n(.+)\n```/s.exec(merged);
         expect(fenceMatch).not.toBeNull();
         expect(fenceMatch![1]).toContain('color');
         expect(fenceMatch![1]).not.toContain('colour');

@@ -8,7 +8,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { App } from 'obsidian';
 import { BINDERY_FOLDER, SETTINGS_FILENAME, TRANSLATIONS_FILENAME } from '@bindery/core';
 
 export interface LanguageConfig {
@@ -106,20 +105,17 @@ export function writeTranslations(bookRoot: string, entries: TranslationEntry[])
  * Add or update a dialect rule (US ↔ UK spelling, etc.)
  */
 export function addDialectRule(bookRoot: string, language: string, from: string, to: string): void {
-    const settings = readSettings(bookRoot) || { languages: [] };
-    if (!settings.languages) {
-        settings.languages = [];
-    }
+    const settings = readSettings(bookRoot) || { languages: [] };    
+    settings.languages ??= [];
+    
 
     const lang = settings.languages.find(l => l.code === language);
     if (!lang) {
         throw new Error(`Language "${language}" not found in settings`);
     }
 
-    if (!lang.dialects) {
-        lang.dialects = [];
-    }
-
+    lang.dialects ??= [];
+    
     // Store rule in memory for now; in a real implementation, could store in a separate file
     writeSettings(bookRoot, settings);
 }
@@ -162,9 +158,7 @@ export function addLanguage(
     actPrefix?: string
 ): void {
     const settings = readSettings(bookRoot) || { languages: [] };
-    if (!settings.languages) {
-        settings.languages = [];
-    }
+    settings.languages ??= [];
 
     if (settings.languages.some(l => l.code === code)) {
         throw new Error(`Language "${code}" already exists`);

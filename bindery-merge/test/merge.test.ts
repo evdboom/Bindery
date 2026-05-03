@@ -12,9 +12,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
     getBuiltInUkReplacements,
     mergeBook,
-    type LanguageConfig,
     type MergeOptions,
 } from '../src/merge';
+import type { LanguageConfig } from '@bindery/core';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

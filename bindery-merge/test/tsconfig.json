@@ -1,7 +1,14 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "composite": false
+    "module": "commonjs",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "vitest/globals"],
+    "noEmit": true
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.test.ts"]
 }
