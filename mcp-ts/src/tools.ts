@@ -1026,13 +1026,14 @@ export interface GetReviewTextArgs {
 export function toolGetReviewText(root: string, args: GetReviewTextArgs): string {
     const contextLines = args.contextLines ?? 3;
     const language     = (args.language ?? 'ALL').toUpperCase();
+    const chapterPathspec = chapterMarkdownPathspec(root);
 
     // ── 1. Git diff ────────────────────────────────────────────────────────
     let raw: string;
     let gitAvailable = true;
     try {
         const result = spawnSync(
-            'git', ['diff', '--ignore-cr-at-eol', `-U${contextLines}`],
+            'git', ['diff', '--ignore-cr-at-eol', `-U${contextLines}`, '--', chapterPathspec],
             { cwd: root, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
         );
         if (result.error) { throw result.error; }
@@ -1049,10 +1050,10 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     const diffFiles = raw.trim() ? parseUnifiedDiff(raw) : [];
     const filteredDiff = filterByLanguage(diffFiles, language);
     const diffSection  = filteredDiff.length > 0 ? formatReviewFiles(filteredDiff) : '';
+    const reviewedFiles = filteredDiff.map(f => f.file);
 
-    // ── 2. Marker regions (works even with no unstaged diff — supports
-    //       reviewing committed work) ────────────────────────────────────
-    const markerFiles = collectReviewMarkerFiles(root, language);
+    // ── 2. Marker regions in the same unstaged chapter files ────────────
+    const markerFiles = collectReviewMarkerFiles(root, reviewedFiles);
     const markerSection = markerFiles.length > 0 ? formatReviewMarkerFiles(markerFiles) : '';
 
     // ── 3. Compose response ────────────────────────────────────────────────
@@ -1072,13 +1073,13 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     if (markerSection) { parts.push('# Review markers', markerSection); }
     const result = parts.join('\n\n');
 
-    // ── 4. autoStage: stage diff (if git is available) + always consume markers ─
+    // ── 4. autoStage: stage reviewed chapter files + consume markers ─────
     if (args.autoStage) {
         if (gitAvailable) {
-            const contentDirs = contentFolders(root);
-            if (contentDirs.length > 0) {
+            const stageFiles = uniquePaths([...reviewedFiles, ...markerFiles.map(f => f.file)]);
+            if (stageFiles.length > 0) {
                 try {
-                    const r = spawnSync('git', ['add', ...contentDirs], { cwd: root, encoding: 'utf-8' });
+                    const r = spawnSync('git', ['add', ...stageFiles], { cwd: root, encoding: 'utf-8' });
                     if (r.error) { throw r.error; }
                 } catch { /* best effort — staging failure shouldn't break the review */ }
             }
@@ -1101,23 +1102,35 @@ function filterByLanguage<T extends { file: string }>(items: T[], language: stri
     });
 }
 
-/** Walk content folders and collect every file that contains review markers. */
-function collectReviewMarkerFiles(root: string, language: string): FormattedMarkerFile[] {
+/** Scan only the reviewed (unstaged chapter diff) files for review markers. */
+function collectReviewMarkerFiles(root: string, relFiles: string[]): FormattedMarkerFile[] {
     const out: FormattedMarkerFile[] = [];
-    for (const dir of contentFolders(root)) {
-        walkMarkdown(path.join(root, dir), (abs) => {
-            const rel = path.relative(root, abs).replaceAll('\\', '/');
-            if (language !== 'ALL') {
-                const upper = rel.toUpperCase();
-                if (!upper.includes(`/${language}/`)) { return; }
-            }
-            let content: string;
-            try { content = fs.readFileSync(abs, 'utf-8'); }
-            catch { return; }
-            const scan = scanReviewMarkers(content);
-            if (scan.regions.length === 0 && scan.warnings.length === 0) { return; }
-            out.push({ file: rel, regions: scan.regions, warnings: scan.warnings });
-        });
+    for (const rel of uniquePaths(relFiles)) {
+        if (!rel.toLowerCase().endsWith('.md')) { continue; }
+        const abs = path.join(root, rel);
+        let content: string;
+        try { content = fs.readFileSync(abs, 'utf-8'); }
+        catch { continue; }
+        const scan = scanReviewMarkers(content);
+        if (scan.regions.length === 0 && scan.warnings.length === 0) { continue; }
+        out.push({ file: rel, regions: scan.regions, warnings: scan.warnings });
+    }
+    return out;
+}
+
+function chapterMarkdownPathspec(root: string): string {
+    const story = storyFolder(root).replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
+    return `:(glob)${story}/**/*.md`;
+}
+
+function uniquePaths(items: string[]): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const item of items) {
+        const rel = item.replaceAll('\\', '/');
+        if (seen.has(rel)) { continue; }
+        seen.add(rel);
+        out.push(rel);
     }
     return out;
 }

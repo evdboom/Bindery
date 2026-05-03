@@ -125,7 +125,7 @@ afterEach(() => {
 });
 
 describe('toolGetReviewText — review markers', () => {
-    it('returns marker regions even when there is no unstaged diff', () => {
+    it('returns marker regions from unstaged chapter files', () => {
         const root = makeGitRepo();
         const file = path.join(root, 'Story', 'EN', 'Chapter 1.md');
         const body =
@@ -139,10 +139,13 @@ describe('toolGetReviewText — review markers', () => {
         spawnSync('git', ['add', '.'], { cwd: root });
         spawnSync('git', ['commit', '-m', 'add chapter with marker'], { cwd: root });
 
+        // Make the chapter file unstaged so it is eligible for review output.
+        fs.writeFileSync(file, body + '\nUnstaged tweak.\n', 'utf-8');
+
         const out = toolGetReviewText(root, {});
+        expect(out).toContain('# Git diff');
         expect(out).toContain('# Review markers');
         expect(out).toContain('Please review this paragraph.');
-        expect(out).not.toContain('# Git diff');
     });
 
     it('combines diff and marker sections when both are present', () => {
@@ -175,6 +178,9 @@ describe('toolGetReviewText — review markers', () => {
         spawnSync('git', ['add', '.'], { cwd: root });
         spawnSync('git', ['commit', '-m', 'add chapter'], { cwd: root });
 
+        // Mark the chapter as unstaged so it is included in reviewed files.
+        fs.appendFileSync(file, '\nUnstaged tweak\n', 'utf-8');
+
         toolGetReviewText(root, { autoStage: true });
 
         const after = fs.readFileSync(file, 'utf-8');
@@ -195,6 +201,9 @@ describe('toolGetReviewText — review markers', () => {
         spawnSync('git', ['add', '.'], { cwd: root });
         spawnSync('git', ['commit', '-m', 'add'], { cwd: root });
 
+        fs.appendFileSync(path.join(root, 'Story', 'EN', 'Chapter 1.md'), '\nEN unstaged\n', 'utf-8');
+        fs.appendFileSync(path.join(root, 'Story', 'NL', 'Chapter 1.md'), '\nNL unstaged\n', 'utf-8');
+
         const out = toolGetReviewText(root, { language: 'NL' });
         expect(out).toContain('NL region');
         expect(out).not.toContain('EN region');
@@ -206,6 +215,8 @@ describe('toolGetReviewText — review markers', () => {
         write(file, `${REVIEW_START_MARKER}\nOpen until EOF\nstill open\n`);
         spawnSync('git', ['add', '.'], { cwd: root });
         spawnSync('git', ['commit', '-m', 'add'], { cwd: root });
+
+        fs.appendFileSync(file, '\nUnstaged line\n', 'utf-8');
 
         const out = toolGetReviewText(root, {});
         expect(out).toContain('open-ended');
@@ -224,6 +235,8 @@ describe('toolGetReviewText — review markers', () => {
         spawnSync('git', ['add', '.'], { cwd: root });
         spawnSync('git', ['commit', '-m', 'add'], { cwd: root });
 
+        fs.appendFileSync(file, '\nUnstaged tweak\n', 'utf-8');
+
         const out = toolGetReviewText(root, {});
         expect(out).toContain('# Review markers');
         expect(out).toContain('Reviewed paragraph.');
@@ -239,12 +252,14 @@ describe('toolGetReviewText — review markers', () => {
         spawnSync('git', ['add', '.'], { cwd: root });
         spawnSync('git', ['commit', '-m', 'add'], { cwd: root });
 
+        fs.appendFileSync(file, '\nUnstaged tweak\n', 'utf-8');
+
         const out = toolGetReviewText(root, {});
         expect(out).toContain('empty region');
         expect(out).not.toMatch(/lines \d+-\d+/);
     });
 
-    it('autoStage consumes markers even when not in a git repo', () => {
+    it('returns a git error for non-git repos even when autoStage is requested', () => {
         const root = makeRoot();
         // Settings file makes contentFolders() return Story/EN
         const settings = {
@@ -261,10 +276,10 @@ describe('toolGetReviewText — review markers', () => {
             `${REVIEW_STOP_MARKER}\n`);
 
         const out = toolGetReviewText(root, { autoStage: true });
-        expect(out).toContain('Git diff unavailable');
+        expect(out).toBe('Failed to run git diff. Is this a git repository?');
         const after = fs.readFileSync(file, 'utf-8');
-        expect(after).not.toContain('Bindery: Review start');
-        expect(after).not.toContain('Bindery: Review stop');
+        expect(after).toContain('Bindery: Review start');
+        expect(after).toContain('Bindery: Review stop');
         expect(after).toContain('Reviewed.');
     });
 });
