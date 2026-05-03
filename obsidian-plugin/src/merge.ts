@@ -12,8 +12,14 @@ import {
     type MergeResult,
     type OutputType,
 } from '@bindery/merge';
+import {
+    readWorkspaceSettings,
+    getDefaultLanguage,
+    getBookTitleForLang,
+} from '@bindery/core';
 import type { App, Vault } from 'obsidian';
 import type { BinderySettings } from './settings-tab';
+import { resolvePandocPath, resolveLibreOfficePath } from './exporter';
 
 /**
  * Merge chapters from an Obsidian vault into a single document.
@@ -35,30 +41,40 @@ export async function mergeBook(
     outputTypes: OutputType[]
 ): Promise<MergeResult> {
     try {
+        const wsSettings = readWorkspaceSettings(bookRoot);
+        const defaultLang = getDefaultLanguage(wsSettings);
+
+        const language = defaultLang ?? {
+            code: 'EN',
+            folderName: 'EN',
+            chapterWord: 'Chapter',
+            actPrefix: 'Act',
+            prologueLabel: 'Prologue',
+            epilogueLabel: 'Epilogue',
+            isDefault: true,
+        };
+
+        const storyFolder = wsSettings?.storyFolder ?? 'Story';
+        const outputDir   = wsSettings?.mergedOutputDir ?? 'Merged';
+        const filePrefix  = wsSettings?.mergeFilePrefix ?? 'Book';
+        const author      = wsSettings?.author;
+        const bookTitle   = getBookTitleForLang(wsSettings, language.code);
+
         const options: MergeOptionsCore = {
             root: bookRoot,
-            storyFolder: 'Story',  // Obsidian uses same folder structure as VS Code
-            language: {
-                code: 'EN',
-                folderName: 'EN',
-                chapterWord: 'Chapter',
-                actPrefix: 'Act',
-                prologueLabel: 'Prologue',
-                epilogueLabel: 'Epilogue',
-                isDefault: true,
-            },
+            storyFolder,
+            language,
             outputTypes,
             includeToc: true,
             includeSeparators: true,
-            author: undefined,
-            bookTitle: undefined,
-            outputDir: 'Merged',
-            filePrefix: 'Book',
-            pandocPath: settings.pandocPath,
-            libreOfficePath: settings.libreOfficePath,
+            author,
+            bookTitle,
+            outputDir,
+            filePrefix,
+            pandocPath:      resolvePandocPath(settings),
+            libreOfficePath: resolveLibreOfficePath(settings),
         };
 
-        // Call the core merge function
         const result = await mergeBookCore(options);
         return result;
     } catch (err) {
