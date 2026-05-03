@@ -65,10 +65,15 @@ lives:
 
 ## Host Feature Parity Policy
 
-`vscode-ext/` and `obsidian-plugin/` are two host implementations of the same
-authoring feature set. Unless a feature is explicitly host-specific, any
-functional change added to one host should be implemented in the other host in
-the same PR (or in a clearly linked follow-up PR).
+`vscode-ext/` and `obsidian-plugin/` target the same Bindery authoring feature
+set. The Obsidian plugin currently implements a subset of VS Code commands
+(export, review markers, init workspace, and MCP snippet); `format-document` is
+still a placeholder and commands such as setup AI, translation/dialect/language
+management, open translations, and register MCP are VS Code-only for now.
+
+Unless a feature is explicitly host-specific, any functional change added to one
+host should be implemented in the other host in the same PR (or in a clearly
+linked follow-up PR).
 
 When adding or changing commands:
 - update command wiring in both hosts

@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-    version: 4,
+    version: 5,
     label:   'bindery capabilities',
     zip:     null,
 };

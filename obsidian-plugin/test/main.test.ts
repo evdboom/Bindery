@@ -311,4 +311,85 @@ describe('review marker commands', () => {
             { line: 0, ch: 0 },
         );
     });
+
+    it('start-review-marker does nothing when active file is not markdown', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        app.workspace = {
+            getActiveFile: () => ({ path: 'Story/ch1.txt', extension: 'txt', name: 'ch1.txt', basename: 'ch1' }),
+        };
+        const bp = new BinderyPlugin(app);
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const start = commands.find((c) => c.id === 'start-review-marker');
+        const editor = makeEditor('abc', 0, '');
+
+        start?.editorCallback?.(editor);
+
+        expect(editor.replaceRange).not.toHaveBeenCalled();
+        expect(editor.replaceSelection).not.toHaveBeenCalled();
+    });
+
+    it('stop-review-marker does nothing when active file is not markdown', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        app.workspace = {
+            getActiveFile: () => ({ path: 'Story/ch1.txt', extension: 'txt', name: 'ch1.txt', basename: 'ch1' }),
+        };
+        const bp = new BinderyPlugin(app);
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const stop = commands.find((c) => c.id === 'stop-review-marker');
+        const editor = makeEditor('abc', 0, '');
+
+        stop?.editorCallback?.(editor);
+
+        expect(editor.replaceRange).not.toHaveBeenCalled();
+    });
+
+    it('stop-review-marker does not add trailing newline when cursor is at end of line', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        app.workspace = {
+            getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+        };
+        const bp = new BinderyPlugin(app);
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const stop = commands.find((c) => c.id === 'stop-review-marker');
+        // Cursor at end of 'abc' (ch=3 === lineText.length=3)
+        const editor = makeEditor('abc', 3, '');
+
+        stop?.editorCallback?.(editor);
+
+        expect(editor.replaceRange).toHaveBeenCalledWith(
+            '\n<!-- Bindery: Review stop -->',
+            { line: 0, ch: 3 },
+        );
+    });
+
+    it('start-review-marker does not add trailing newline when cursor is at end of line', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        app.workspace = {
+            getActiveFile: () => ({ path: 'Story/ch1.md', extension: 'md', name: 'ch1.md', basename: 'ch1' }),
+        };
+        const bp = new BinderyPlugin(app);
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0] as Command);
+        const start = commands.find((c) => c.id === 'start-review-marker');
+        // Cursor at end of 'abc' (ch=3 === lineText.length=3)
+        const editor = makeEditor('abc', 3, '');
+
+        start?.editorCallback?.(editor);
+
+        expect(editor.replaceRange).toHaveBeenCalledWith(
+            '\n<!-- Bindery: Review start -->',
+            { line: 0, ch: 3 },
+        );
+    });
 });

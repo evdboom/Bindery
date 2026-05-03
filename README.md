@@ -146,24 +146,28 @@ MIT — see [LICENSE](LICENSE).
 
 ## Host Parity Reminder
 
-`vscode-ext/` and `obsidian-plugin/` are two host implementations of the same
-Bindery authoring feature set. Unless a change is intentionally host-specific,
-functional changes in one host should be mirrored in the other in the same PR
-or in a clearly linked follow-up PR.
+`vscode-ext/` and `obsidian-plugin/` target the same Bindery authoring feature
+set. The Obsidian plugin currently implements a subset of VS Code commands
+(export, review markers, init workspace, and MCP snippet); `format-document` is
+still a placeholder and commands such as setup AI, translation/dialect/language
+management, open translations, and register MCP are VS Code-only for now.
+
+Unless a change is intentionally host-specific, functional additions to one host
+should be mirrored in the other in the same PR or a clearly linked follow-up PR.
 
 The AI instruction file templates are maintained in **one place only**:
 
 ```
-bindery-core/src/templates.ts   ← SINGLE SOURCE OF TRUTH
+bindery-core/src/templates/*.ts   ← SINGLE SOURCE OF TRUTH (one file per template)
 ```
 
 `mcp-ts/src/templates.ts` is now a thin re-export shim to keep existing imports
 stable. Consumers should continue importing from their local package entrypoint,
-but template edits belong in `bindery-core/src/templates.ts`.
+but template edits belong in the matching file under `bindery-core/src/templates/`.
 
 ### Syncing locally
 
-After changing `bindery-core/src/templates.ts`, rebuild and test the workspace
+After changing files under `bindery-core/src/templates/`, rebuild and test the workspace
 (no template copy step is required):
 
 ```bash
