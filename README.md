@@ -1,6 +1,6 @@
 # Bindery
 
-Markdown book authoring toolkit: a **VS Code extension** for typography formatting and multi-format export, paired with an **MCP server** for full-text search and AI assistant integration.
+Markdown book authoring toolkit: **VS Code extension + Obsidian plugin** for typography formatting and multi-format export, paired with an **MCP server** for full-text search and AI assistant integration.
 
 ## Origin
 
@@ -10,7 +10,7 @@ It started with Word and ChatGPT: writing a chapter, copying it into the browser
 
 In practice though, I still fell back to copy-pasting for feedback and only really used the tooling for typography formatting. Most VS Code extensions are built for coding: short iterations where the code is the truth, rather than the longer-running, chat-based sessions you get in web tools. That frustration is what pushed the VS Code extension into existence. At minimum, the formatting and exporting should just work without any ceremony.
 
-The bigger shift came with Claude Cowork, which combines the session memory of a long-running agent with direct file access. That made the MCP server genuinely useful: the agent could navigate chapters, search for context, and keep track of the story across a session without being handed everything manually. The extension and MCP server now support both workflows: VS Code agents (Copilot, Codex, Claude for VS Code) and standalone Claude Desktop / Cowork.
+The bigger shift came with Claude Cowork, which combines the session memory of a long-running agent with direct file access. That made the MCP server genuinely useful: the agent could navigate chapters, search for context, and keep track of the story across a session without being handed everything manually. The extension and MCP server now support both workflows: VS Code agents (Copilot, Codex, Claude for VS Code) and standalone Claude Desktop / Cowork. And a Obsidian plugin with the same functionality as the VS Code extension for users that don't work with a more development minded VS Code.
 
 ## Components
 
@@ -103,9 +103,45 @@ Packages the MCP server as a `.mcpb` file for one-click installation in Claude D
    - **Note:** full embedding can be a heavy operation, depending on your hardware, when running a local Ollama instance.
 6. Tools are now available — the agent calls `list_books` to discover book names
 
+## Architecture Overview
+
+The following flow shows how Bindery's writing environments connect to agents, MCP, and skills at a high level.
+
+```mermaid
+flowchart TD
+  U([User])
+
+    subgraph IWE[Writing Environment]
+      VS[VS Code + Bindery Extension]
+      OB[Obsidian + Bindery Plugin]
+      AG[In-editor Agent]
+    end
+
+    subgraph AT[Bindery Agent Tools]
+      MCP[Bindery MCP Server]
+      SK[Bindery Skills]
+    end
+
+    CL["Claude Desktop (Cowork)"]    
+    WB[Book Workspace Files]
+
+    U --> IWE
+    U --> CL
+
+    IWE --> WB
+
+    VS --> AG
+    OB --> AG
+
+    AG --> AT
+    CL --> AT
+
+    MCP --> WB
+```
+
 ### Formatting & Export only (no MCP)
 
-The VS Code extension works standalone — no server setup needed for typography formatting and export.
+The VS Code extension and Obsidian plugin both work standalone — no server setup needed for typography formatting and export.
 
 ## Project Structure
 
@@ -140,7 +176,9 @@ Shared logic in `bindery-core` and `bindery-merge` ensures both `vscode-ext` and
 
 ## Prerequisites
 
-- **VS Code** 1.85+
+- **One writing environment**:
+  - **VS Code** 1.85+
+  - **Obsidian Desktop** with Community Plugins enabled
 - **Git** (recommended) — needed for version tracking, `get_review_text`, and `git_snapshot`. Auto-initialized during workspace setup.
   - Install via package manager or from [https://git-scm.com](https://git-scm.com)
 - **Pandoc** (optional) — needed for DOCX/EPUB/PDF export.
@@ -207,14 +245,12 @@ The AI instruction file templates are maintained in **one place only**:
 bindery-core/src/templates/*.ts   ← SINGLE SOURCE OF TRUTH (one file per template)
 ```
 
-`mcp-ts/src/templates.ts` is now a thin re-export shim to keep existing imports
-stable. Consumers should continue importing from their local package entrypoint,
+`mcp-ts/src/templates.ts` is a thin re-export shim to keep existing imports stable. Consumers should continue importing from their local package entrypoint,
 but template edits belong in the matching file under `bindery-core/src/templates/`.
 
 ### Syncing locally
 
-After changing files under `bindery-core/src/templates/`, rebuild and test the workspace
-(no template copy step is required):
+After changing files under `bindery-core/src/templates/`, rebuild and test the workspace:
 
 ```bash
 npm run build --workspace=bindery-core
@@ -227,11 +263,18 @@ npm test --workspace=obsidian-plugin
 ### Running tests
 
 ```bash
+# Shared packages
+cd bindery-core && npm test
+cd bindery-merge && npm test
+
 # MCP server
 cd mcp-ts && npm test
 
 # VS Code extension
 cd vscode-ext && npm test
+
+# Obsidian plugin
+cd obsidian-plugin && npm test
 ```
 
 ### What CI does
