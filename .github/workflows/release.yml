@@ -3,15 +3,36 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - '[0-9]*.[0-9]*.[0-9]*'
 
 jobs:
+  # ── Job 0: Validate release tag and expose normalized version ───────────────
+  validate-release-version:
+    name: Validate Release Version
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.normalize.outputs.release_version }}
+
+    steps:
+      - name: Normalize and validate release version
+        id: normalize
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Tag '$GITHUB_REF_NAME' does not normalize to a valid semver x.y.z"
+            exit 1
+          fi
+          echo "release_version=$VERSION" >> "$GITHUB_OUTPUT"
+
   # ── Job 1: Build .mcpb for Claude Desktop ───────────────────────────────────
   build-mcpb:
     name: Build .mcpb
+    needs: validate-release-version
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
       - uses: actions/checkout@v6
@@ -37,7 +58,7 @@ jobs:
 
       - name: Set version in manifest
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$RELEASE_VERSION"
           cd mcpb
           jq --arg v "$VERSION" '.version = $v' manifest.json > tmp.json && mv tmp.json manifest.json
 
@@ -47,7 +68,7 @@ jobs:
           cd mcpb
           mcpb pack
           # Ensure consistent filename: bindery-<version>.mcpb
-          VERSION=${GITHUB_REF_NAME#v}
+          VERSION=$RELEASE_VERSION
           for f in *.mcpb; do
             mv "$f" "bindery-${VERSION}.mcpb" 2>/dev/null || true
           done
@@ -61,10 +82,12 @@ jobs:
   # ── Job 2: Package VS Code extension + attach VSIX to release ───────────────
   package-vscode:
     name: Package VS Code Extension
-    needs: build-mcpb
+    needs: [validate-release-version, build-mcpb]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
       - uses: actions/checkout@v6
@@ -96,7 +119,7 @@ jobs:
       - name: Set version from tag and package extension
         # package.json ships with version "0.0.0" — the real version is injected here from the release tag
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$RELEASE_VERSION"
           cd vscode-ext
           npm version "$VERSION" --no-git-tag-version
           npx --yes @vscode/vsce@3.7.1 package --no-dependencies -o "bindery-${VERSION}.vsix"
@@ -117,11 +140,13 @@ jobs:
   # ── Job 3: Build Obsidian plugin + attach zip to release ────────────────────
   package-obsidian:
     name: Package Obsidian Plugin
-    needs: build-mcpb
+    needs: [validate-release-version, build-mcpb]
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+    env:
+      RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
       - uses: actions/checkout@v6
@@ -146,32 +171,34 @@ jobs:
 
       - name: Sync Obsidian manifest metadata from tag
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$RELEASE_VERSION"
           npm run obsidian:sync-version -- "$VERSION"
 
       - name: Package Obsidian plugin zip
         # Obsidian community plugins are installed by dropping main.js + manifest.json
         # (+ optional styles.css) into the vault plugins folder. We zip them for the release.
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$RELEASE_VERSION"
           mkdir -p obsidian-plugin/dist
           cp obsidian-plugin/out/main.js  obsidian-plugin/dist/main.js
           cp obsidian-plugin/manifest.json obsidian-plugin/dist/manifest.json
           cd obsidian-plugin/dist
-          zip "../../bindery-obsidian-${VERSION}.zip" main.js manifest.json
+          zip "../../bindery-obsidian-bundled-${VERSION}.zip" main.js manifest.json
 
       - name: Upload Obsidian plugin zip to release
         uses: softprops/action-gh-release@v3
         with:
-          files: bindery-obsidian-*.zip
+          files: |
+            bindery-obsidian-bundled-*.zip
+            obsidian-plugin/dist/main.js
+            obsidian-plugin/dist/manifest.json
           fail_on_unmatched_files: true
 
       - name: Switch to main for metadata PR
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           git fetch origin main
           git checkout main
-          npm run obsidian:sync-version -- "$VERSION"
+          npm run obsidian:sync-version -- "$RELEASE_VERSION"
 
       - name: Create PR to sync Obsidian release metadata on main
         continue-on-error: true
