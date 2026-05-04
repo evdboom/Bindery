@@ -30,8 +30,8 @@ function sortSemverKeys(keys) {
 function requireVersionArg() {
   const raw = process.argv[2] || process.env.RELEASE_VERSION || process.env.GITHUB_REF_NAME || "";
   const normalized = raw.replace(/^v/, "").trim();
-  if (!/^\d+\.\d+\.\d+$/.test(normalized)) {
-    throw new Error(`Expected version like 1.2.3, got: ${raw || "<empty>"}`);
+  if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(normalized)) {
+    throw new Error(`Expected version like 1.2.3 or 1.2.3-beta.1, got: ${raw || "<empty>"}`);
   }
   return normalized;
 }
@@ -58,9 +58,7 @@ if (!minAppVersion) {
   throw new Error("Unable to determine minAppVersion from manifests.");
 }
 
-if (!versions[version]) {
-  versions[version] = minAppVersion;
-}
+versions[version] = minAppVersion;
 const sortedVersions = {};
 for (const key of sortSemverKeys(Object.keys(versions))) {
   sortedVersions[key] = versions[key];
