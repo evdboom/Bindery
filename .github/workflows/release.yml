@@ -6,12 +6,33 @@ on:
       - '[0-9]*.[0-9]*.[0-9]*'
 
 jobs:
+  # ── Job 0: Validate release tag and expose normalized version ───────────────
+  validate-release-version:
+    name: Validate Release Version
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.normalize.outputs.release_version }}
+
+    steps:
+      - name: Normalize and validate release version
+        id: normalize
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '$GITHUB_REF_NAME' does not normalize to a valid semver x.y.z"
+            exit 1
+          fi
+          echo "release_version=$VERSION" >> "$GITHUB_OUTPUT"
+
   # ── Job 1: Build .mcpb for Claude Desktop ───────────────────────────────────
   build-mcpb:
     name: Build .mcpb
+    needs: validate-release-version
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
       - uses: actions/checkout@v6
@@ -22,15 +43,6 @@ jobs:
 
       - name: Install workspace dependencies
         run: npm ci
-
-      - name: Normalize and validate release version
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag '$GITHUB_REF_NAME' does not normalize to a valid semver x.y.z"
-            exit 1
-          fi
-          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build bindery-core
         run: npm run build --workspace=bindery-core
@@ -70,10 +82,12 @@ jobs:
   # ── Job 2: Package VS Code extension + attach VSIX to release ───────────────
   package-vscode:
     name: Package VS Code Extension
-    needs: build-mcpb
+    needs: [validate-release-version, build-mcpb]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
       - uses: actions/checkout@v6
@@ -84,15 +98,6 @@ jobs:
 
       - name: Install workspace dependencies
         run: npm ci
-
-      - name: Normalize and validate release version
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag '$GITHUB_REF_NAME' does not normalize to a valid semver x.y.z"
-            exit 1
-          fi
-          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build bindery-core
         run: npm run build --workspace=bindery-core
@@ -135,11 +140,13 @@ jobs:
   # ── Job 3: Build Obsidian plugin + attach zip to release ────────────────────
   package-obsidian:
     name: Package Obsidian Plugin
-    needs: build-mcpb
+    needs: [validate-release-version, build-mcpb]
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+    env:
+      RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
       - uses: actions/checkout@v6
@@ -150,15 +157,6 @@ jobs:
 
       - name: Install workspace dependencies
         run: npm ci
-
-      - name: Normalize and validate release version
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag '$GITHUB_REF_NAME' does not normalize to a valid semver x.y.z"
-            exit 1
-          fi
-          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build bindery-core
         run: npm run build --workspace=bindery-core
@@ -190,28 +188,17 @@ jobs:
       - name: Upload Obsidian plugin zip to release
         uses: softprops/action-gh-release@v3
         with:
-          files: bindery-obsidian-*.zip
+          files: |
+            bindery-obsidian-bundled-*.zip
+            obsidian-plugin/dist/main.js
+            obsidian-plugin/dist/manifest.json
           fail_on_unmatched_files: true
 
       - name: Switch to main for metadata PR
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           git fetch origin main
           git checkout main
-          npm run obsidian:sync-version -- "$VERSION"
-
-      - name: Upload Obsidian plugin zip to release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: bindery-obsidian-*.zip
-          fail_on_unmatched_files: true
-
-      - name: Switch to main for metadata PR
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          git fetch origin main
-          git checkout main
-          npm run obsidian:sync-version -- "$VERSION"
+          npm run obsidian:sync-version -- "$RELEASE_VERSION"
 
       - name: Create PR to sync Obsidian release metadata on main
         continue-on-error: true
@@ -235,15 +222,6 @@ jobs:
             manifest.json
             obsidian-plugin/manifest.json
             obsidian-plugin/versions.json
-
-      - name: Upload Obsidian plugin zip to release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            bindery-obsidian-bundled-*.zip
-            obsidian-plugin/dist/main.js
-            obsidian-plugin/dist/manifest.json
-          fail_on_unmatched_files: true
 
   # ── Job 4: Publish VSIX to VS Code Marketplace ──────────────────────────────
   publish-vscode:
