@@ -77,7 +77,7 @@ function loadMcpTools(extensionPath: string): McpTools {
     const bundledPath = path.join(extensionPath, 'mcp-ts', 'out', 'tools');
     const devPath     = path.join(extensionPath, '..', 'mcp-ts', 'out', 'tools');
     const modulePath  = fs.existsSync(bundledPath + '.js') ? bundledPath : devPath;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Load bundled mcp-ts tools at runtime
     return require(modulePath) as McpTools;
 }
 
@@ -222,10 +222,10 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
  *
  * Called by `bindery.registerMcp` command and optionally from the init wizard.
  */
-export async function writeMcpJson(
+export function writeMcpJson(
     context:  vscode.ExtensionContext,
     root:     string,
-): Promise<void> {
+): void {
     const mcpJsonPath = path.join(root, '.vscode', 'mcp.json');
 
     // Server entry: node <extension>/mcp-ts/out/index.js --book Name=path
@@ -264,7 +264,7 @@ export async function registerMcpCommand(context: vscode.ExtensionContext): Prom
     const root = getWorkspaceRoot();
     if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
 
-    await writeMcpJson(context, root);
+    writeMcpJson(context, root);
 
     const action = await vscode.window.showInformationMessage(
         'Bindery MCP server registered in .vscode/mcp.json. Claude and Codex extensions will pick it up automatically.',

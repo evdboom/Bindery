@@ -71,7 +71,7 @@ function loadMcpToolsForAi(extensionPath: string): McpToolsForAi {
     const bundledPath = path.join(extensionPath, 'mcp-ts', 'out', 'tools');
     const devPath     = path.join(extensionPath, '..', 'mcp-ts', 'out', 'tools');
     const modulePath  = fs.existsSync(bundledPath + '.js') ? bundledPath : devPath;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Load bundled mcp-ts tools at runtime
     return require(modulePath) as McpToolsForAi;
 }
 
