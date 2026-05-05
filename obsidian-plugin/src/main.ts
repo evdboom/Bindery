@@ -17,13 +17,18 @@ import { exportBook, resolveBookRoot } from './exporter';
 import { setupAiFiles, ALL_SKILLS } from './ai-setup';
 import { readSettings, addDialectRule, addLanguage, findProbableUsWords } from './workspace';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
-import { Notice, Plugin } from 'obsidian';
-import type { Editor, TFile } from 'obsidian';
+import { Notice, Plugin, TFile } from 'obsidian';
+import type { Editor } from 'obsidian';
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
 
 const REVIEW_START_MARKER = '<!-- Bindery: Review start -->';
 const REVIEW_STOP_MARKER  = '<!-- Bindery: Review stop -->';
+
+// Type guard to check if an object is a TFile
+function isTFile(obj: unknown): obj is TFile {
+    return typeof obj === 'object' && obj !== null && 'extension' in obj && 'path' in obj;
+}
 
 export default class BinderyPlugin extends Plugin {
     settings: BinderySettings = { ...DEFAULT_SETTINGS };
@@ -86,7 +91,9 @@ export default class BinderyPlugin extends Plugin {
         // Format on save — only fires for files inside the configured book root
         this.registerEvent(
             this.app.vault.on('modify', (...args: unknown[]) => {
-                const file = args[0] as TFile;
+                const arg = args[0];
+                if (!isTFile(arg)) { return; }
+                const file = arg;
                 if (!this.settings.formatOnSave || file.extension !== 'md') { return; }
 
                 let vaultPath: string;
@@ -351,7 +358,7 @@ export default class BinderyPlugin extends Plugin {
         }
     }
 
-    private async openTranslationsCommand(): Promise<void> {
+    private openTranslationsCommand(): void {
         try {
             const vaultPath = this.getVaultBasePath();
             const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
@@ -443,7 +450,7 @@ export default class BinderyPlugin extends Plugin {
         return active?.extension === 'md';
     }
 
-    private async initWorkspace(): Promise<void> {
+    private initWorkspace(): void {
         const vaultPath     = this.getVaultBasePath();
         const trimmedBookRoot = this.settings.bookRoot.trim();
         const bookPath      = resolveBookRoot(vaultPath, trimmedBookRoot);
