@@ -404,11 +404,12 @@ function isMarkdownEditor(editor: vscode.TextEditor): boolean {
  * marker is always on its own line and matches the marker scanner regex.
  */
 function lineBoundaryWrap(doc: vscode.TextDocument, pos: vscode.Position, marker: string): string {
-    const lineText = doc.lineAt(pos.line).text;
     const atLineStart = pos.character === 0;
-    const atLineEnd   = pos.character >= lineText.length;
     const prefix = atLineStart ? '' : '\n';
-    const suffix = atLineEnd   ? '\n' : '\n';
+    const atDocumentEnd = pos.line === doc.lineCount - 1
+        && pos.character === doc.lineAt(pos.line).text.length;
+    const nextChar = atDocumentEnd ? '' : doc.getText(new vscode.Range(pos, pos.translate(0, 1)));
+    const suffix = nextChar === '\n' || nextChar === '' ? '' : '\n';
     return `${prefix}${marker}${suffix}`;
 }
 
@@ -422,16 +423,16 @@ async function startReviewMarkerCommand() {
 
     const sel = editor.selection;
     await editor.edit(eb => {
-        if (!sel.isEmpty) {
+        if (sel.isEmpty) {            
+            eb.insert(sel.active, lineBoundaryWrap(editor.document, sel.active, REVIEW_START_MARKER));
+        } else {
             // Wrap selection. Snap markers to line boundaries so they match
             // the marker scanner regex even if the selection starts/ends
             // mid-line.
             const text   = editor.document.getText(sel);
             const startWrap = lineBoundaryWrap(editor.document, sel.start, REVIEW_START_MARKER);
             const stopWrap  = lineBoundaryWrap(editor.document, sel.end,   REVIEW_STOP_MARKER);
-            eb.replace(sel, `${startWrap}${text}${stopWrap}`);
-        } else {
-            eb.insert(sel.active, lineBoundaryWrap(editor.document, sel.active, REVIEW_START_MARKER));
+            eb.replace(sel, `${startWrap}${text}${stopWrap}`);        
         }
     });
     vscode.window.setStatusBarMessage(
@@ -1144,9 +1145,10 @@ async function formatFolderCommand(uri?: vscode.Uri) {
     }
     await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Formatting markdown files…' },
-        async () => {
+        () => {
             const count = formatDirectoryRecursive(folderPath);
             vscode.window.showInformationMessage(`Typography: ${count} file(s) updated.`);
+            return Promise.resolve();
         }
     );
 }

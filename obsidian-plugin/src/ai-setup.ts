@@ -96,10 +96,12 @@ function buildContext(settings: Record<string, unknown>): TemplateContext {
     const arcFolder = 'Arc';
     const memoriesFolder = '.bindery/memories';
 
-    const rawLanguages = settings.languages as any[] | undefined;
+    const rawLanguages = settings.languages;
     const languages: Array<{ code: string; folderName: string }> = Array.isArray(rawLanguages)
-        ? rawLanguages.filter(
-              (l: any) => typeof l?.code === 'string' && typeof l?.folderName === 'string'
+        ? (rawLanguages as unknown[]).filter(
+              (l): l is { code: string; folderName: string } =>
+                  typeof (l as Record<string, unknown>)?.code === 'string' &&
+                  typeof (l as Record<string, unknown>)?.folderName === 'string'
           )
         : [];
 

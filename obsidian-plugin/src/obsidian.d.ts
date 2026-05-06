@@ -34,9 +34,21 @@ declare module 'obsidian' {
     export interface App {
         vault: Vault;
         workspace?: {
+            containerEl: HTMLElement;
             getActiveFile(): TFile | null;
             on(_event: string, _callback: (..._args: unknown[]) => unknown): EventRef;
         };
+    }
+
+    export class Modal {
+        app: App;
+        titleEl: HTMLElement;
+        contentEl: HTMLElement;
+        constructor(_app: App);
+        open(): void;
+        close(): void;
+        onOpen(): void;
+        onClose(): void;
     }
 
     export class Notice {
@@ -59,5 +71,21 @@ declare module 'obsidian' {
         addCommand(_command: Command): void;
         addSettingTab(_tab: unknown): void;
         registerEvent(_eventRef: EventRef): void;
+    }
+}
+
+declare global {
+    interface CreateElementOptions {
+        text?: string;
+        cls?: string;
+        type?: string;
+        value?: string;
+    }
+
+    interface HTMLElement {
+        empty(): void;
+        addClass(..._classes: string[]): void;
+        createEl<K extends keyof HTMLElementTagNameMap>(_tag: K, _options?: CreateElementOptions): HTMLElementTagNameMap[K];
+        createDiv(_options?: CreateElementOptions): HTMLDivElement;
     }
 }

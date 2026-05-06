@@ -11,12 +11,11 @@ import * as path from 'node:path';
 import {
     BINDERY_FOLDER,
     SETTINGS_FILENAME,
-    type WorkspaceSettings,
-    type LanguageConfig,
     upsertSubstitutionRule,
+    WorkspaceSettings,
 } from '@bindery/core';
 
-export type { WorkspaceSettings, LanguageConfig };
+export type { WorkspaceSettings, LanguageConfig } from '@bindery/core';
 
 /**
  * Read workspace settings from .bindery/settings.json

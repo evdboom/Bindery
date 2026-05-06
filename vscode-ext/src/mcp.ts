@@ -104,7 +104,7 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(
         vscode.lm.registerTool('bindery_health', {
-            invoke: async (_opts, _token) => ok(t.toolHealth(requireRoot())),
+            invoke: (_opts, _token) => ok(t.toolHealth(requireRoot())),
         }),
 
         vscode.lm.registerTool('bindery_index_build', {
@@ -112,27 +112,27 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
         }),
 
         vscode.lm.registerTool('bindery_index_status', {
-            invoke: async (_opts, _token) => ok(t.toolIndexStatus(requireRoot())),
+            invoke: (_opts, _token) => ok(t.toolIndexStatus(requireRoot())),
         }),
 
         vscode.lm.registerTool<GetTextInput>('bindery_get_text', {
-            invoke: async (opts, _token) => ok(t.toolGetText(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGetText(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GetChapterInput>('bindery_get_chapter', {
-            invoke: async (opts, _token) => ok(t.toolGetChapter(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGetChapter(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GetBookUntilInput>('bindery_get_book_until', {
-            invoke: async (opts, _token) => ok(t.toolGetBookUntil(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGetBookUntil(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GetOverviewInput>('bindery_get_overview', {
-            invoke: async (opts, _token) => ok(t.toolGetOverview(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGetOverview(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GetNotesInput>('bindery_get_notes', {
-            invoke: async (opts, _token) => ok(t.toolGetNotes(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGetNotes(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<SearchInput>('bindery_search', {
@@ -140,71 +140,71 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
         }),
 
         vscode.lm.registerTool<FormatInput>('bindery_format', {
-            invoke: async (opts, _token) => ok(t.toolFormat(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolFormat(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GetReviewTextInput>('bindery_get_review_text', {
-            invoke: async (opts, _token) => ok(t.toolGetReviewText(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGetReviewText(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<UpdateWorkspaceInput>('bindery_update_workspace', {
-            invoke: async (opts, _token) => ok(t.toolUpdateWorkspace(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolUpdateWorkspace(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GitSnapshotInput>('bindery_git_snapshot', {
-            invoke: async (opts, _token) => ok(t.toolGitSnapshot(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGitSnapshot(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<AddTranslationInput>('bindery_add_translation', {
-            invoke: async (opts, _token) => ok(t.toolAddTranslation(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolAddTranslation(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GetTranslationInput>('bindery_get_translation', {
-            invoke: async (opts, _token) => ok(t.toolGetTranslation(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGetTranslation(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<AddDialectInput>('bindery_add_dialect', {
-            invoke: async (opts, _token) => ok(t.toolAddDialect(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolAddDialect(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<GetDialectInput>('bindery_get_dialect', {
-            invoke: async (opts, _token) => ok(t.toolGetDialect(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolGetDialect(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<AddLanguageInput>('bindery_add_language', {
-            invoke: async (opts, _token) => ok(t.toolAddLanguage(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolAddLanguage(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<InitWorkspaceInput>('bindery_init_workspace', {
-            invoke: async (opts, _token) => ok(t.toolInitWorkspace(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolInitWorkspace(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<SettingsUpdateInput>('bindery_settings_update', {
-            invoke: async (opts, _token) => ok(t.toolSettingsUpdate(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolSettingsUpdate(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<SetupAiFilesInput>('bindery_setup_ai_files', {
-            invoke: async (opts, _token) => ok(t.toolSetupAiFiles(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolSetupAiFiles(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool('bindery_memory_list', {
-            invoke: async (_opts, _token) => ok(t.toolMemoryList(requireRoot())),
+            invoke: (_opts, _token) => ok(t.toolMemoryList(requireRoot())),
         }),
 
         vscode.lm.registerTool<MemoryAppendInput>('bindery_memory_append', {
-            invoke: async (opts, _token) => ok(t.toolMemoryAppend(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolMemoryAppend(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<MemoryCompactInput>('bindery_memory_compact', {
-            invoke: async (opts, _token) => ok(t.toolMemoryCompact(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolMemoryCompact(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool('bindery_chapter_status_get', {
-            invoke: async (_opts, _token) => ok(t.toolChapterStatusGet(requireRoot())),
+            invoke: (_opts, _token) => ok(t.toolChapterStatusGet(requireRoot())),
         }),
 
         vscode.lm.registerTool<ChapterStatusUpdateInput>('bindery_chapter_status_update', {
-            invoke: async (opts, _token) => ok(t.toolChapterStatusUpdate(requireRoot(), opts.input)),
+            invoke: (opts, _token) => ok(t.toolChapterStatusUpdate(requireRoot(), opts.input)),
         }),
     );
 }
@@ -274,3 +274,5 @@ export async function registerMcpCommand(context: vscode.ExtensionContext): Prom
         vscode.window.showTextDocument(await vscode.workspace.openTextDocument(mcpPath));
     }
 }
+
+

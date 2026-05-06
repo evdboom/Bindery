@@ -67,7 +67,7 @@ server.registerTool('list_books', {
     description: 'List all books registered via --book args in the MCP server config. Call this first to discover available book names.',
     inputSchema: {},
     annotations: { readOnlyHint: true },
-}, async () => {
+}, () => {
     const books = listBooks();
     if (books.length === 0) {
         return ok(
@@ -92,7 +92,7 @@ server.registerTool('identify_book', {
         ),
     },
     annotations: { readOnlyHint: true },
-}, async ({ workingDirectory }) => {
+}, ({ workingDirectory }) => {
     try {
         const match = findBookByPath(workingDirectory);
         if (!match) {
@@ -113,7 +113,7 @@ server.registerTool('health', {
     description: 'Check server status: active book, settings, index, and embedding backend.',
     inputSchema: { book: bookSchema },
     annotations: { readOnlyHint: true },
-}, async ({ book }) => {
+}, ({ book }) => {
     try { return ok(toolHealth(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
@@ -131,7 +131,7 @@ server.registerTool('index_status', {
     description: 'Show current index metadata: chunk count and build time.',
     inputSchema: { book: bookSchema },
     annotations: { readOnlyHint: true },
-}, async ({ book }) => {
+}, ({ book }) => {
     try { return ok(toolIndexStatus(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
@@ -145,7 +145,7 @@ server.registerTool('get_text', {
         endLine:    z.number().optional().describe('1-based end line inclusive (optional)'),
     },
     annotations: { readOnlyHint: true },
-}, async ({ book, identifier, startLine, endLine }) => {
+}, ({ book, identifier, startLine, endLine }) => {
     try { return ok(toolGetText(resolveBook(book).root, { identifier, startLine, endLine })); } catch (e) { return err(e); }
 });
 
@@ -158,7 +158,7 @@ server.registerTool('get_chapter', {
         language:      z.string().describe('Language code, e.g. EN or NL'),
     },
     annotations: { readOnlyHint: true },
-}, async ({ book, chapterNumber, language }) => {
+}, ({ book, chapterNumber, language }) => {
     try { return ok(toolGetChapter(resolveBook(book).root, { chapterNumber, language })); } catch (e) { return err(e); }
 });
 
@@ -172,7 +172,7 @@ server.registerTool('get_book_until', {
         startChapter:  z.number().optional().describe('Starting chapter number (default 1)'),
     },
     annotations: { readOnlyHint: true },
-}, async ({ book, chapterNumber, language, startChapter }) => {
+}, ({ book, chapterNumber, language, startChapter }) => {
     try { return ok(toolGetBookUntil(resolveBook(book).root, { chapterNumber, language, startChapter })); } catch (e) { return err(e); }
 });
 
@@ -185,7 +185,7 @@ server.registerTool('get_overview', {
         act:      z.number().optional().describe('Filter to act number 1, 2, or 3 (optional)'),
     },
     annotations: { readOnlyHint: true },
-}, async ({ book, language, act }) => {
+}, ({ book, language, act }) => {
     try { return ok(toolGetOverview(resolveBook(book).root, { language, act })); } catch (e) { return err(e); }
 });
 
@@ -198,7 +198,7 @@ server.registerTool('get_notes', {
         name:     z.string().optional().describe('Filter sections containing this name'),
     },
     annotations: { readOnlyHint: true },
-}, async ({ book, category, name }) => {
+}, ({ book, category, name }) => {
     try { return ok(toolGetNotes(resolveBook(book).root, { category, name })); } catch (e) { return err(e); }
 });
 
@@ -227,7 +227,7 @@ server.registerTool('format', {
         noRecurse: z.boolean().optional().describe('Do not recurse into subdirectories (default false)'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, filePath, dryRun, noRecurse }) => {
+}, ({ book, filePath, dryRun, noRecurse }) => {
     try { return ok(toolFormat(resolveBook(book).root, { filePath, dryRun, noRecurse })); } catch (e) { return err(e); }
 });
 
@@ -246,7 +246,7 @@ server.registerTool('get_review_text', {
         autoStage:    z.boolean().optional().describe('Stage reviewed files and consume review markers after producing the diff (default false)'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, language, contextLines, autoStage }) => {
+}, ({ book, language, contextLines, autoStage }) => {
     try { return ok(toolGetReviewText(resolveBook(book).root, { language, contextLines, autoStage })); } catch (e) { return err(e); }
 });
 
@@ -263,7 +263,7 @@ server.registerTool('update_workspace', {
         autoStash:    z.boolean().optional().describe('Temporarily stash local changes before pull when needed (default true)'),
     },
     annotations: { destructiveHint: true, openWorldHint: true },
-}, async ({ book, remote, branch, switchBranch, autoStash }) => {
+}, ({ book, remote, branch, switchBranch, autoStash }) => {
     try { return ok(toolUpdateWorkspace(resolveBook(book).root, { remote, branch, switchBranch, autoStash })); } catch (e) { return err(e); }
 });
 
@@ -282,7 +282,7 @@ server.registerTool('git_snapshot', {
         rememberPushDefaults: z.boolean().optional().describe('Persist the push preference, remote, and branch under .bindery/settings.json'),
     },
     annotations: { destructiveHint: true, openWorldHint: true },
-}, async ({ book, message, push, remote, branch, rememberPushDefaults }) => {
+}, ({ book, message, push, remote, branch, rememberPushDefaults }) => {
     try { return ok(toolGitSnapshot(resolveBook(book).root, { message, push, remote, branch, rememberPushDefaults })); } catch (e) { return err(e); }
 });
 
@@ -300,7 +300,7 @@ server.registerTool('get_translation', {
         type:     z.enum(['glossary', 'substitution']).optional().describe('Entry type filter — defaults to "glossary"'),
     },
     annotations: { readOnlyHint: true },
-}, async ({ book, language, word, type }) => {
+}, ({ book, language, word, type }) => {
     try { return ok(toolGetTranslation(resolveBook(book).root, { language, word, type })); } catch (e) { return err(e); }
 });
 
@@ -317,7 +317,7 @@ server.registerTool('add_translation', {
         to:             z.string().describe('Target term (e.g. "Kern")'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, targetLangCode, from, to }) => {
+}, ({ book, targetLangCode, from, to }) => {
     try { return ok(toolAddTranslation(resolveBook(book).root, { targetLangCode, from, to })); } catch (e) { return err(e); }
 });
 
@@ -334,7 +334,7 @@ server.registerTool('add_dialect', {
         to:          z.string().describe('Target word (e.g. "colour")'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, dialectCode, from, to }) => {
+}, ({ book, dialectCode, from, to }) => {
     try { return ok(toolAddDialect(resolveBook(book).root, { dialectCode, from, to })); } catch (e) { return err(e); }
 });
 
@@ -351,7 +351,7 @@ server.registerTool('get_dialect', {
         word:        z.string().optional().describe('Word to look up (optional — omit to list all rules)'),
     },
     annotations: { readOnlyHint: true },
-}, async ({ book, dialectCode, word }) => {
+}, ({ book, dialectCode, word }) => {
     try { return ok(toolGetDialect(resolveBook(book).root, { dialectCode, word })); } catch (e) { return err(e); }
 });
 
@@ -371,7 +371,7 @@ server.registerTool('add_language', {
         createStubs:   z.boolean().optional().describe('Mirror source language folder with stub files (default true)'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, code, folderName, chapterWord, actPrefix, prologueLabel, epilogueLabel, createStubs }) => {
+}, ({ book, code, folderName, chapterWord, actPrefix, prologueLabel, epilogueLabel, createStubs }) => {
     try { return ok(toolAddLanguage(resolveBook(book).root, { code, folderName, chapterWord, actPrefix, prologueLabel, epilogueLabel, createStubs })); } catch (e) { return err(e); }
 });
 
@@ -392,7 +392,7 @@ server.registerTool('init_workspace', {
         targetAudience:  z.string().optional().describe('Target audience, e.g. 12+ or adults'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, bookTitle, author, storyFolder, genre, description, targetAudience }) => {
+}, ({ book, bookTitle, author, storyFolder, genre, description, targetAudience }) => {
     try { return ok(toolInitWorkspace(resolveBook(book).root, { bookTitle, author, storyFolder, genre, description, targetAudience })); } catch (e) { return err(e); }
 });
 
@@ -406,7 +406,7 @@ server.registerTool('settings_update', {
         patch: z.record(z.string(), z.any()).describe('Partial settings object to deep-merge into .bindery/settings.json'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, patch }) => {
+}, ({ book, patch }) => {
     try { return ok(toolSettingsUpdate(resolveBook(book).root, { patch })); } catch (e) { return err(e); }
 });
 
@@ -423,7 +423,7 @@ server.registerTool('setup_ai_files', {
         overwrite: z.boolean().optional().describe('Overwrite existing files? Default false (skip existing).'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, targets, skills, overwrite }) => {
+}, ({ book, targets, skills, overwrite }) => {
     try { return ok(toolSetupAiFiles(resolveBook(book).root, { targets, skills, overwrite })); } catch (e) { return err(e); }
 });
 
@@ -432,7 +432,7 @@ server.registerTool('memory_list', {
     description: 'List all session memory files in .bindery/memories/. Returns each filename and its line count.',
     inputSchema: { book: bookSchema },
     annotations: { readOnlyHint: true },
-}, async ({ book }) => {
+}, ({ book }) => {
     try { return ok(toolMemoryList(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
@@ -449,7 +449,7 @@ server.registerTool('memory_append', {
         content: z.string().describe('Text to record under this session entry'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, file, title, content }) => {
+}, ({ book, file, title, content }) => {
     try { return ok(toolMemoryAppend(resolveBook(book).root, { file, title, content })); } catch (e) { return err(e); }
 });
 
@@ -465,7 +465,7 @@ server.registerTool('memory_compact', {
         compacted_content: z.string().describe('Full replacement content (model-supplied summary)'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, file, compacted_content }) => {
+}, ({ book, file, compacted_content }) => {
     try { return ok(toolMemoryCompact(resolveBook(book).root, { file, compacted_content })); } catch (e) { return err(e); }
 });
 
@@ -477,7 +477,7 @@ server.registerTool('chapter_status_get', {
         'Returns a clear empty-state message if no status has been recorded yet.',
     inputSchema: { book: bookSchema },
     annotations: { readOnlyHint: true },
-}, async ({ book }) => {
+}, ({ book }) => {
     try { return ok(toolChapterStatusGet(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
@@ -501,7 +501,7 @@ server.registerTool('chapter_status_update', {
         })).describe('Chapter entries to upsert (existing entries not listed are preserved)'),
     },
     annotations: { destructiveHint: true },
-}, async ({ book, chapters }) => {
+}, ({ book, chapters }) => {
     try { return ok(toolChapterStatusUpdate(resolveBook(book).root, { chapters })); } catch (e) { return err(e); }
 });
 
