@@ -406,7 +406,10 @@ function isMarkdownEditor(editor: vscode.TextEditor): boolean {
 function lineBoundaryWrap(doc: vscode.TextDocument, pos: vscode.Position, marker: string): string {
     const atLineStart = pos.character === 0;
     const prefix = atLineStart ? '' : '\n';
-    const suffix = '\n';
+    const atDocumentEnd = pos.line === doc.lineCount - 1
+        && pos.character === doc.lineAt(pos.line).text.length;
+    const nextChar = atDocumentEnd ? '' : doc.getText(new vscode.Range(pos, pos.translate(0, 1)));
+    const suffix = nextChar === '\n' || nextChar === '' ? '' : '\n';
     return `${prefix}${marker}${suffix}`;
 }
 
