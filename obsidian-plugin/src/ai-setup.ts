@@ -40,13 +40,13 @@ export interface AiSetupResult {
 /**
  * Generate AI instruction files from vault settings.
  */
-export async function setupAiFiles(
+export function setupAiFiles(
     _app: App,
     bookRoot: string,
     targets: AiTarget[] = ['claude', 'copilot'],
     skills: SkillTemplate[] = ALL_SKILLS,
     overwrite: boolean = false
-): Promise<AiSetupResult> {
+): AiSetupResult {
     const settingsPath = path.join(bookRoot, BINDERY_FOLDER, SETTINGS_FILENAME);
     if (!fs.existsSync(settingsPath)) {
         throw new Error(`.bindery/settings.json not found. Run "Bindery: Initialize workspace" first.`);

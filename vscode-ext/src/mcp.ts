@@ -77,6 +77,7 @@ function loadMcpTools(extensionPath: string): McpTools {
     const bundledPath = path.join(extensionPath, 'mcp-ts', 'out', 'tools');
     const devPath     = path.join(extensionPath, '..', 'mcp-ts', 'out', 'tools');
     const modulePath  = fs.existsSync(bundledPath + '.js') ? bundledPath : devPath;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic path needed for bundled/dev module loading
     return require(modulePath) as McpTools;
 }
 

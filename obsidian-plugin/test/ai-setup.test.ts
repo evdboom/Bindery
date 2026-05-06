@@ -24,8 +24,8 @@ describe('AI Setup', () => {
         }
     });
 
-    it('should throw when settings.json does not exist', async () => {
-        await expect(setupAiFiles(mockApp, tempRoot)).rejects.toThrow(/settings.json not found/);
+    it('should throw when settings.json does not exist', () => {
+        expect(() => setupAiFiles(mockApp, tempRoot)).toThrow(/settings.json not found/);
     });
 
     it('should create CLAUDE.md when claude target requested', async () => {
