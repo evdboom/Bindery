@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { formatFile, formatText } from '../src/formatter';
 import type { TFile, Vault } from 'obsidian';
 

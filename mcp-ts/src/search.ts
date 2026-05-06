@@ -143,7 +143,7 @@ export interface BuildSemanticProgress {
 
 export interface BuildSemanticOptions {
     /** Called after each chunk finishes embedding. */
-    onProgress?: (p: BuildSemanticProgress) => void;
+    onProgress?: (_p: BuildSemanticProgress) => void;
 }
 
 export async function buildSemanticIndex(

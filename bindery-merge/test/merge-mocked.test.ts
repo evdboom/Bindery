@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Mock child_process ───────────────────────────────────────────────────────
 vi.mock('node:child_process', () => {
-    type ExecFileCallback = (err: Error | null, stdout: string, stderr: string) => void;
+    type ExecFileCallback = (_err: Error | null, _stdout: string, _stderr: string) => void;
 
     return {
         execFile: vi.fn((

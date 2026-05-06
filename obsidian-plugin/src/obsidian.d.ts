@@ -5,11 +5,11 @@ declare module 'obsidian' {
     }
 
     export interface Editor {
-        getCursor(which?: 'from' | 'to' | 'head' | 'anchor'): EditorPosition;
-        getLine(line: number): string;
+        getCursor(_which?: 'from' | 'to' | 'head' | 'anchor'): EditorPosition;
+        getLine(_line: number): string;
         getSelection(): string;
-        replaceSelection(text: string): void;
-        replaceRange(text: string, from: EditorPosition, to?: EditorPosition): void;
+        replaceSelection(_text: string): void;
+        replaceRange(_text: string, _from: EditorPosition, _to?: EditorPosition): void;
     }
 
     export interface EventRef {
@@ -24,10 +24,10 @@ declare module 'obsidian' {
     }
 
     export interface Vault {
-        read(file: TFile): Promise<string>;
-        modify(file: TFile, data: string): Promise<void>;
+        read(_file: TFile): Promise<string>;
+        modify(_file: TFile, _data: string): Promise<void>;
         getName(): string;
-        on(event: string, callback: (...args: unknown[]) => unknown): EventRef;
+        on(_event: string, _callback: (..._args: unknown[]) => unknown): EventRef;
         adapter?: { basePath: string; [key: string]: unknown };
     }
 
@@ -35,29 +35,29 @@ declare module 'obsidian' {
         vault: Vault;
         workspace?: {
             getActiveFile(): TFile | null;
-            on(event: string, callback: (...args: unknown[]) => unknown): EventRef;
+            on(_event: string, _callback: (..._args: unknown[]) => unknown): EventRef;
         };
     }
 
     export class Notice {
-        constructor(message: string, timeout?: number);
+        constructor(_message: string, _timeout?: number);
     }
 
     export interface Command {
         id: string;
         name: string;
         callback?: () => void | Promise<void>;
-        editorCallback?: (editor: Editor) => void;
+        editorCallback?: (_editor: Editor) => void;
     }
 
     export class Plugin {
         app: App;
-        constructor(app: App);
+        constructor(_app: App);
         loadData(): Promise<unknown>;
-        saveData(data: unknown): Promise<void>;
-        addRibbonIcon(icon: string, title: string, callback: () => void): HTMLElement;
-        addCommand(command: Command): void;
-        addSettingTab(tab: unknown): void;
-        registerEvent(eventRef: EventRef): void;
+        saveData(_data: unknown): Promise<void>;
+        addRibbonIcon(_icon: string, _title: string, _callback: () => void): HTMLElement;
+        addCommand(_command: Command): void;
+        addSettingTab(_tab: unknown): void;
+        registerEvent(_eventRef: EventRef): void;
     }
 }

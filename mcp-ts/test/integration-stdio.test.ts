@@ -47,7 +47,7 @@ interface JsonRpcResponse {
  */
 function spawnServer(bookName: string, bookRoot: string): {
     proc:    child_process.ChildProcessWithoutNullStreams;
-    send:    (msg: JsonRpcRequest | JsonRpcNotification) => void;
+    send:    (_msg: JsonRpcRequest | JsonRpcNotification) => void;
     readOne: () => Promise<JsonRpcResponse>;
     kill:    () => void;
 } {
@@ -62,7 +62,7 @@ function spawnServer(bookName: string, bookRoot: string): {
     );
 
     let buffer = '';
-    const pending: Array<(line: string) => void> = [];
+    const pending: Array<(_line: string) => void> = [];
     const lines:   string[] = [];
 
     proc.stdout.on('data', (chunk: Buffer) => {
@@ -90,9 +90,9 @@ function spawnServer(bookName: string, bookRoot: string): {
                 reject(new Error(`Timed out waiting for MCP message after ${MSG_TIMEOUT_MS}ms`));
             }, MSG_TIMEOUT_MS);
 
-            const handler = (line: string) => {
+            const handler = (_line: string) => {
                 clearTimeout(timer);
-                try { resolve(JSON.parse(line) as JsonRpcResponse); } catch (e) { reject(e); }
+                try { resolve(JSON.parse(_line) as JsonRpcResponse); } catch (e) { reject(e); }
             };
             pending.push(handler);
         });
@@ -110,7 +110,7 @@ function spawnServer(bookName: string, bookRoot: string): {
 
 /** Perform the mandatory MCP initialize handshake and return the server's init result. */
 async function handshake(
-    send:    (msg: JsonRpcRequest | JsonRpcNotification) => void,
+    send:    (_msg: JsonRpcRequest | JsonRpcNotification) => void,
     readOne: () => Promise<JsonRpcResponse>,
 ): Promise<JsonRpcResponse> {
     send({

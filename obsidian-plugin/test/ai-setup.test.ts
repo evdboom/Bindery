@@ -4,7 +4,7 @@
  * Tests AI instruction file generation from vault settings
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -133,7 +133,7 @@ describe('AI Setup', () => {
             bookTitle: 'Test Book',
         }, null, 2), 'utf-8');
 
-        const result = await setupAiFiles(mockApp, tempRoot, ['claude'], ['review', 'brainstorm'], false);
+        await setupAiFiles(mockApp, tempRoot, ['claude'], ['review', 'brainstorm'], false);
 
         const reviewSkillPath = path.join(tempRoot, '.claude', 'skills', 'review', 'SKILL.md');
         const brainstormSkillPath = path.join(tempRoot, '.claude', 'skills', 'brainstorm', 'SKILL.md');
@@ -158,7 +158,7 @@ describe('AI Setup', () => {
             ],
         }, null, 2), 'utf-8');
 
-        const result = await setupAiFiles(mockApp, tempRoot, ['agents'], [], false);
+        await setupAiFiles(mockApp, tempRoot, ['agents'], [], false);
 
         const agentsPath = path.join(tempRoot, 'AGENTS.md');
         const content = fs.readFileSync(agentsPath, 'utf-8');

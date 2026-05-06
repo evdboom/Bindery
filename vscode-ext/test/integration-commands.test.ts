@@ -38,10 +38,10 @@ vi.mock('vscode', () => ({
     Uri: { file: (p: string) => ({ fsPath: p }) },
     ConfigurationTarget: { Global: 1, Workspace: 2 },
     LanguageModelToolResult: class {
-        constructor(public readonly content: unknown[]) {}
+        constructor(public readonly _content: unknown[]) {}
     },
     LanguageModelTextPart: class {
-        constructor(public readonly value: string) {}
+        constructor(public readonly _value: string) {}
     },
 }));
 

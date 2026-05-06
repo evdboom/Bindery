@@ -40,9 +40,8 @@ export interface AiSetupResult {
 /**
  * Generate AI instruction files from vault settings.
  */
-// eslint-disable-next-line @typescript-eslint/require-await -- Function is async for API consistency even though operations are synchronous
 export async function setupAiFiles(
-    app: App,
+    _app: App,
     bookRoot: string,
     targets: AiTarget[] = ['claude', 'copilot'],
     skills: SkillTemplate[] = ALL_SKILLS,

@@ -37,32 +37,32 @@ interface MemoryCompactInput  { file: string; compacted_content: string }
 interface ChapterStatusUpdateInput { chapters: Array<{ number: number; title: string; language: string; status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review'; wordCount?: number; notes?: string }> }
 
 interface McpTools {
-    toolHealth:           (root: string) => string;
-    toolIndexBuild:       (root: string) => Promise<string>;
-    toolIndexStatus:      (root: string) => string;
-    toolGetText:          (root: string, args: GetTextInput) => string;
-    toolGetChapter:       (root: string, args: GetChapterInput) => string;
-    toolGetBookUntil:     (root: string, args: GetBookUntilInput) => string;
-    toolGetOverview:      (root: string, args: GetOverviewInput) => string;
-    toolGetNotes:         (root: string, args: GetNotesInput) => string;
-    toolSearch:           (root: string, args: SearchInput) => Promise<string>;
-    toolFormat:           (root: string, args: FormatInput) => string;
-    toolGetReviewText:    (root: string, args: GetReviewTextInput) => string;
-    toolUpdateWorkspace:  (root: string, args: UpdateWorkspaceInput) => string;
-    toolGitSnapshot:      (root: string, args: GitSnapshotInput) => string;
-    toolAddTranslation:   (root: string, args: AddTranslationInput) => string;
-    toolGetTranslation:   (root: string, args: GetTranslationInput) => string;
-    toolAddDialect:       (root: string, args: AddDialectInput) => string;
-    toolGetDialect:       (root: string, args: GetDialectInput) => string;
-    toolAddLanguage:      (root: string, args: AddLanguageInput) => string;
-    toolInitWorkspace:    (root: string, args: InitWorkspaceInput) => string;
-    toolSettingsUpdate:   (root: string, args: SettingsUpdateInput) => string;
-    toolSetupAiFiles:     (root: string, args: SetupAiFilesInput) => string;
-    toolMemoryList:       (root: string) => string;
-    toolMemoryAppend:     (root: string, args: MemoryAppendInput) => string;
-    toolMemoryCompact:    (root: string, args: MemoryCompactInput) => string;
-    toolChapterStatusGet:    (root: string) => string;
-    toolChapterStatusUpdate: (root: string, args: ChapterStatusUpdateInput) => string;
+    toolHealth:           (_root: string) => string;
+    toolIndexBuild:       (_root: string) => Promise<string>;
+    toolIndexStatus:      (_root: string) => string;
+    toolGetText:          (_root: string, _args: GetTextInput) => string;
+    toolGetChapter:       (_root: string, _args: GetChapterInput) => string;
+    toolGetBookUntil:     (_root: string, _args: GetBookUntilInput) => string;
+    toolGetOverview:      (_root: string, _args: GetOverviewInput) => string;
+    toolGetNotes:         (_root: string, _args: GetNotesInput) => string;
+    toolSearch:           (_root: string, _args: SearchInput) => Promise<string>;
+    toolFormat:           (_root: string, _args: FormatInput) => string;
+    toolGetReviewText:    (_root: string, _args: GetReviewTextInput) => string;
+    toolUpdateWorkspace:  (_root: string, _args: UpdateWorkspaceInput) => string;
+    toolGitSnapshot:      (_root: string, _args: GitSnapshotInput) => string;
+    toolAddTranslation:   (_root: string, _args: AddTranslationInput) => string;
+    toolGetTranslation:   (_root: string, _args: GetTranslationInput) => string;
+    toolAddDialect:       (_root: string, _args: AddDialectInput) => string;
+    toolGetDialect:       (_root: string, _args: GetDialectInput) => string;
+    toolAddLanguage:      (_root: string, _args: AddLanguageInput) => string;
+    toolInitWorkspace:    (_root: string, _args: InitWorkspaceInput) => string;
+    toolSettingsUpdate:   (_root: string, _args: SettingsUpdateInput) => string;
+    toolSetupAiFiles:     (_root: string, _args: SetupAiFilesInput) => string;
+    toolMemoryList:       (_root: string) => string;
+    toolMemoryAppend:     (_root: string, _args: MemoryAppendInput) => string;
+    toolMemoryCompact:    (_root: string, _args: MemoryCompactInput) => string;
+    toolChapterStatusGet:    (_root: string) => string;
+    toolChapterStatusUpdate: (_root: string, _args: ChapterStatusUpdateInput) => string;
 }
 
 /**
@@ -77,7 +77,6 @@ function loadMcpTools(extensionPath: string): McpTools {
     const bundledPath = path.join(extensionPath, 'mcp-ts', 'out', 'tools');
     const devPath     = path.join(extensionPath, '..', 'mcp-ts', 'out', 'tools');
     const modulePath  = fs.existsSync(bundledPath + '.js') ? bundledPath : devPath;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Load bundled mcp-ts tools at runtime
     return require(modulePath) as McpTools;
 }
 
