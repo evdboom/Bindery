@@ -225,9 +225,9 @@ describe('formatOnSave bookRoot scoping', () => {
         const app = makeApp('/vault', 'MyVault');
         const bp = new BinderyPlugin(app);
 
-        let savedCallback: ((...args: unknown[]) => void) | undefined;
-        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (...args: unknown[]) => unknown) => {
-            savedCallback = cb as (...args: unknown[]) => void;
+        let savedCallback: ((..._args: unknown[]) => void) | undefined;
+        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (..._args: unknown[]) => unknown) => {
+            savedCallback = cb as (..._args: unknown[]) => void;
             return {};
         });
 
