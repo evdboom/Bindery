@@ -46,10 +46,10 @@ export function setupAiFiles(
     targets: AiTarget[] = ['claude', 'copilot'],
     skills: SkillTemplate[] = ALL_SKILLS,
     overwrite: boolean = false
-): Promise<AiSetupResult> {
+): AiSetupResult {
     const settingsPath = path.join(bookRoot, BINDERY_FOLDER, SETTINGS_FILENAME);
     if (!fs.existsSync(settingsPath)) {
-        return Promise.reject(new Error(`.bindery/settings.json not found. Run "Bindery: Initialize workspace" first.`));
+        throw new Error(`.bindery/settings.json not found. Run "Bindery: Initialize workspace" first.`);
     }
 
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
@@ -79,7 +79,7 @@ export function setupAiFiles(
         }
     }
 
-    return Promise.resolve(result);
+    return result;
 }
 
 /**
