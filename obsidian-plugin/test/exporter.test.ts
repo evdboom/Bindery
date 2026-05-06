@@ -121,7 +121,7 @@ describe('buildPandocArgs', () => {
 // ─── exportBook ──────────────────────────────────────────────────────────────
 
 vi.mock('node:child_process', () => ({
-    execFile: vi.fn((_cmd: string, _args: string[], cb: (err: null, stdout: string, stderr: string) => void) => {
+    execFile: vi.fn((_cmd: string, _args: string[], cb: (_err: null, _stdout: string, _stderr: string) => void) => {
         cb(null, '', '');
     }),
 }));
@@ -295,7 +295,7 @@ describe('exportBook', () => {
     it('rejects when execFile reports an error', async () => {
         const { execFile } = await import('node:child_process');
         const execMock = vi.mocked(execFile);
-        execMock.mockImplementationOnce((_cmd, _args, cb: (err: Error | null, stdout: string, stderr: string) => void) => {
+        execMock.mockImplementationOnce((_cmd, _args, cb: (_err: Error | null, _stdout: string, _stderr: string) => void) => {
             cb(new Error('not found'), '', 'command not found');
             return undefined as unknown as ReturnType<typeof execFile>;
         });

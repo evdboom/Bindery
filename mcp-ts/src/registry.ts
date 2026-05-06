@@ -35,7 +35,7 @@ function parseBooksFromArgs(): Map<string, string> {
     const args = process.argv;
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--book' && args[i + 1]) {
-            parseEntry(args[i + 1]!, books);
+            parseEntry(args[i + 1], books);
             i++;
         }
     }

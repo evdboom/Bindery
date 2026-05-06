@@ -11,6 +11,8 @@
   "scripts": {
     "build": "npm run build -ws --if-present",
     "test": "npm run test -ws --if-present",
+    "lint": "npx eslint . --format=stylish",
+    "lint:fix": "npx eslint . --fix",
     "build:core": "npm run build --workspace=bindery-core",
     "obsidian:sync-version": "node ./scripts/sync-obsidian-version.mjs"
   }

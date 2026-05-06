@@ -33,9 +33,9 @@ import { resolvePandocPath, resolveLibreOfficePath } from './exporter';
  * @returns Merged book result with output paths and file count
  */
 export async function mergeBook(
-    app: App,
-    vault: Vault,
-    vaultBasePath: string,
+    _app: App,
+    _vault: Vault,
+    _vaultBasePath: string,
     bookRoot: string,
     settings: BinderySettings,
     outputTypes: OutputType[]

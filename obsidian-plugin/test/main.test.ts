@@ -39,7 +39,7 @@ vi.mock('obsidian', () => {
             id: string;
             name: string;
             callback?: () => void | Promise<void>;
-            editorCallback?: (editor: unknown) => void;
+            editorCallback?: (_editor: unknown) => void;
         }): void { return; }
 
         addRibbonIcon(_icon: string, _title: string, _callback: () => void): HTMLElement {
@@ -202,9 +202,9 @@ describe('formatOnSave bookRoot scoping', () => {
         const bp = new BinderyPlugin(app);
 
         // Capture the vault.on callback before onload
-        let savedCallback: ((...args: unknown[]) => void) | undefined;
-        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (...args: unknown[]) => unknown) => {
-            savedCallback = cb as (...args: unknown[]) => void;
+        let savedCallback: ((..._args: unknown[]) => void) | undefined;
+        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (..._args: unknown[]) => unknown) => {
+            savedCallback = cb as (..._args: unknown[]) => void;
             return {};
         });
 
@@ -225,9 +225,9 @@ describe('formatOnSave bookRoot scoping', () => {
         const app = makeApp('/vault', 'MyVault');
         const bp = new BinderyPlugin(app);
 
-        let savedCallback: ((...args: unknown[]) => void) | undefined;
-        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (...args: unknown[]) => unknown) => {
-            savedCallback = cb as (...args: unknown[]) => void;
+        let savedCallback: ((..._args: unknown[]) => void) | undefined;
+        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (..._args: unknown[]) => unknown) => {
+            savedCallback = cb as (..._args: unknown[]) => void;
             return {};
         });
 
@@ -253,9 +253,9 @@ describe('formatOnSave bookRoot scoping', () => {
         const app = makeApp(vaultPath, 'MyVault');
         const bp = new BinderyPlugin(app);
 
-        let savedCallback: ((...args: unknown[]) => void) | undefined;
-        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (...args: unknown[]) => unknown) => {
-            savedCallback = cb as (...args: unknown[]) => void;
+        let savedCallback: ((..._args: unknown[]) => void) | undefined;
+        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (..._args: unknown[]) => unknown) => {
+            savedCallback = cb as (..._args: unknown[]) => void;
             return {};
         });
 

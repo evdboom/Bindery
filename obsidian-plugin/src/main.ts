@@ -41,10 +41,10 @@ export default class BinderyPlugin extends Plugin {
     private addContextMenuItems(menu: unknown, forEditor: boolean): void {
         const m = menu as {
             addSeparator?: () => void;
-            addItem: (cb: (item: {
-                setTitle: (title: string) => unknown;
-                setIcon?: (icon: string) => unknown;
-                onClick: (fn: () => void) => unknown;
+            addItem: (_cb: (_item: {
+                setTitle: (_title: string) => unknown;
+                setIcon?: (_icon: string) => unknown;
+                onClick: (_fn: () => void) => unknown;
             }) => void) => void;
         };
 

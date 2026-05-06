@@ -109,7 +109,7 @@ function resolveOnPath(cmd: string): string | null {
     }
 }
 
-function versionFlag(tool: ToolName): string {
+function versionFlag(_tool: ToolName): string {
     return '--version';
 }
 

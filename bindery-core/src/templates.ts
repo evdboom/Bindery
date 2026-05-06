@@ -35,7 +35,7 @@ export type { TemplateContext } from './templates/context';
 
 interface TemplateModule {
     meta:   TemplateMeta;
-    render: (ctx: TemplateContext) => string;
+    render: (_ctx: TemplateContext) => string;
 }
 
 const TEMPLATES: Record<string, TemplateModule> = {
