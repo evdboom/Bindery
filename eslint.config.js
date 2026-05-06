@@ -1,10 +1,32 @@
 import js from '@eslint/js';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
+import obsidianmd from 'eslint-plugin-obsidianmd';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Scope the full obsidianmd recommended config to the Obsidian plugin only.
+// We collect rules and plugins from TS-targeting entries but strip languageOptions
+// so our main block's parserOptions.project (with all workspace tsconfigs) stays in effect.
+const targetsTs = (files) => {
+  if (!files) return true;
+  const flat = files.flat();
+  return flat.some((f) => typeof f === 'string' && (f.includes('.ts') || f.endsWith('.ts')));
+};
+const obsidianMergedRules = Object.assign(
+  {},
+  ...obsidianmd.configs.recommended
+    .filter((entry) => targetsTs(entry.files))
+    .map((entry) => entry.rules ?? {}),
+);
+const obsidianMergedPlugins = Object.assign(
+  {},
+  ...obsidianmd.configs.recommended
+    .filter((entry) => targetsTs(entry.files))
+    .map((entry) => entry.plugins ?? {}),
+);
 
 export default [
   {
@@ -58,6 +80,35 @@ export default [
       'no-unused-vars': 'off',
       'no-undef': 'off',
       'no-empty': ['warn', { allowEmptyCatch: true }],
+    },
+  },
+  // Obsidian plugin: full recommended rules + generic quality rules
+  {
+    files: ['obsidian-plugin/src/**/*.ts'],
+    plugins: obsidianMergedPlugins,
+    rules: {
+      ...obsidianMergedRules,
+      // TypeScript handles undefined identifiers; no-undef causes false positives on imported types
+      'no-undef': 'off',
+      'no-alert': 'error',
+      '@typescript-eslint/require-await': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/unbound-method': 'error',
+    },
+  },
+  // Other packages: generic rules only (no Obsidian-specific rules)
+  {
+    files: [
+      'mcp-ts/src/**/*.ts',
+      'vscode-ext/src/**/*.ts',
+      'bindery-core/src/**/*.ts',
+      'bindery-merge/src/**/*.ts',
+    ],
+    rules: {
+      'no-alert': 'error',
+      '@typescript-eslint/require-await': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/unbound-method': 'error',
     },
   },
   {

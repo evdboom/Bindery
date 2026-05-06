@@ -1603,7 +1603,7 @@ function detectWorkspaceLangs(
         : [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' }];
     return base.map(dl => {
         const el = existingLangs.find(l => (l['code'] as string | undefined)?.toUpperCase() === dl.code);
-        return el ? { ...el, code: dl.code, folderName: dl.folderName } : (dl as unknown as Record<string, unknown>);
+        return el ? { ...el, code: dl.code, folderName: dl.folderName } : (dl);
     });
 }
 
@@ -1650,9 +1650,9 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         ...(args.description    ? { description: args.description }      : {}),
         ...(args.targetAudience ? { targetAudience: args.targetAudience }: {}),
         storyFolder:     storyFolderName,
-        mergedOutputDir: (existing['mergedOutputDir'] as string | undefined)  ?? 'Merged',
-        mergeFilePrefix: (existing['mergeFilePrefix'] as string | undefined)  ?? slug,
-        formatOnSave:    (existing['formatOnSave']    as boolean | undefined) ?? false,
+        mergedOutputDir: (existing['mergedOutputDir'])  ?? 'Merged',
+        mergeFilePrefix: (existing['mergeFilePrefix'])  ?? slug,
+        formatOnSave:    (existing['formatOnSave']) ?? false,
         languages,
     };
 

@@ -520,7 +520,7 @@ async function fetchEmbedding(
         } catch {
             if (attempt === maxRetries) { return null; }
             // Short exponential backoff: 200ms, 400ms, 800ms, ...
-            await new Promise(r => setTimeout(r, 200 * 2 ** attempt));
+            await new Promise(r => activeWindow.setTimeout(r, 200 * 2 ** attempt));
         }
     }
     return null;

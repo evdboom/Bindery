@@ -17,7 +17,7 @@ import { exportBook, resolveBookRoot } from './exporter';
 import { setupAiFiles, ALL_SKILLS } from './ai-setup';
 import { readSettings, addDialectRule, addLanguage, findProbableUsWords } from './workspace';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
-import { Notice, Plugin, TFile } from 'obsidian';
+import { App, Modal, Notice, Plugin, TFile } from 'obsidian';
 import type { Editor } from 'obsidian';
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
@@ -28,6 +28,60 @@ const REVIEW_STOP_MARKER  = '<!-- Bindery: Review stop -->';
 // Type guard to check if an object is a TFile
 function isTFile(obj: unknown): obj is TFile {
     return typeof obj === 'object' && obj !== null && 'extension' in obj && 'path' in obj;
+}
+
+class TextPromptModal extends Modal {
+    private readonly titleText: string;
+    private readonly defaultValue: string;
+    private readonly onResolve: (_value: string | null) => void;
+    private inputEl: HTMLInputElement | null = null;
+    private resolved = false;
+
+    constructor(app: App, titleText: string, defaultValue: string, onResolve: (_value: string | null) => void) {
+        super(app);
+        this.titleText = titleText;
+        this.defaultValue = defaultValue;
+        this.onResolve = onResolve;
+    }
+
+    onOpen(): void {
+        this.titleEl.setText(this.titleText);
+        this.contentEl.empty();
+
+        const input = this.contentEl.createEl('input', { type: 'text', value: this.defaultValue });
+        this.inputEl = input;
+        input.addClass('mod-text-input');
+        input.focus();
+        input.select();
+        input.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                this.resolveAndClose(input.value);
+            }
+        });
+
+        const buttons = this.contentEl.createDiv({ cls: 'bindery-prompt-buttons' });
+        const submitButton = buttons.createEl('button', { text: 'OK', cls: 'mod-cta' });
+        submitButton.addEventListener('click', () => this.resolveAndClose(this.inputEl?.value ?? ''));
+
+        const cancelButton = buttons.createEl('button', { text: 'Cancel' });
+        cancelButton.addEventListener('click', () => this.resolveAndClose(null));
+    }
+
+    onClose(): void {
+        if (!this.resolved) {
+            this.onResolve(null);
+        }
+    }
+
+    private resolveAndClose(value: string | null): void {
+        if (this.resolved) {
+            return;
+        }
+        this.resolved = true;
+        this.onResolve(value);
+        this.close();
+    }
 }
 
 export default class BinderyPlugin extends Plugin {
@@ -51,27 +105,27 @@ export default class BinderyPlugin extends Plugin {
         m.addSeparator?.();
 
         m.addItem((item) => {
-            item.setTitle('Bindery: Merge chapters to all formats');
+            item.setTitle('Merge chapters to all formats');
             item.setIcon?.('book-open');
             item.onClick(() => { void this.mergeBook(['md', 'docx', 'epub', 'pdf']); });
         });
 
         if (forEditor) {
             m.addItem((item) => {
-                item.setTitle('Bindery: Format document');
+                item.setTitle('Format document');
                 item.setIcon?.('wand');
                 item.onClick(() => { void this.formatActive(); });
             });
         }
 
         m.addItem((item) => {
-            item.setTitle('Bindery: Find probable US to UK words');
+            item.setTitle('Find probable us to uk words');
             item.setIcon?.('languages');
             item.onClick(() => { void this.findUsToUkCommand(); });
         });
 
         m.addItem((item) => {
-            item.setTitle('Bindery: Generate AI assistant files');
+            item.setTitle('Generate AI assistant files');
             item.setIcon?.('sparkles');
             item.onClick(() => { void this.setupAiCommand(); });
         });
@@ -117,19 +171,19 @@ export default class BinderyPlugin extends Plugin {
         // Command: format active document
         this.addCommand({
             id:       'format-document',
-            name:     'Bindery: Format document',
+            name:     'Format document',
             callback: () => void this.formatActive(),
         });
 
         // Review marker commands
         this.addCommand({
             id:   'start-review-marker',
-            name: 'Bindery: Insert Review Start Marker (or wrap selection)',
+            name: 'Insert review start marker (or wrap selection)',
             editorCallback: (editor) => this.insertStartReviewMarker(editor),
         });
         this.addCommand({
             id:   'stop-review-marker',
-            name: 'Bindery: Insert Review Stop Marker',
+            name: 'Insert review stop marker',
             editorCallback: (editor) => this.insertStopReviewMarker(editor),
         });
 
@@ -138,7 +192,7 @@ export default class BinderyPlugin extends Plugin {
             const label = fmt.toUpperCase();
             this.addCommand({
                 id:       `export-${fmt}`,
-                name:     `Bindery: Export → ${label}`,
+                name:     `Export → ${label}`,
                 callback: () => void exportBook(this.app, this.settings, fmt),
             });
         }
@@ -149,76 +203,75 @@ export default class BinderyPlugin extends Plugin {
             const label = fmt === 'all' ? 'All Formats' : fmt.toUpperCase();
             this.addCommand({
                 id:       `merge-${fmt}`,
-                name:     `Bindery: Merge Chapters → ${label}`,
-                callback: () => void this.mergeBook(outputTypes as any),
+                name:     `Merge chapters → ${label}`,
+                callback: () => void this.mergeBook(outputTypes as OutputType[]),
             });
         }
 
         // Init workspace
         this.addCommand({
             id:       'init-workspace',
-            name:     'Bindery: Initialize workspace',
-            callback: () => void this.initWorkspace(),
+            name:     'Initialize workspace',
+            callback: () => this.initWorkspace(),
         });
 
         // AI setup command
         this.addCommand({
             id:       'setup-ai-files',
-            name:     'Bindery: Generate AI Assistant Files',
+            name:     'Generate AI assistant files',
             callback: () => void this.setupAiCommand(),
         });
 
         // Workspace management commands
         this.addCommand({
             id:       'add-dialect',
-            name:     'Bindery: Add Dialect Rule',
+            name:     'Add dialect rule',
             callback: () => void this.addDialectCommand(),
         });
         this.addCommand({
             id:       'add-translation',
-            name:     'Bindery: Add Translation Glossary Entry',
+            name:     'Add translation glossary entry',
             callback: () => void this.addTranslationCommand(),
         });
         this.addCommand({
             id:       'add-language',
-            name:     'Bindery: Add Language',
+            name:     'Add language',
             callback: () => void this.addLanguageCommand(),
         });
         this.addCommand({
             id:       'open-translations',
-            name:     'Bindery: Open Translations File',
-            callback: () => void this.openTranslationsCommand(),
+            name:     'Open translations file',
+            callback: () => this.openTranslationsCommand(),
         });
         this.addCommand({
             id:       'find-us-to-uk-words',
-            name:     'Bindery: Find Probable US → UK Words',
+            name:     'Find probable us to uk words',
             callback: () => void this.findUsToUkCommand(),
         });
 
         // Show MCP config snippet — copies JSON to clipboard
         this.addCommand({
             id:       'show-mcp-config',
-            name:     'Bindery: Show MCP config snippet',
+            name:     'Show mcp config snippet',
             callback: () => void this.copyMcpSnippet(),
         });
 
-        this.addRibbonIcon('book-open', 'Bindery: Merge chapters to all formats', () => {
+        this.addRibbonIcon('book-open', 'Merge chapters to all formats', () => {
             void this.mergeBook(['md', 'docx', 'epub', 'pdf']);
         });
-        this.addRibbonIcon('wand', 'Bindery: Format active note', () => {
+        this.addRibbonIcon('wand', 'Format active note', () => {
             void this.formatActive();
         });
-        this.addRibbonIcon('languages', 'Bindery: Find probable US to UK words', () => {
+        this.addRibbonIcon('languages', 'Find probable us to uk words', () => {
             void this.findUsToUkCommand();
         });
 
         // Right-click menus in editor and file explorer.
-        const workspaceOn = this.app.workspace?.on;
-        if (workspaceOn) {
-            this.registerEvent(workspaceOn.call(this.app.workspace, 'editor-menu', (menu: unknown) => {
+        if (this.app.workspace) {
+            this.registerEvent(this.app.workspace.on('editor-menu', (menu: unknown) => {
                 this.addContextMenuItems(menu, true);
             }));
-            this.registerEvent(workspaceOn.call(this.app.workspace, 'file-menu', (menu: unknown) => {
+            this.registerEvent(this.app.workspace.on('file-menu', (menu: unknown) => {
                 this.addContextMenuItems(menu, false);
             }));
         }
@@ -402,10 +455,9 @@ export default class BinderyPlugin extends Plugin {
         }
     }
 
-    private async promptString(prompt: string, defaultValue: string = ''): Promise<string | null> {
+    private async promptString(promptText: string, defaultValue: string = ''): Promise<string | null> {
         return new Promise((resolve) => {
-            const result = globalThis.prompt(prompt, defaultValue);
-            resolve(result);
+            new TextPromptModal(this.app, promptText, defaultValue, resolve).open();
         });
     }
 
@@ -479,7 +531,8 @@ export default class BinderyPlugin extends Plugin {
 
     private async copyMcpSnippet(): Promise<void> {
         const snippet = this.showMcpSnippet();
-        const clipboard = globalThis.navigator?.clipboard;
+        const activeWindow = this.app.workspace?.containerEl.ownerDocument.defaultView;
+        const clipboard = activeWindow?.navigator?.clipboard;
         if (clipboard?.writeText) {
             await clipboard.writeText(snippet);
             return;
