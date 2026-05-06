@@ -202,7 +202,7 @@ jobs:
 
       - name: Create PR to sync Obsidian release metadata on main
         continue-on-error: true
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: "chore(obsidian): sync metadata for ${{ github.ref_name }}"
           branch: "chore/obsidian-sync-${{ github.ref_name }}"
