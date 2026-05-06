@@ -707,8 +707,8 @@ async function runLibreOfficeToPdf(
                 try {
                     fs.renameSync(tempPdfPath, finalPdfPath);
                     resolve();
-                } catch (renameErr: any) {
-                    reject(new Error(`Failed to rename LibreOffice output: ${renameErr.message}`));
+                } catch (renameErr: unknown) {
+                    reject(new Error(`Failed to rename LibreOffice output: ${renameErr instanceof Error ? renameErr.message : String(renameErr)}`));
                 }
             }
         );

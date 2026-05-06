@@ -71,6 +71,7 @@ function loadMcpToolsForAi(extensionPath: string): McpToolsForAi {
     const bundledPath = path.join(extensionPath, 'mcp-ts', 'out', 'tools');
     const devPath     = path.join(extensionPath, '..', 'mcp-ts', 'out', 'tools');
     const modulePath  = fs.existsSync(bundledPath + '.js') ? bundledPath : devPath;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic path needed for bundled/dev module loading
     return require(modulePath) as McpToolsForAi;
 }
 
@@ -1001,9 +1002,9 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
     if (hasNew) {
         const settingsPath = getSettingsPath(root);
         try {
-            const current = JSON.parse(require('node:fs').readFileSync(settingsPath, 'utf-8'));
+            const current = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
             const updated  = { ...current, ...settings };
-            require('node:fs').writeFileSync(settingsPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8');
+            fs.writeFileSync(settingsPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8');
         } catch { /* non-fatal */ }
     }
 
@@ -1060,8 +1061,8 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
             skills,
             overwrite: overwritePick.value,
         });
-    } catch (e: any) {
-        vscode.window.showErrorMessage(`Bindery AI setup failed: ${e?.message ?? String(e)}`);
+    } catch (e: unknown) {
+        vscode.window.showErrorMessage(`Bindery AI setup failed: ${e instanceof Error ? e.message : String(e)}`);
         return;
     }
 
@@ -1244,8 +1245,8 @@ async function doMerge(outputTypes: OutputType[]) {
                     const r       = await mergeBook(options);
                     allOutputs.push(...r.outputs);
                     allWarnings.push(...r.warnings.map(w => `${lang.code}: ${w}`));
-                } catch (err: any) {
-                    vscode.window.showErrorMessage(`Merge failed for ${lang.code}: ${err.message}`);
+                } catch (err: unknown) {
+                    vscode.window.showErrorMessage(`Merge failed for ${lang.code}: ${err instanceof Error ? err.message : String(err)}`);
                 }
                 // Dialect exports — always run alongside parent language
                 for (const dialect of lang.dialects ?? []) {
@@ -1255,8 +1256,8 @@ async function doMerge(outputTypes: OutputType[]) {
                         const dr       = await mergeBook(dOptions);
                         allOutputs.push(...dr.outputs);
                         allWarnings.push(...dr.warnings.map(w => `${dialect.code}: ${w}`));
-                    } catch (err: any) {
-                        vscode.window.showErrorMessage(`Merge failed for dialect ${dialect.code}: ${err.message}`);
+                    } catch (err: unknown) {
+                        vscode.window.showErrorMessage(`Merge failed for dialect ${dialect.code}: ${err instanceof Error ? err.message : String(err)}`);
                     }
                 }
             }

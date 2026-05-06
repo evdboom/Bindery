@@ -40,7 +40,7 @@ export interface AiSetupResult {
 /**
  * Generate AI instruction files from vault settings.
  */
-export async function setupAiFiles(
+export function setupAiFiles(
     _app: App,
     bookRoot: string,
     targets: AiTarget[] = ['claude', 'copilot'],
@@ -49,7 +49,7 @@ export async function setupAiFiles(
 ): Promise<AiSetupResult> {
     const settingsPath = path.join(bookRoot, BINDERY_FOLDER, SETTINGS_FILENAME);
     if (!fs.existsSync(settingsPath)) {
-        throw new Error(`.bindery/settings.json not found. Run "Bindery: Initialize workspace" first.`);
+        return Promise.reject(new Error(`.bindery/settings.json not found. Run "Bindery: Initialize workspace" first.`));
     }
 
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
@@ -79,7 +79,7 @@ export async function setupAiFiles(
         }
     }
 
-    return result;
+    return Promise.resolve(result);
 }
 
 /**

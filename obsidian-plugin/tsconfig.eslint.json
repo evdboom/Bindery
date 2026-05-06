@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@bindery/core": ["../bindery-core/src/index.ts"]
+    },
+    "noEmit": true
+  }
+}
