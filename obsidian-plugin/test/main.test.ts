@@ -221,6 +221,33 @@ describe('formatOnSave bookRoot scoping', () => {
         expect(app.vault.modify).not.toHaveBeenCalled();
     });
 
+    it('does not invoke formatFile when modify event arg is not a TFile', async () => {
+        const app = makeApp('/vault', 'MyVault');
+        const bp = new BinderyPlugin(app);
+
+        let savedCallback: ((...args: unknown[]) => void) | undefined;
+        vi.spyOn(app.vault, 'on').mockImplementation((_event: string, cb: (...args: unknown[]) => unknown) => {
+            savedCallback = cb as (...args: unknown[]) => void;
+            return {};
+        });
+
+        await bp.onload();
+        bp.settings.formatOnSave = true;
+        bp.settings.bookRoot = 'MyNovel';
+
+        // Confirm the callback was registered
+        expect(savedCallback).toBeDefined();
+
+        // Pass a non-TFile argument (e.g. a plain string or null)
+        savedCallback!('not-a-tfile');
+        savedCallback!(null);
+        savedCallback!(42);
+        savedCallback!({ noPath: true }); // object missing required TFile fields
+
+        expect(app.vault.modify).not.toHaveBeenCalled();
+        expect(app.vault.read).not.toHaveBeenCalled();
+    });
+
     it('invokes formatFile for files inside bookRoot', async () => {
         const vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-scope-'));
         const app = makeApp(vaultPath, 'MyVault');
