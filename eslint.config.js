@@ -105,40 +105,6 @@ export default [
       'no-empty': ['warn', { allowEmptyCatch: true }],
     },
   },
-  {
-    files: ['**/*.ts', '**/*.js'],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-      },
-      globals: {
-        console: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly',
-        globalThis: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        fetch: 'readonly',
-        AbortSignal: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        HTMLElement: 'readonly',
-      },
-    },
-    plugins: {
-      '@typescript-eslint': tsPlugin,
-    },
-    rules: {
-      ...js.configs.recommended.rules,
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-require-imports': 'off',
-      'no-empty': ['warn', { allowEmptyCatch: true }],
-    },
-  },
 ];
 
 
