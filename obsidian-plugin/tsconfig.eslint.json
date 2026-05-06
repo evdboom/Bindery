@@ -3,7 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@bindery/core": ["../bindery-core/src/index.ts"]
+      "@bindery/core": ["../bindery-core/src/index.ts"],
+      "@bindery/merge": ["../bindery-merge/src/index.ts"]
     },
     "noEmit": true
   }
