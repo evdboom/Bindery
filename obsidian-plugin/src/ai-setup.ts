@@ -40,7 +40,7 @@ export interface AiSetupResult {
 /**
  * Generate AI instruction files from vault settings.
  */
-export function setupAiFiles(
+export async function setupAiFiles(
     _app: App,
     bookRoot: string,
     targets: AiTarget[] = ['claude', 'copilot'],
@@ -79,7 +79,7 @@ export function setupAiFiles(
         }
     }
 
-    return Promise.resolve(result);
+    return result;
 }
 
 /**

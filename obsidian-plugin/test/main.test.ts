@@ -20,6 +20,23 @@ vi.mock('obsidian', () => {
         }
     }
 
+    class Modal {
+        app: App;
+        titleEl: HTMLElement;
+        contentEl: HTMLElement;
+
+        constructor(app: App) {
+            this.app = app;
+            this.titleEl = {};
+            this.contentEl = {};
+        }
+
+        open(): void { return; }
+        close(): void { return; }
+        onOpen(): void { return; }
+        onClose(): void { return; }
+    }
+
     class Plugin {
         app: App;
 
@@ -51,7 +68,7 @@ vi.mock('obsidian', () => {
         registerEvent(_eventRef: unknown): void { return; }
     }
 
-    return { Plugin, Notice };
+    return { Plugin, Notice, Modal };
 });
 
 import BinderyPlugin from '../src/main';
@@ -458,9 +475,9 @@ describe('ribbon actions', () => {
         await bp.onload();
 
         const titles = ribbonSpy.mock.calls.map((call) => call[1]);
-        expect(titles).toContain('Bindery: Merge chapters to all formats');
-        expect(titles).toContain('Bindery: Format active note');
-        expect(titles).toContain('Bindery: Find probable US to UK words');
+        expect(titles).toContain('Merge chapters to all formats');
+        expect(titles).toContain('Format active note');
+        expect(titles).toContain('Find probable us to uk words');
     });
 });
 
