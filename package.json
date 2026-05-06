@@ -1,6 +1,5 @@
 {
   "name": "bindery-monorepo",
-  "type": "module",
   "private": true,
   "workspaces": [
     "bindery-core",
