@@ -318,12 +318,12 @@ export default class BinderyPlugin extends Plugin {
         }
     }
 
-    private async setupAiCommand(): Promise<void> {
+    private setupAiCommand(): void {
         try {
             const vaultPath = this.getVaultBasePath();
             const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
 
-            const result = await setupAiFiles(this.app, bookRoot, ['claude', 'copilot', 'cursor', 'agents'], ALL_SKILLS, false);
+            const result = setupAiFiles(this.app, bookRoot, ['claude', 'copilot', 'cursor', 'agents'], ALL_SKILLS, false);
             const msg = `Generated: ${result.created.length}, Skipped: ${result.skipped.length}`;
             this.notify(`AI setup complete. ${msg}`);
         } catch (err) {
