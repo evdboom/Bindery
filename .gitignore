@@ -9,6 +9,9 @@ bindery-merge/out/
 obsidian-plugin/out/
 mcp-rust/target/
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Packaged extensions
 *.vsix
 *.mcpb
