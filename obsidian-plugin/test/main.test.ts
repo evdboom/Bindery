@@ -108,6 +108,11 @@ function makeEditor(lineText: string, cursorCh: number, selection = ''): Editor 
     };
 }
 
+/** Spy on a private method of BinderyPlugin by name. */
+function spyOnPluginMethod(plugin: BinderyPlugin, method: string) {
+    return vi.spyOn(plugin as unknown as Record<string, (...args: unknown[]) => unknown>, method);
+}
+
 // ─── showMcpSnippet ───────────────────────────────────────────────────────────
 
 describe('showMcpSnippet', () => {
@@ -543,7 +548,7 @@ describe('format-folder command', () => {
         const ch1 = fs.readFileSync(path.join(storyDir, 'ch1.md'), 'utf-8');
         const ch2 = fs.readFileSync(path.join(storyDir, 'ch2.md'), 'utf-8');
 
-        // applyTypography converts "..." to "…" and "..." to "…", straight quotes to curly
+        // applyTypography converts "..." to "…" and straight quotes to curly quotes
         expect(ch1).not.toBe('He said "hello"...');
         expect(ch2).not.toBe('She said "world"...');
     });
@@ -561,7 +566,7 @@ describe('format-folder command', () => {
         const app = makeApp(tmpRoot, 'TestBook');
         const bp = new BinderyPlugin(app);
 
-        const notifySpy = vi.spyOn(bp as unknown as { notify: (msg: string) => void }, 'notify');
+        const notifySpy = spyOnPluginMethod(bp, 'notify');
         const addCommandSpy = vi.spyOn(bp, 'addCommand');
         await bp.onload();
 
