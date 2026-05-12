@@ -12,6 +12,8 @@ import {
     type MergeResult,
     type OutputType,
 } from '@bindery/merge';
+
+export type { OutputType };
 import {
     readWorkspaceSettings,
     getDefaultLanguage,

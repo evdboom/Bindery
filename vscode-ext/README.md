@@ -79,7 +79,7 @@ Bindery includes a bundled MCP server that makes your book's chapters, notes, se
 | `bindery_format` | Apply typography formatting to a file or folder |
 | `bindery_get_review_text` | Git diff of uncommitted changes **plus** any `<!-- Bindery: Review start/stop -->` regions (works on committed work too) |
 | `bindery_update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |
-| `bindery_git_snapshot` | Save a snapshot (git commit) of story/notes/arc changes, with optional push |
+| `bindery_git_snapshot` | Commit changes in bindery workspace, with optional push |
 | `bindery_get_translation` | Look up cross-language glossary entries |
 | `bindery_add_translation` | Add or update a glossary entry |
 | `bindery_get_dialect` | Look up dialect substitution rules |

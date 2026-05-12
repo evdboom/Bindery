@@ -146,7 +146,7 @@ table with issue type, location, and the reference that contradicts it.
 | `format` | Apply typography formatting to a file or folder |
 | `get_review_text` | Git diff of uncommitted changes plus any `<!-- Bindery: Review start/stop -->` marker regions; optional auto-staging consumes the markers |
 | `update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |
-| `git_snapshot` | Git commit of story, notes, and arc changes, with optional push |
+| `git_snapshot` | Commit changes in bindery workspace, with optional push |
 | `get_translation` | List glossary entries for a language, or look up a specific term (forgiving) |
 | `add_translation` | Add or update a cross-language glossary entry (agent reference) |
 | `get_dialect` | List dialect substitution rules, or look up a specific word |

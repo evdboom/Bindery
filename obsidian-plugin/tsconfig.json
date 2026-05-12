@@ -3,9 +3,9 @@
     "module": "commonjs",
     "target": "ES2022",
     "outDir": "out",
+    "rootDir": "src",
     "lib": ["ES2022", "DOM"],
     "sourceMap": true,
-    "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,5 +14,9 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "references": [
+    { "path": "../bindery-core" },
+    { "path": "../bindery-merge" }
+  ]
 }

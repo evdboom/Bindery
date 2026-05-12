@@ -165,21 +165,15 @@ describe('toolGetReviewText', () => {
 // ─── toolGitSnapshot ──────────────────────────────────────────────────────────
 
 describe('toolGitSnapshot', () => {
-    it('returns "Nothing to snapshot" for a non-git dir with Story folder', () => {
+    it('returns "Nothing to snapshot" for a non-git dir', () => {
         const root = makeRoot();
         fs.mkdirSync(path.join(root, 'Story'), { recursive: true });
 
         const result = toolGitSnapshot(root, {});
-        expect(result).toBe('Nothing to snapshot — no changes in content folders.');
+        expect(result).toBe('Failed to stage files. Is this a git repository?');
     });
 
-    it('returns "No content folders found" when no Story/Notes/Arc exist', () => {
-        const root = makeRoot();
-        const result = toolGitSnapshot(root, {});
-        expect(result).toBe('No content folders found to snapshot.');
-    });
-
-    it('returns "Nothing to snapshot" when content is committed and has no changes', () => {
+    it('returns "Nothing to snapshot" when everything is already committed', () => {
         const root = makeGitRepo();
 
         write(path.join(root, 'Story', 'EN', 'Chapter 1.md'), '# Ch1\nContent.\n');
@@ -187,7 +181,7 @@ describe('toolGitSnapshot', () => {
         spawnSync('git', ['commit', '-m', 'Add chapter'], { cwd: root });
 
         const result = toolGitSnapshot(root, {});
-        expect(result).toBe('Nothing to snapshot — no changes in content folders.');
+        expect(result).toBe('Nothing to snapshot — no changes to commit.');
     });
 
     it('commits a new content file and returns snapshot message', () => {
@@ -282,6 +276,31 @@ describe('toolGitSnapshot', () => {
         const result = toolGitSnapshot(root, { rememberPushDefaults: true });
 
         expect(result).toContain('Could not save snapshot push defaults: .bindery/settings.json was not found.');
+    });
+
+    it('commits .bindery files (memories, translations) along with story content', () => {
+        const root = makeGitRepo();
+        write(path.join(root, 'Story', 'EN', 'Chapter 1.md'), '# Ch1\nContent.\n');
+        write(path.join(root, '.bindery', 'memories', 'global.md'), '## Session\nSome notes.\n');
+
+        const result = toolGitSnapshot(root, {});
+
+        expect(result).toContain('Snapshot saved:');
+        expect(result).toContain('2 files');
+    });
+
+    it('snapshots .bindery changes even without story folder changes', () => {
+        const root = makeGitRepo();
+        write(path.join(root, 'Story', 'EN', 'Chapter 1.md'), '# Ch1\nContent.\n');
+        spawnSync('git', ['add', '.'], { cwd: root });
+        spawnSync('git', ['commit', '-m', 'Initial'], { cwd: root });
+
+        // Only memory changed
+        write(path.join(root, '.bindery', 'memories', 'global.md'), '## Session\nNew note.\n');
+
+        const result = toolGitSnapshot(root, {});
+        expect(result).toContain('Snapshot saved:');
+        expect(result).toContain('1 file');
     });
 });
 

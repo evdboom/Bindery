@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-    version: 5,
+    version: 6,
     label:   'bindery capabilities',
     zip:     null,
 };
@@ -77,7 +77,7 @@ tagged **(writes)** modify files or git state.
 | \`index_build\` / \`index_status\` (writes / reads) | Build or inspect the lexical/semantic index. |
 | \`format\` (writes) | Apply typography to a file or folder (\`dryRun\` supported). |
 | \`get_review_text\` (writes) | Returns the **git diff of uncommitted changes** *plus* any regions wrapped in \`<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->\` markers. Marker regions surface even after a commit, so committed work-in-progress can still be reviewed. \`autoStage: true\` stages files **and** consumes (removes) the marker lines. |
-| \`git_snapshot\` (writes) | Commit changes in story / notes / arc folders, optional push. |
+| \`git_snapshot\` (writes) | Commit changes in bindery workspace, optional push. |
 | \`get_translation\` / \`add_translation\` (reads / writes) | Glossary lookup and upsert per target language. |
 | \`get_dialect\` / \`add_dialect\` (reads / writes) | Dialect substitution lookup and upsert (e.g. \`en-gb\`). |
 | \`add_language\` (writes) | Scaffold a new language under the story folder. |
