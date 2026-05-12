@@ -559,7 +559,7 @@
         "displayName": "Bindery: Git Snapshot",
         "toolReferenceName": "binderyGitSnapshot",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Save a snapshot (git commit) of all changes in story, notes, and arc folders, with optional push and saved push defaults.",
+        "modelDescription": "Save a snapshot (git commit) of all changes in the bindery workspace, with optional push and saved push defaults.",
         "inputSchema": {
           "type": "object",
           "properties": {

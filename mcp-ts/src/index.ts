@@ -270,7 +270,7 @@ server.registerTool('update_workspace', {
 server.registerTool('git_snapshot', {
     title: 'Git Snapshot',
     description:
-        'Save a snapshot (git commit) of all changes in story, notes, and arc folders. ' +
+        'Save a snapshot (git commit) of all changes in the bindery workspace. ' +
         'Provides an optional commit message, can optionally push to a remote branch, and can remember push defaults in settings.json. ' +
         'Use this to create save points after writing sessions or successful reviews.',
     inputSchema: {

@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /// <reference path="../src/obsidian.d.ts" />
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
@@ -106,6 +106,11 @@ function makeEditor(lineText: string, cursorCh: number, selection = ''): Editor 
         replaceSelection: vi.fn(),
         replaceRange: vi.fn(),
     };
+}
+
+/** Spy on a private method of BinderyPlugin by name. */
+function spyOnPluginMethod(plugin: BinderyPlugin, method: string) {
+    return vi.spyOn(plugin as unknown as Record<string, (...args: unknown[]) => unknown>, method);
 }
 
 // ─── showMcpSnippet ───────────────────────────────────────────────────────────
@@ -481,6 +486,8 @@ describe('ribbon actions', () => {
     });
 });
 
+// ─── context menu actions ─────────────────────────────────────────────────────
+
 describe('context menu actions', () => {
     it('registers editor-menu and file-menu hooks', async () => {
         const app = makeApp('/vault', 'MyVault');
@@ -494,3 +501,82 @@ describe('context menu actions', () => {
         expect(events).toContain('file-menu');
     });
 });
+
+// ─── format-folder command ────────────────────────────────────────────────────
+
+describe('format-folder command', () => {
+    let tmpRoot: string;
+
+    beforeEach(() => {
+        tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bindery-fmt-folder-'));
+    });
+
+    afterEach(() => {
+        fs.rmSync(tmpRoot, { recursive: true, force: true });
+    });
+
+    it('formats multiple .md files in the story folder', async () => {
+        // Set up workspace settings
+        const binderyDir = path.join(tmpRoot, '.bindery');
+        fs.mkdirSync(binderyDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(binderyDir, 'settings.json'),
+            JSON.stringify({ storyFolder: 'Story' }),
+            'utf-8',
+        );
+
+        // Create story folder with markdown files that need typography
+        const storyDir = path.join(tmpRoot, 'Story');
+        fs.mkdirSync(storyDir, { recursive: true });
+        fs.writeFileSync(path.join(storyDir, 'ch1.md'), 'He said "hello"...', 'utf-8');
+        fs.writeFileSync(path.join(storyDir, 'ch2.md'), 'She said "world"...', 'utf-8');
+
+        const app = makeApp(tmpRoot, 'TestBook');
+        const bp = new BinderyPlugin(app);
+
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
+        const cmd = commands.find((c) => c.id === 'format-folder');
+        expect(cmd).toBeDefined();
+
+        // Call the command callback
+        cmd?.callback?.();
+
+        // The files should have been updated with typography transforms
+        const ch1 = fs.readFileSync(path.join(storyDir, 'ch1.md'), 'utf-8');
+        const ch2 = fs.readFileSync(path.join(storyDir, 'ch2.md'), 'utf-8');
+
+        // applyTypography converts "..." to "…" and straight quotes to curly quotes
+        expect(ch1).not.toBe('He said "hello"...');
+        expect(ch2).not.toBe('She said "world"...');
+    });
+
+    it('notifies when story folder does not exist', async () => {
+        // No story folder created — only .bindery with settings pointing to missing dir
+        const binderyDir = path.join(tmpRoot, '.bindery');
+        fs.mkdirSync(binderyDir, { recursive: true });
+        fs.writeFileSync(
+            path.join(binderyDir, 'settings.json'),
+            JSON.stringify({ storyFolder: 'MissingStory' }),
+            'utf-8',
+        );
+
+        const app = makeApp(tmpRoot, 'TestBook');
+        const bp = new BinderyPlugin(app);
+
+        const notifySpy = spyOnPluginMethod(bp, 'notify');
+        const addCommandSpy = vi.spyOn(bp, 'addCommand');
+        await bp.onload();
+
+        const commands = addCommandSpy.mock.calls.map((call) => call[0]);
+        const cmd = commands.find((c) => c.id === 'format-folder');
+        expect(cmd).toBeDefined();
+
+        cmd?.callback?.();
+
+        expect(notifySpy).toHaveBeenCalledWith(expect.stringContaining('Story folder not found'));
+    });
+});
+

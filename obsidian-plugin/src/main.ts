@@ -9,11 +9,10 @@
  * inside the Obsidian app itself.
  */
 
-import { BINDERY_FOLDER, SETTINGS_FILENAME, upsertGlossaryRule, getDefaultLanguage, type LanguageConfig } from '@bindery/core';
-import type { OutputType } from '@bindery/merge';
-import { mergeBook } from './merge';
+import { BINDERY_FOLDER, SETTINGS_FILENAME, upsertGlossaryRule, getDefaultLanguage, applyTypography, readWorkspaceSettings, type LanguageConfig } from '@bindery/core';
+import { mergeBook, type OutputType } from './merge';
 import { formatFile } from './formatter';
-import { exportBook, resolveBookRoot } from './exporter';
+import { resolveBookRoot } from './exporter';
 import { setupAiFiles, ALL_SKILLS } from './ai-setup';
 import { readSettings, addDialectRule, addLanguage, findProbableUsWords } from './workspace';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
@@ -175,6 +174,13 @@ export default class BinderyPlugin extends Plugin {
             callback: () => void this.formatActive(),
         });
 
+        // Command: format all markdown files in a folder
+        this.addCommand({
+            id:       'format-folder',
+            name:     'Format folder (all .md files)',
+            callback: () => void this.formatFolder(),
+        });
+
         // Review marker commands
         this.addCommand({
             id:   'start-review-marker',
@@ -187,17 +193,7 @@ export default class BinderyPlugin extends Plugin {
             editorCallback: (editor) => this.insertStopReviewMarker(editor),
         });
 
-        // Export commands
-        for (const fmt of ['md', 'docx', 'epub', 'pdf'] as const) {
-            const label = fmt.toUpperCase();
-            this.addCommand({
-                id:       `export-${fmt}`,
-                name:     `Export → ${label}`,
-                callback: () => void exportBook(this.app, this.settings, fmt),
-            });
-        }
-
-        // Merge commands (NEW: discover chapters and merge them)
+        // Merge commands
         for (const fmt of ['md', 'docx', 'epub', 'pdf', 'all'] as const) {
             const outputTypes = fmt === 'all' ? ['md', 'docx', 'epub', 'pdf'] : [fmt];
             const label = fmt === 'all' ? 'All Formats' : fmt.toUpperCase();
@@ -300,6 +296,46 @@ export default class BinderyPlugin extends Plugin {
             console.error(`✗ Merge failed: ${message}`);
             this.notify(`Merge failed: ${message}`);
         }
+    }
+
+    private formatFolder(): void {
+        let vaultPath: string;
+        let bookRoot: string;
+        try {
+            vaultPath = this.getVaultBasePath();
+            bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            this.notify(`Format folder failed: ${message}`);
+            return;
+        }
+        const wsSettings = readWorkspaceSettings(bookRoot);
+        const storyFolder = wsSettings?.storyFolder ?? 'Story';
+        const targetDir = path.join(bookRoot, storyFolder);
+        if (!fs.existsSync(targetDir)) {
+            this.notify(`Story folder not found: ${storyFolder}`);
+            return;
+        }
+        const count = this.formatDirectoryRecursive(targetDir);
+        this.notify(`Typography: ${count} file(s) updated.`);
+    }
+
+    private formatDirectoryRecursive(dirPath: string): number {
+        let count = 0;
+        for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+            const fullPath = path.join(dirPath, entry.name);
+            if (entry.isDirectory()) {
+                count += this.formatDirectoryRecursive(fullPath);
+            } else if (entry.isFile() && entry.name.endsWith('.md')) {
+                const content   = fs.readFileSync(fullPath, 'utf-8');
+                const formatted = applyTypography(content);
+                if (content !== formatted) {
+                    fs.writeFileSync(fullPath, formatted, 'utf-8');
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private async formatActive(): Promise<void> {

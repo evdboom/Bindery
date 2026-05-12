@@ -1157,12 +1157,6 @@ function consumeReviewMarkers(root: string, relFiles: string[]): void {
     }
 }
 
-/** Content folders that git operations should scope to. */
-function contentFolders(root: string): string[] {
-    const story = storyFolder(root);
-    return [story, 'Notes', 'Arc'].filter(d => fs.existsSync(path.join(root, d)));
-}
-
 // ─── update_workspace ────────────────────────────────────────────────────────
 
 export interface UpdateWorkspaceArgs {
@@ -1233,13 +1227,11 @@ export interface GitSnapshotArgs {
 }
 
 export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
-    const dirs = contentFolders(root);
-    if (dirs.length === 0) { return 'No content folders found to snapshot.'; }
-
-    // Stage content folders
+    // Stage everything tracked or untracked in the repo
     try {
-        const result = spawnSync('git', ['add', ...dirs], { cwd: root, encoding: 'utf-8' });
+        const result = spawnSync('git', ['add', '.'], { cwd: root, encoding: 'utf-8' });
         if (result.error) { throw result.error; }
+        if (result.status !== 0) { throw new Error(result.stderr || 'git add failed'); }
     } catch {
         return 'Failed to stage files. Is this a git repository?';
     }
@@ -1254,7 +1246,7 @@ export function toolGitSnapshot(root: string, args: GitSnapshotArgs): string {
         return 'Failed to check staged files.';
     }
 
-    if (!staged.trim()) { return 'Nothing to snapshot — no changes in content folders.'; }
+    if (!staged.trim()) { return 'Nothing to snapshot — no changes to commit.'; }
 
     const fileCount = staged.trim().split('\n').length;
     const msg       = args.message ?? `Snapshot ${new Date().toISOString().slice(0, 16).replaceAll('T', ' ')}`;
