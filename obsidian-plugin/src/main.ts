@@ -298,7 +298,7 @@ export default class BinderyPlugin extends Plugin {
         }
     }
 
-    private async formatFolder(): Promise<void> {
+    private formatFolder(): void {
         let vaultPath: string;
         let bookRoot: string;
         try {
