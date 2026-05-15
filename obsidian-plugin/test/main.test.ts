@@ -110,7 +110,7 @@ function makeEditor(lineText: string, cursorCh: number, selection = ''): Editor 
 
 /** Spy on a private method of BinderyPlugin by name. */
 function spyOnPluginMethod(plugin: BinderyPlugin, method: string) {
-    return vi.spyOn(plugin as unknown as Record<string, (...args: unknown[]) => unknown>, method);
+    return vi.spyOn(plugin as unknown as Record<string, (..._args: unknown[]) => unknown>, method);
 }
 
 // ─── showMcpSnippet ───────────────────────────────────────────────────────────

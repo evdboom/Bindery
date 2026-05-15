@@ -42,7 +42,7 @@ export default [
         project: [
           `${__dirname}/bindery-core/tsconfig.json`,
           `${__dirname}/bindery-merge/tsconfig.json`,
-          `${__dirname}/mcp-ts/tsconfig.json`,
+          `${__dirname}/mcp-ts/tsconfig.eslint.json`,
           `${__dirname}/vscode-ext/tsconfig.eslint.json`,
           `${__dirname}/obsidian-plugin/tsconfig.eslint.json`,
         ],
