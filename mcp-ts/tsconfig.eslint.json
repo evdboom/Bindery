@@ -6,7 +6,6 @@
       "@bindery/core": ["../bindery-core/src/index.ts"],
       "@bindery/merge": ["../bindery-merge/src/index.ts"]
     },
-    "types": ["node", "vscode"],
     "noEmit": true
   }
 }
