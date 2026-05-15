@@ -31,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     env:
       RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
@@ -73,6 +75,11 @@ jobs:
             mv "$f" "bindery-${VERSION}.mcpb" 2>/dev/null || true
           done
 
+      - name: Attest .mcpb build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: mcpb/*.mcpb
+
       - name: Upload .mcpb to release
         uses: softprops/action-gh-release@v3
         with:
@@ -86,6 +93,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     env:
       RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
@@ -124,6 +133,11 @@ jobs:
           npm version "$VERSION" --no-git-tag-version
           npx --yes @vscode/vsce@3.7.1 package --no-dependencies -o "bindery-${VERSION}.vsix"
 
+      - name: Attest .vsix build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: vscode-ext/*.vsix
+
       - name: Upload .vsix to release
         uses: softprops/action-gh-release@v3
         with:
@@ -145,6 +159,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
+      attestations: write
     env:
       RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
@@ -168,6 +184,11 @@ jobs:
         # esbuild bundles src/main.ts + @bindery/core into a single main.js
         # as required by the Obsidian community plugin format.
         run: npm run bundle --workspace=obsidian-plugin
+
+      - name: Attest main.js build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: obsidian-plugin/out/main.js
 
       - name: Sync Obsidian manifest metadata from tag
         run: |
