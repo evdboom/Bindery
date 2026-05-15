@@ -10,6 +10,7 @@ jobs:
   validate-release-version:
     name: Validate Release Version
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       release_version: ${{ steps.normalize.outputs.release_version }}
 
