@@ -200,7 +200,7 @@ table with issue type, location, and the reference that contradicts it.
 | `chapter_status_get` | Read the chapter progress tracker — returns entries grouped by status (done, in-progress, draft, planned, needs-review) |
 | `chapter_status_update` | Upsert chapter progress entries — send only changed chapters; unmentioned entries are preserved |
 
-Current boundary: Arc, character, note, memory, and chapter-status workflows are available through MCP tools. Dedicated session-focus, inbox-processing, and VS Code/Obsidian host command wrappers are planned but not yet part of this MCPB tool surface.
+Current boundary: Arc, character, note, memory, and chapter-status workflows are available through MCP tools. VS Code and Obsidian host command wrappers for these workflows are also available. Dedicated session-focus and inbox-processing workflows are planned but not yet part of this MCPB tool surface.
 
 ## Privacy Policy
 

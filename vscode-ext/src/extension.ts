@@ -993,7 +993,8 @@ const SKILL_ITEMS: Array<{ label: string; description: string; value: SkillTempl
     { label: '/read-aloud', description: 'Reading-aloud test for a chapter or passage',                  value: 'read-aloud' },
     { label: '/read-in',    description: 'Load context and get your bearings at the start of a session', value: 'read-in'    },
     { label: '/proof-read', description: 'Multi-perspective proofread with reader and author personas',  value: 'proof-read' },
-    { label: '/plan-beats', description: 'Create or refine a chapter or scene beatmap',                  value: 'plan-beats' },
+    { label: '/plan-beats',      description: 'Create or refine a chapter or scene beatmap',                  value: 'plan-beats'      },
+    { label: '/character-setup', description: 'Build or update a structured character profile',                value: 'character-setup' },
 ];
 
 async function setupAiCommand(context?: vscode.ExtensionContext) {
@@ -1373,9 +1374,9 @@ async function promptRequired(title: string, prompt: string, value = ''): Promis
     return trimmed;
 }
 
-async function promptOptional(title: string, prompt: string, value = ''): Promise<string | undefined> {
+async function promptOptional(title: string, prompt: string, value = ''): Promise<string | null | undefined> {
     const result = await vscode.window.showInputBox({ title, prompt, value });
-    if (result === undefined) { return undefined; }
+    if (result === undefined) { return null; }
     return result.trim() || undefined;
 }
 
@@ -1383,9 +1384,17 @@ async function promptCharacterInput(title: string, update: boolean): Promise<Aut
     const name = await promptRequired(title, 'Character name');
     if (!name) { return undefined; }
     const role = await promptOptional(title, 'Role (optional)');
+    if (role === null) { return undefined; }
     const firstAppearance = await promptOptional(title, 'First appearance (optional)');
+    if (firstAppearance === null) { return undefined; }
     const background = await promptOptional(title, 'Background or notes (optional)');
-    const continuityNotes = update ? await promptOptional(title, 'Continuity notes (optional)') : undefined;
+    if (background === null) { return undefined; }
+    let continuityNotes: string | undefined;
+    if (update) {
+        const rawContinuityNotes = await promptOptional(title, 'Continuity notes (optional)');
+        if (rawContinuityNotes === null) { return undefined; }
+        continuityNotes = rawContinuityNotes;
+    }
     return { name, role, firstAppearance, background, continuityNotes };
 }
 
@@ -1393,6 +1402,7 @@ async function promptArcInput(title: string, update: boolean): Promise<Authoring
     const arcPath = await promptRequired(title, 'Arc path relative to Arc folder', update ? '' : 'Acts/Act_I.md');
     if (!arcPath) { return undefined; }
     const arcTitle = await promptOptional(title, 'Title (optional)');
+    if (arcTitle === null) { return undefined; }
     const kindPick = await vscode.window.showQuickPick(
         [
             { label: 'overall' },
@@ -1406,8 +1416,15 @@ async function promptArcInput(title: string, update: boolean): Promise<Authoring
     );
     if (!kindPick) { return undefined; }
     const purpose = await promptOptional(title, 'Purpose (optional)');
+    if (purpose === null) { return undefined; }
     const majorBeats = await promptOptional(title, 'Major beats (optional)');
-    const continuityRisks = update ? await promptOptional(title, 'Continuity risks (optional)') : undefined;
+    if (majorBeats === null) { return undefined; }
+    let continuityRisks: string | undefined;
+    if (update) {
+        const rawContinuityRisks = await promptOptional(title, 'Continuity risks (optional)');
+        if (rawContinuityRisks === null) { return undefined; }
+        continuityRisks = rawContinuityRisks;
+    }
     return {
         path: arcPath,
         title: arcTitle,
@@ -1428,7 +1445,9 @@ async function promptChapterStatusEntry(title: string): Promise<AuthoringChapter
     }
     const chapterTitle = await promptRequired(title, 'Chapter title');
     if (!chapterTitle) { return undefined; }
-    const language = await promptOptional(title, 'Language code', 'EN') ?? 'EN';
+    const languageResult = await promptOptional(title, 'Language code', 'EN');
+    if (languageResult === null) { return undefined; }
+    const language = languageResult ?? 'EN';
     const statusPick = await vscode.window.showQuickPick(
         [
             { label: 'done' as const },
@@ -1441,7 +1460,9 @@ async function promptChapterStatusEntry(title: string): Promise<AuthoringChapter
     );
     if (!statusPick) { return undefined; }
     const wordCountRaw = await promptOptional(title, 'Word count (optional)');
+    if (wordCountRaw === null) { return undefined; }
     const notes = await promptOptional(title, 'Notes (optional)');
+    if (notes === null) { return undefined; }
     let wordCount: number | undefined;
     if (wordCountRaw) {
         const parsedWordCount = Number(wordCountRaw);
@@ -1470,7 +1491,9 @@ async function noteCreateCommand(context: vscode.ExtensionContext): Promise<void
         const notePath = await promptRequired('Bindery: Create Note', 'Note path relative to Notes folder', 'Inbox.md');
         if (!notePath) { return undefined; }
         const title = await promptOptional('Bindery: Create Note', 'Title (optional)');
+        if (title === null) { return undefined; }
         const content = await promptOptional('Bindery: Create Note', 'Initial content (optional)');
+        if (content === null) { return undefined; }
         return tools.toolNoteCreate(root, { path: notePath, title, content });
     });
 }
@@ -1480,6 +1503,7 @@ async function noteAppendCommand(context: vscode.ExtensionContext): Promise<void
         const notePath = await promptRequired('Bindery: Append Note', 'Note path relative to Notes folder', 'Inbox.md');
         if (!notePath) { return undefined; }
         const heading = await promptOptional('Bindery: Append Note', 'Heading (optional)');
+        if (heading === null) { return undefined; }
         const content = await promptRequired('Bindery: Append Note', 'Content to append');
         return content ? tools.toolNoteAppend(root, { path: notePath, heading, content }) : undefined;
     });

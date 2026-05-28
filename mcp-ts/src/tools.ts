@@ -1286,7 +1286,10 @@ function updateCharacterIndex(root: string, profile: CharacterProfile, relPath: 
 }
 
 function escapeTableCell(value: string): string {
-    return value.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+    return value
+        .replace(/\\/g, '\\\\')
+        .replace(/\|/g, '\\|')
+        .replace(/\r?\n/g, '<br>');
 }
 
 // ─── arc_list / arc_get / arc_create / arc_update ───────────────────────────
