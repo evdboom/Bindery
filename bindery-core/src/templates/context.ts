@@ -14,6 +14,9 @@ export interface TemplateContext {
     storyFolder:    string;
     notesFolder:    string;
     arcFolder:      string;
+    charactersFolder: string;
+    sessionFile:    string;
+    arcGranularity: string;
     memoriesFolder: string;
     languages:      Array<{ code: string; folderName: string }>;
     langList:       string;

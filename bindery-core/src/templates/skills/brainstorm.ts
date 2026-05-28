@@ -2,57 +2,90 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/brainstorm/SKILL.md',
-    version: 11,
+    version: 12,
     label:   'brainstorm skill',
     zip:     '.claude/skills/brainstorm.zip',
 };
 
+const CONTENT = [
+    "---",
+    "name: brainstorm",
+    "description: Bindery workspace - Brainstorm story ideas, character moments, or scene concepts. Use for /brainstorm, \"I'm stuck\", \"help me think of ideas\", or \"Am I stuck?\".",
+    "---",
+    "# Skill: /brainstorm",
+    "",
+    "Help the author get unstuck through discussion — not an idea dump, but a guided conversation that surfaces options organically and only generates when direction is clear.",
+    "",
+    "## Prerequisites",
+    "This skill requires a Bindery workspace. If unsure, call `identify_book` to check. If no workspace is found, tell the user and stop.",
+    "",
+    "## Trigger",
+    "User says `/brainstorm`, \"I'm stuck\", \"help me think of ideas\", or \"Am I stuck?\".",
+    "",
+    "## Tools",
+    "Use these Bindery MCP tools to gather context:",
+    "- `get_text(path)` — read settings, arc files, or memory files",
+    "- `search(query, language)` — find thematic parallels and related moments across the book",
+    "- `get_notes(category, name)` — look up character profiles, world rules, or equipment details",
+    "- `get_chapter(chapterNumber, language)` — read a specific chapter for reference",
+    "",
+    "## Phases",
+    "",
+    "### Phase 1 — Diagnose the block",
+    "Before loading any context, ask one open question:",
+    "> \"What's the problem? Tell me about the scene or chapter and where you're stuck.\"",
+    "",
+    "Do not ask about scope, format, or constraints yet — just listen.",
+    "",
+    "From the answer, identify:",
+    "- **What kind of block**: no ideas, too many options, something feels wrong, arc doesn't fit, character won't cooperate, etc.",
+    "- **Where in the story**: chapter, scene, or act",
+    "- **What's already decided** vs what's open",
+    "",
+    "If the user already gave enough detail in their trigger message, skip the question and proceed to Phase 2.",
+    "",
+    "### Phase 2 — Load context",
+    "Load context appropriate to the block. Do this silently — don't list files to the user.",
+    "",
+    "- Always: `get_text(\".bindery/settings.json\")`, `get_text(\".bindery/memories/global.md\")`, and the relevant arc file from `Arc/`",
+    "- If chapter-specific: `get_text(\".bindery/memories/chXX.md\")` if it exists",
+    "- If character-focused: `get_notes(category: \"Characters\")`",
+    "- Always: `search` for related moments or themes already in the book",
+    "",
+    "### Phase 3 — Discuss",
+    "This is the core of the skill. Probe the story problem before jumping to solutions.",
+    "",
+    "What this looks like:",
+    "- Reflect back your understanding of the block",
+    "- Ask what the scene needs to accomplish for the arc",
+    "- Surface the tension between what the character wants and what the story needs",
+    "- Name constraints the author may not have made explicit",
+    "",
+    "**Stay in Phase 3 until one of these is true:**",
+    "- The author's direction has become clear through the exchange",
+    "- The author explicitly asks for options or ideas",
+    "",
+    "Keep responses focused — one or two observations or questions at a time, not a wall of analysis.",
+    "",
+    "### Phase 4 — Generate",
+    "Only enter this phase once Phase 3 has surfaced real direction.",
+    "",
+    "**Output adapts to where the discussion landed:**",
+    "",
+    "- **Still exploring** — offer 2–3 loose directional possibilities as questions or half-formed ideas. Invite reaction, don't conclude.",
+    "- **Direction is clear** — offer 2–4 concrete options. Each: a short title + 3–5 sentence description grounded in the book's established material.",
+    "- **Nearly decided** — offer one developed idea with reasoning, plus one alternative as a safety net.",
+    "",
+    "Always close with an invitation to continue:",
+    "> \"Does any of this feel right? Want to push further in one direction?\"",
+    "",
+    "## Rules",
+    "- Do not generate ideas before Phase 3 has surfaced a real direction",
+    "- Respect established world rules and character voices",
+    "- Keep ideas appropriate for the book's configured target audience",
+    "- The output is a step in a conversation, not a final answer",
+].join('\n') + '\n';
+
 export function render(_ctx: TemplateContext): string {
-    return `---
-name: brainstorm
-description: Bindery workspace - Brainstorm story ideas, plot beats, character moments, or scene concepts. Use for /brainstorm, "I'm stuck", "help me think of ideas", or "Am I stuck?".
----
-# Skill: /brainstorm
-
-Brainstorm story ideas, character moments, or plot solutions.
-
-## Prerequisites
-This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
-
-## Trigger
-User says \`/brainstorm\`, "I'm stuck", "help me think of ideas", or "Am I stuck?".
-
-## Clarify first
-- Scope: plot beat | character moment | scene idea | chapter open/close
-- Chapter/story point: specify one
-- Constraints: list any
-
-## Tools
-Use these Bindery MCP tools to gather context:
-- \`search(query, language)\` — find thematic parallels and related moments across the book
-- \`get_notes(category, name)\` — look up character profiles, world rules, or equipment details
-- \`get_chapter(chapterNumber, language)\` — read a specific chapter for reference
-
-## Steps
-
-1. Read ".bindery/settings.json" with \`get_text\` to pick up the current book's genre, target audience, and story structure.
-2. Read \`.bindery/memories/global.md\` and the relevant arc file from \`Arc/\`.
-3. If chapter specific, read \`.bindery/memories/chXX.md\` if it exists.
-4. If character-focused, use \`get_notes(category: "Characters")\` for character profiles.
-5. Use \`search\` to find related moments or themes already in the book.
-6. Generate 3-5 concrete ideas that fit the arc and feel true to the characters.
-
-## Output format
-
-**Option A — [short title]**
-[3-5 sentence description]
-
-...
-
-End with a brief note on which options feel most aligned with the arc.
-
-## Rules
-- Respect established world rules and character voices
-- Keep ideas appropriate for the book's configured target audience
-`;
+    return CONTENT;
 }

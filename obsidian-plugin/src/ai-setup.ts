@@ -11,8 +11,19 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { App } from 'obsidian';
-import { BINDERY_FOLDER, SETTINGS_FILENAME } from '@bindery/core';
-import { renderTemplate, type TemplateContext } from '@bindery/core';
+import {
+    BINDERY_FOLDER,
+    SETTINGS_FILENAME,
+    getArcFolder,
+    getArcGranularity,
+    getCharactersFolder,
+    getNotesFolder,
+    getSessionFile,
+    getStoryFolder,
+    renderTemplate,
+    type TemplateContext,
+    type WorkspaceSettings,
+} from '@bindery/core';
 
 export type AiTarget = 'claude' | 'copilot' | 'cursor' | 'agents';
 export type SkillTemplate =
@@ -25,11 +36,13 @@ export type SkillTemplate =
     | 'continuity'
     | 'read-aloud'
     | 'read-in'
-    | 'proof-read';
+    | 'proof-read'
+    | 'plan-beats'
+    | 'character-setup';
 
 export const ALL_SKILLS: SkillTemplate[] = [
     'review', 'brainstorm', 'memory', 'translate', 'translation-review',
-    'status', 'continuity', 'read-aloud', 'read-in', 'proof-read',
+    'status', 'continuity', 'read-aloud', 'read-in', 'proof-read', 'plan-beats', 'character-setup',
 ];
 
 export interface AiSetupResult {
@@ -86,14 +99,15 @@ export function setupAiFiles(
  * Build template context from settings.
  */
 function buildContext(settings: Record<string, unknown>): TemplateContext {
-    const title = (typeof settings.bookTitle === 'string' ? settings.bookTitle : undefined) ?? 'Untitled';
+    const title = titleFromSetting(settings.bookTitle);
     const author = (typeof settings.author === 'string' ? settings.author : undefined) ?? '';
     const description = (typeof settings.description === 'string' ? settings.description : undefined) ?? '';
     const genre = (typeof settings.genre === 'string' ? settings.genre : undefined) ?? '';
     const audience = (typeof settings.targetAudience === 'string' ? settings.targetAudience : undefined) ?? '';
-    const storyFolder = (typeof settings.storyFolder === 'string' ? settings.storyFolder : undefined) ?? 'Story';
-    const notesFolder = 'Notes';
-    const arcFolder = 'Arc';
+    const pathSettings = settings as WorkspaceSettings;
+    const storyFolder = getStoryFolder(pathSettings);
+    const notesFolder = getNotesFolder(pathSettings);
+    const arcFolder = getArcFolder(pathSettings);
     const memoriesFolder = '.bindery/memories';
 
     const rawLanguages = settings.languages;
@@ -118,11 +132,26 @@ function buildContext(settings: Record<string, unknown>): TemplateContext {
         storyFolder,
         notesFolder,
         arcFolder,
+        charactersFolder: getCharactersFolder(pathSettings),
+        sessionFile: getSessionFile(pathSettings),
+        arcGranularity: getArcGranularity(pathSettings),
         languages,
         langList,
         hasMultiLang: languages.length > 1,
         memoriesFolder,
     };
+}
+
+function titleFromSetting(value: unknown): string {
+    if (typeof value === 'string' && value.trim()) { return value.trim(); }
+    if (value && typeof value === 'object') {
+        const titles = value as Record<string, unknown>;
+        const en = titles['en'];
+        if (typeof en === 'string' && en.trim()) { return en.trim(); }
+        const first = Object.values(titles).find(v => typeof v === 'string' && v.trim());
+        if (typeof first === 'string') { return first.trim(); }
+    }
+    return 'Untitled';
 }
 
 /**

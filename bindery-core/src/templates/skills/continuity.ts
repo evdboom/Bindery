@@ -2,57 +2,77 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/continuity/SKILL.md',
-    version: 12,
+    version: 13,
     label:   'continuity skill',
     zip:     '.claude/skills/continuity.zip',
 };
 
+const CONTENT = [
+    "---",
+    "name: continuity",
+    "description: Bindery workspace - Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, \"check continuity\", or \"check chapter X for errors\".",
+    "---",
+    "# Skill: /continuity",
+    "",
+    "Cross-check a chapter for consistency errors.",
+    "",
+    "## Prerequisites",
+    "This skill requires a Bindery workspace. If unsure, call `identify_book` to check. If no workspace is found, tell the user and stop.",
+    "",
+    "## Trigger",
+    "User says `/continuity`, \"check continuity\", or \"check chapter X for errors\".",
+    "",
+    "## Clarify first",
+    "- Chapter: number — if not provided, ask before proceeding",
+    "- Focus: all | characters | world rules | timeline — if not provided, default to **all**",
+    "- Language: use the source language by default; if the user specifies a translation, use that",
+    "",
+    "## Tools",
+    "Use these Bindery MCP tools:",
+    "- `get_text(path)` — read settings, COWORK.md, and memory files",
+    "- `arc_list` / `arc_get` — read structured arc files",
+    "- `character_list` / `character_get` — read structured character profiles",
+    "- `get_chapter(chapterNumber, language)` — read a specific chapter",
+    "- `get_book_until(chapterNumber, language, startChapter?)` — load all prior chapters in one call for timeline checks; fall back to `get_chapter` for nearby chapters if unavailable",
+    "- `get_notes(category, name)` — look up older character notes (`category: \"Characters\"`) or world rules (`category: \"World\"`)",
+    "- `search(query, language)` — find earlier mentions of a specific detail or event",
+    "- `memory_list` — check whether a chapter-specific memory file exists (`chXX.md`)",
+    "",
+    "## Steps",
+    "",
+    "### Load context",
+    "1. `get_text(\".bindery/settings.json\")` — pick up the book's structure and conventions.",
+    "2. Use `arc_list` and `arc_get` to load the structural map. If the chapter's act is known, read the matching act file.",
+    "3. Use `character_list` to load the cast map.",
+    "4. `get_text(\".bindery/memories/global.md\")` — cross-chapter decisions and established facts. Use `memory_list` to check if a chapter-specific memory file exists; if so, read it too.",
+    "5. `get_chapter(chapterNumber, language)` — read the chapter to check.",
+    "",
+    "### Load reference material (by focus area)",
+    "6. **Characters**: `character_get` for relevant structured character profiles; use `get_notes(category: \"Characters\")` only for older notes.",
+    "7. **World rules**: `get_notes(category: \"World\")` for world and magic rules.",
+    "8. **Timeline**: `get_book_until` up to the focus chapter for continuity context.",
+    "9. For any focus: use `search` to verify specific details against earlier chapters.",
+    "",
+    "### Check and report",
+    "10. Compare the chapter against the loaded reference material.",
+    "11. Report findings using the output format below.",
+    "",
+    "## Output format",
+    "",
+    "| Type | Location | Issue | Reference |",
+    "|---|---|---|---|",
+    "| Character | Para 3 | Description contradicts... | global.md |",
+    "",
+    "- **Confirmed inconsistency** — flag as an error",
+    "- **Uncertain** — flag as a question, marked with `?` in the Type column",
+    "",
+    "End with a one-line overall assessment. If no issues found, say so clearly.",
+    "",
+    "## Rules",
+    "- Reporting only — do not suggest rewrites",
+    "- Limit checks to the requested focus area; if focus is \"all\", cover all three categories",
+].join('\n') + '\n';
+
 export function render(_ctx: TemplateContext): string {
-    return `---
-name: continuity
-description: Bindery workspace - Cross-check a chapter for consistency errors in characters, world rules, or timeline. Use for /continuity, "check continuity", or "check chapter X for errors".
----
-# Skill: /continuity
-
-Cross-check a chapter for consistency errors.
-
-## Prerequisites
-This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
-
-## Trigger
-User says \`/continuity\`, "check continuity", or "check chapter X for errors".
-
-## Clarify first
-- Chapter: number
-- Focus: all | characters | world rules | timeline
-
-## Tools
-Use these Bindery MCP tools:
-- \`get_chapter(chapterNumber, language)\` — read a specific chapter
-- \`get_book_until(chapterNumber, language, startChapter?)\` — load prior chapters in one call for timeline/continuity context
-- \`get_notes(category, name)\` — look up character profiles or world rules
-- \`search(query, language)\` — find earlier mentions of a character detail or event
-- \`memory_list\` — check whether a chapter-specific memory file exists (\`chXX.md\`)
-
-## Steps
-
-1. Use \`get_text(".bindery/settings.json")\` to pick up the current book's structure and conventions.
-2. Use \`get_chapter\` to read the chapter.
-3. Use \`get_text\` to read \`.bindery/memories/global.md\`. Use \`memory_list\` to check if a chapter-specific memory file (\`chXX.md\`) exists; if so, read it with \`get_text\` too. Use \`get_notes(category: "Characters")\` for character profiles.
-4. For world rules: use \`get_notes(category: "World")\`.
-5. For timeline and continuity drift checks: use \`get_book_until\` up to the focus chapter. If unavailable, fall back to \`get_chapter\` for nearby prior chapters.
-6. Use \`search\` to verify specific details against earlier chapters.
-
-## Output format
-
-| Type | Location | Issue | Reference |
-|---|---|---|---|
-| Character | Line X | Description contradicts... | global.md |
-
-End with a one-line overall assessment. If no issues found, say so clearly.
-
-## Rules
-- Flag issues only — do not suggest rewrites
-- Phrase uncertain items as questions, not errors
-`;
+    return CONTENT;
 }

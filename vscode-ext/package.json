@@ -238,6 +238,91 @@
         "category": "Bindery"
       },
       {
+        "command": "bindery.noteList",
+        "title": "List Notes",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.noteGet",
+        "title": "Open Note Tool Output",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.noteCreate",
+        "title": "Create Note",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.noteAppend",
+        "title": "Append to Note",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.characterList",
+        "title": "List Characters",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.characterGet",
+        "title": "Open Character Tool Output",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.characterCreate",
+        "title": "Create Character Profile",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.characterUpdate",
+        "title": "Update Character Profile",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.arcList",
+        "title": "List Arcs",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.arcGet",
+        "title": "Open Arc Tool Output",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.arcCreate",
+        "title": "Create Arc File",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.arcUpdate",
+        "title": "Update Arc File",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.memoryList",
+        "title": "List Memories",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.memoryAppend",
+        "title": "Append Memory",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.memoryCompact",
+        "title": "Compact Memory",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.chapterStatusGet",
+        "title": "Show Chapter Status",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.chapterStatusUpdate",
+        "title": "Update Chapter Status",
+        "category": "Bindery"
+      },
+      {
         "command": "bindery.registerMcp",
         "title": "Register MCP Server",
         "category": "Bindery"
@@ -432,6 +517,301 @@
               "type": "string"
             }
           }
+        }
+      },
+      {
+        "name": "bindery_note_list",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Note List",
+        "toolReferenceName": "binderyNoteList",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "List markdown note files under the configured notes folder, optionally filtered to a category folder.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "description": "Optional category/folder under Notes, e.g. Characters, World, Scenes, Research"
+            }
+          }
+        }
+      },
+      {
+        "name": "bindery_note_get",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Note Get",
+        "toolReferenceName": "binderyNoteGet",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Read a single markdown note by path relative to the configured notes folder.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Note path relative to the notes folder, e.g. Inbox.md or Characters/index.md"
+            }
+          },
+          "required": ["path"]
+        }
+      },
+      {
+        "name": "bindery_note_create",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Note Create",
+        "toolReferenceName": "binderyNoteCreate",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Create a markdown note under the configured notes folder. Refuses to overwrite unless overwrite is true.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Note path relative to the notes folder, e.g. World/Rules.md"
+            },
+            "title": {
+              "type": "string",
+              "description": "Optional H1 title. Defaults to a title derived from the filename."
+            },
+            "content": {
+              "type": "string",
+              "description": "Optional markdown body to write below the H1 title."
+            },
+            "overwrite": {
+              "type": "boolean",
+              "description": "Replace an existing note if true. Default false."
+            }
+          },
+          "required": ["path"]
+        }
+      },
+      {
+        "name": "bindery_note_append",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Note Append",
+        "toolReferenceName": "binderyNoteAppend",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Append markdown content to a note under the configured notes folder, creating the file if needed.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Note path relative to the notes folder, e.g. Inbox.md or World/Rules.md"
+            },
+            "content": {
+              "type": "string",
+              "description": "Markdown content to append."
+            },
+            "heading": {
+              "type": "string",
+              "description": "Optional H2 heading to insert before the appended content."
+            }
+          },
+          "required": ["path", "content"]
+        }
+      },
+      {
+        "name": "bindery_character_list",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Character List",
+        "toolReferenceName": "binderyCharacterList",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "List structured character profile files under the configured characters folder.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Optional character-name filter."
+            }
+          }
+        }
+      },
+      {
+        "name": "bindery_character_get",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Character Get",
+        "toolReferenceName": "binderyCharacterGet",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Read a structured character profile by character name.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Character name. The tool resolves the matching slugged profile file."
+            }
+          },
+          "required": ["name"]
+        }
+      },
+      {
+        "name": "bindery_character_create",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Character Create",
+        "toolReferenceName": "binderyCharacterCreate",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Create a structured character profile and update Notes/Characters/index.md.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "description": "Character name. Used for the profile H1 and slugged filename." },
+            "role": { "type": "string" },
+            "age": { "type": "string" },
+            "origin": { "type": "string" },
+            "skills": { "type": "string" },
+            "strengths": { "type": "string" },
+            "weaknesses": { "type": "string" },
+            "personality": { "type": "string" },
+            "background": { "type": "string" },
+            "narrativeArc": { "type": "string" },
+            "appearanceNotes": { "type": "string" },
+            "relationships": { "type": "string" },
+            "firstAppearance": { "type": "string" },
+            "openQuestions": { "type": "string" },
+            "continuityNotes": { "type": "string" },
+            "indexNotes": { "type": "string" },
+            "overwrite": { "type": "boolean", "description": "Replace an existing profile if true. Default false." }
+          },
+          "required": ["name"]
+        }
+      },
+      {
+        "name": "bindery_character_update",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Character Update",
+        "toolReferenceName": "binderyCharacterUpdate",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Update known fields in a structured character profile and refresh the character index row.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "description": "Character name. The tool resolves the matching slugged profile file." },
+            "role": { "type": "string" },
+            "age": { "type": "string" },
+            "origin": { "type": "string" },
+            "skills": { "type": "string" },
+            "strengths": { "type": "string" },
+            "weaknesses": { "type": "string" },
+            "personality": { "type": "string" },
+            "background": { "type": "string" },
+            "narrativeArc": { "type": "string" },
+            "appearanceNotes": { "type": "string" },
+            "relationships": { "type": "string" },
+            "firstAppearance": { "type": "string" },
+            "openQuestions": { "type": "string" },
+            "continuityNotes": { "type": "string" },
+            "indexNotes": { "type": "string" }
+          },
+          "required": ["name"]
+        }
+      },
+      {
+        "name": "bindery_arc_list",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Arc List",
+        "toolReferenceName": "binderyArcList",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "List structured arc files under the configured arc folder.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": "Optional kind filter, e.g. overall, act, chapter, thread, custom."
+            }
+          }
+        }
+      },
+      {
+        "name": "bindery_arc_get",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Arc Get",
+        "toolReferenceName": "binderyArcGet",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Read a structured arc file by path relative to the configured arc folder.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Arc path relative to the arc folder, e.g. Overall.md or Acts/act-i.md."
+            }
+          },
+          "required": ["path"]
+        }
+      },
+      {
+        "name": "bindery_arc_create",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Arc Create",
+        "toolReferenceName": "binderyArcCreate",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Create a structured arc file under the configured arc folder and update Arc/index.md.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "Arc path relative to the arc folder, e.g. Acts/act-i.md." },
+            "title": { "type": "string" },
+            "kind": { "type": "string" },
+            "purpose": { "type": "string" },
+            "majorBeats": { "type": "string" },
+            "characterMovement": { "type": "string" },
+            "worldImplications": { "type": "string" },
+            "unresolvedQuestions": { "type": "string" },
+            "continuityRisks": { "type": "string" },
+            "linkedChapters": { "type": "string" },
+            "overwrite": { "type": "boolean", "description": "Replace an existing arc file if true. Default false." }
+          },
+          "required": ["path"]
+        }
+      },
+      {
+        "name": "bindery_arc_update",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Arc Update",
+        "toolReferenceName": "binderyArcUpdate",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Update known fields in a structured arc file and refresh Arc/index.md.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "Arc path relative to the arc folder, e.g. Acts/act-i.md." },
+            "title": { "type": "string" },
+            "kind": { "type": "string" },
+            "purpose": { "type": "string" },
+            "majorBeats": { "type": "string" },
+            "characterMovement": { "type": "string" },
+            "worldImplications": { "type": "string" },
+            "unresolvedQuestions": { "type": "string" },
+            "continuityRisks": { "type": "string" },
+            "linkedChapters": { "type": "string" }
+          },
+          "required": ["path"]
         }
       },
       {
@@ -652,7 +1032,7 @@
         "displayName": "Bindery: Setup AI Files",
         "toolReferenceName": "binderySetupAiFiles",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Generate AI assistant instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md) and Claude skill templates from .bindery/settings.json. Run init_workspace first. Skips existing files unless overwrite is true.",
+        "modelDescription": "Generate AI assistant instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, skill zips, and the generated .bindery/README.md capability reference from .bindery/settings.json. Run init_workspace first. Skips existing files unless overwrite is true.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -668,7 +1048,7 @@
               "items": {
                 "type": "string"
               },
-              "description": "Claude skills to include: review, brainstorm, memory, translate, translation-review, status, continuity, read-aloud, read-in, proof-read. Default: all."
+              "description": "Claude skills to include: review, brainstorm, memory, translate, translation-review, status, continuity, read-aloud, read-in, proof-read, plan-beats. Default: all."
             },
             "overwrite": {
               "type": "boolean",
@@ -707,7 +1087,7 @@
         "displayName": "Bindery: Init Workspace",
         "toolReferenceName": "binderyInitWorkspace",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Create or update .bindery/settings.json and translations.json. All arguments optional — smart defaults used for any omitted values. Detects language folders automatically. Safe to run on an existing workspace.",
+        "modelDescription": "Create or update .bindery/settings.json, translations.json, .bindery/README.md, and the opinionated Arc, Notes, Characters, COWORK, memory, and chapter-status scaffold. All arguments optional — smart defaults used for any omitted values. Detects language folders automatically. Safe to run on an existing workspace.",
         "inputSchema": {
           "type": "object",
           "properties": {

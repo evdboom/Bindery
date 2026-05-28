@@ -12,10 +12,16 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
     getBinderyFolder,
+    getArcFolder,
+    getArcGranularity,
     getBookTitleForLang,
+    getCharactersFolder,
     getDefaultLanguage,
     getDialectsForLanguage,
+    getNotesFolder,
+    getSessionFile,
     getSettingsPath,
+    getStoryFolder,
     getTranslationsPath,
     readWorkspaceSettings,
     type WorkspaceSettings,
@@ -53,6 +59,39 @@ describe('path helpers', () => {
 
     it('getTranslationsPath returns translations.json path', () => {
         expect(getTranslationsPath('/root')).toContain('translations.json');
+    });
+});
+
+// ─── Authoring defaults ─────────────────────────────────────────────────────
+
+describe('authoring defaults', () => {
+    it('returns opinionated defaults when settings are absent', () => {
+        expect(getStoryFolder(null)).toBe('Story');
+        expect(getNotesFolder(null)).toBe('Notes');
+        expect(getArcFolder(null)).toBe('Arc');
+        expect(getCharactersFolder(null)).toBe('Notes/Characters');
+        expect(getSessionFile(null)).toBe('COWORK.md');
+        expect(getArcGranularity(null)).toBe('act');
+    });
+
+    it('derives characters folder from a custom notes folder', () => {
+        expect(getCharactersFolder({ notesFolder: 'Reference' })).toBe('Reference/Characters');
+    });
+
+    it('uses explicit authoring paths when configured', () => {
+        const settings: WorkspaceSettings = {
+            storyFolder: 'Drafts',
+            notesFolder: 'Notes',
+            arcFolder: 'Structure',
+            charactersFolder: 'Cast',
+            sessionFile: 'SESSION.md',
+            arcGranularity: 'thread',
+        };
+        expect(getStoryFolder(settings)).toBe('Drafts');
+        expect(getArcFolder(settings)).toBe('Structure');
+        expect(getCharactersFolder(settings)).toBe('Cast');
+        expect(getSessionFile(settings)).toBe('SESSION.md');
+        expect(getArcGranularity(settings)).toBe('thread');
     });
 });
 

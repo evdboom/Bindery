@@ -6,6 +6,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   toolGetChapter,
   toolGetBookUntil,
+  toolArcCreate,
+  toolArcGet,
+  toolArcList,
+  toolArcUpdate,
+  toolCharacterCreate,
+  toolCharacterGet,
+  toolCharacterList,
+  toolCharacterUpdate,
+  toolNoteAppend,
+  toolNoteCreate,
+  toolNoteGet,
+  toolNoteList,
   toolGetText,
   toolIndexBuild,
   toolSettingsUpdate,
@@ -132,6 +144,111 @@ describe('mcp tools', () => {
     expect(settings.proof_read?.options?.mode).toBe('full');
     expect(settings.proof_read?.options?.preserve).toBe(true);
     expect(settings.proof_read?.authors?.[0]?.name).toBe('Author A');
+  });
+
+  it('creates, lists, reads, and appends notes inside the configured notes folder', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ notesFolder: 'Book Notes' }, null, 2) + '\n');
+
+    const created = toolNoteCreate(root, {
+      path: 'World/rules',
+      title: 'World Rules',
+      content: '- The sky engine hums.',
+    });
+    expect(created).toContain('Created note: World/rules.md');
+
+    const listed = toolNoteList(root, { category: 'World' });
+    expect(listed).toContain('World/rules.md');
+    expect(listed).toContain('World Rules');
+
+    const appended = toolNoteAppend(root, {
+      path: 'World/rules.md',
+      heading: 'Confirmed',
+      content: '- The engine is audible near the tower.',
+    });
+    expect(appended).toContain('Appended to note: World/rules.md');
+
+    const content = toolNoteGet(root, { path: 'World/rules.md' });
+    expect(content).toContain('# World Rules');
+    expect(content).toContain('## Confirmed');
+    expect(content).toContain('The engine is audible');
+  });
+
+  it('prevents path traversal in note tools', () => {
+    const root = makeRoot();
+    write(path.join(path.dirname(root), 'outside.md'), '# Outside\n');
+
+    expect(toolNoteGet(root, { path: '../outside.md' })).toContain('Invalid note path');
+    expect(toolNoteCreate(root, { path: '../outside.md', content: 'Nope' })).toContain('Invalid note path');
+    expect(toolNoteAppend(root, { path: '../outside.md', content: 'Nope' })).toContain('Invalid note path');
+  });
+
+  it('creates, lists, reads, and updates character profiles', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ charactersFolder: 'Notes/Cast' }, null, 2) + '\n');
+
+    const created = toolCharacterCreate(root, {
+      name: 'Ari Vale',
+      role: 'Navigator',
+      firstAppearance: 'Chapter 2',
+      personality: 'Quiet under pressure.',
+      indexNotes: 'Knows the old routes.',
+    });
+    expect(created).toContain('Created character: Ari Vale');
+
+    const listed = toolCharacterList(root, {});
+    expect(listed).toContain('Ari Vale');
+    expect(listed).toContain('ari-vale.md');
+
+    const updated = toolCharacterUpdate(root, {
+      name: 'Ari Vale',
+      strengths: 'Reads broken maps quickly.',
+      continuityNotes: 'Left-handed in Chapter 2.',
+    });
+    expect(updated).toContain('Updated character: Ari Vale');
+
+    const profile = toolCharacterGet(root, { name: 'Ari Vale' });
+    expect(profile).toContain('# Ari Vale');
+    expect(profile).toContain('| Role | Navigator |');
+    expect(profile).toContain('## Continuity Notes');
+    expect(profile).toContain('Left-handed');
+
+    const index = fs.readFileSync(path.join(root, 'Notes', 'Cast', 'index.md'), 'utf-8');
+    expect(index).toContain('[Ari Vale](ari-vale.md)');
+  });
+
+  it('creates, lists, reads, updates, and protects arc files', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ arcFolder: 'Story Arc' }, null, 2) + '\n');
+    write(path.join(path.dirname(root), 'outside.md'), '# Outside\n');
+
+    const created = toolArcCreate(root, {
+      path: 'Acts/awakening',
+      title: 'Awakening',
+      kind: 'act',
+      purpose: 'Move the protagonist from denial to action.',
+      majorBeats: '- Refusal\n- First commitment',
+    });
+    expect(created).toContain('Created arc file: Acts/awakening.md');
+
+    const listed = toolArcList(root, { kind: 'act' });
+    expect(listed).toContain('Acts/awakening.md');
+    expect(listed).toContain('Awakening');
+
+    const updated = toolArcUpdate(root, {
+      path: 'Acts/awakening.md',
+      continuityRisks: '- Motivation must match Chapter 3.',
+      linkedChapters: 'Chapters 1-5',
+    });
+    expect(updated).toContain('Updated arc file: Acts/awakening.md');
+
+    const content = toolArcGet(root, { path: 'Acts/awakening.md' });
+    expect(content).toContain('# Awakening');
+    expect(content).toContain('## Continuity Risks');
+    expect(content).toContain('Chapter 3');
+
+    expect(toolArcGet(root, { path: '../outside.md' })).toContain('Invalid arc path');
+    expect(toolArcCreate(root, { path: '../outside.md', title: 'Nope' })).toContain('Invalid arc path');
   });
 
   it('ignores unsafe prototype-pollution keys in settings_update patches', () => {

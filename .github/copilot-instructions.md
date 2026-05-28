@@ -30,7 +30,7 @@ bindery-merge/     ← Shared merge logic (chapter discovery, export orchestrati
 
 vscode-ext/        ← VS Code extension (published to Marketplace)
   src/
-    extension.ts   ← activation, all 17+ commands, format-on-save handler
+    extension.ts   ← activation, all host commands, format-on-save handler
     workspace.ts   ← reads/writes .bindery/settings.json + translations.json
     merge.ts       ← re-exports from @bindery/merge (pure delegation)
     format.ts      ← typography transforms via @bindery/core
@@ -40,7 +40,7 @@ vscode-ext/        ← VS Code extension (published to Marketplace)
 
 Obsidian-plugin/   ← Obsidian plugin (Community Plugins marketplace)
   src/
-    main.ts        ← activation, all 17+ commands (feature parity with vscode-ext)
+    main.ts        ← activation, all host commands (feature parity with vscode-ext)
     workspace.ts   ← Vault I/O, settings management (Obsidian-specific)
     merge.ts       ← Obsidian-specific wrapper around @bindery/merge
     ai-setup.ts    ← per-target instruction file generation
@@ -87,7 +87,7 @@ No annotation = mcpb submission rejection.
 | calls external API or tool (eg search API) | `openWorldHint: true` (in addition to one of the above) |
 
 ### Adding a new tool — checklist
-When adding a tool, touch **all four** of these: missing any breaks one surface.
+When adding a tool, touch **all five** of these: missing any breaks one surface.
 
 1. **`mcp-ts/src/tools.ts`** — add the implementation function (`toolXxx(root, args): string`)
 2. **`mcp-ts/src/index.ts`** — `server.registerTool(...)` with Zod schema, description, and ONE annotation
@@ -127,7 +127,7 @@ host-specific UI/activation):
 
 | Command | VS Code | Obsidian | Description |
 |---|---|---|---|
-| `bindery.init` | ✅ | ✅ | Create `.bindery/settings.json` + `translations.json` |
+| `bindery.init` | ✅ | ✅ | Create `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold |
 | `bindery.setupAI` | ✅ | ✅ | Generate CLAUDE.md / copilot-instructions.md / skills / AGENTS.md |
 | `bindery.formatDocument` | ✅ | ✅ | Typography formatting (curly quotes, em-dash, ellipsis) |
 | `bindery.formatFolder` | ✅ | ✅ | Recursively format all .md files in a folder |
@@ -141,6 +141,23 @@ host-specific UI/activation):
 | `bindery.addTranslation` | ✅ | ✅ | Add a cross-language glossary entry |
 | `bindery.addLanguage` | ✅ | ✅ | Add a new language and scaffold its story folder |
 | `bindery.openTranslations` | ✅ | ✅ | Show path to translations.json (edit in host editor) |
+| `bindery.noteList` / `note-list` | ✅ | ✅ | List story notes under the configured notes folder |
+| `bindery.noteGet` / `note-get` | ✅ | ✅ | Read a story note by path |
+| `bindery.noteCreate` / `note-create` | ✅ | ✅ | Create a story note |
+| `bindery.noteAppend` / `note-append` | ✅ | ✅ | Append markdown content to a story note |
+| `bindery.characterList` / `character-list` | ✅ | ✅ | List structured character profiles |
+| `bindery.characterGet` / `character-get` | ✅ | ✅ | Read a character profile by name |
+| `bindery.characterCreate` / `character-create` | ✅ | ✅ | Create a character profile and update the character index |
+| `bindery.characterUpdate` / `character-update` | ✅ | ✅ | Update a character profile and refresh the index row |
+| `bindery.arcList` / `arc-list` | ✅ | ✅ | List structured arc files |
+| `bindery.arcGet` / `arc-get` | ✅ | ✅ | Read an arc file by path |
+| `bindery.arcCreate` / `arc-create` | ✅ | ✅ | Create an arc file and update the arc index |
+| `bindery.arcUpdate` / `arc-update` | ✅ | ✅ | Update an arc file and refresh the arc index |
+| `bindery.memoryList` / `memory-list` | ✅ | ✅ | List durable memory files |
+| `bindery.memoryAppend` / `memory-append` | ✅ | ✅ | Append a dated memory entry |
+| `bindery.memoryCompact` / `memory-compact` | ✅ | ✅ | Compact a memory file with backup |
+| `bindery.chapterStatusGet` / `chapter-status-get` | ✅ | ✅ | Show chapter progress state |
+| `bindery.chapterStatusUpdate` / `chapter-status-update` | ✅ | ✅ | Upsert chapter progress entries |
 | `bindery.registerMcp` | ✅ | — | Write .vscode/mcp.json for Claude/Codex MCP discovery (VS Code-only) |
 | `bindery.showMcpConfig` | — | ✅ | Display MCP configuration snippet (Obsidian-only) |
 
@@ -157,9 +174,11 @@ host-specific UI/activation):
 | `cursor` | `.cursor/rules` |
 | `agents` | `AGENTS.md` |
 
-Skills: `review`, `brainstorm`, `memory`, `translate`, `translation-review`, `status`, `continuity`, `read-aloud`, `read-in`, `proof-read`.
+Skills: `review`, `brainstorm`, `memory`, `translate`, `translation-review`, `status`, `continuity`, `read-aloud`, `read-in`, `proof-read`, `plan-beats`, `character-setup`.
 
-The **memory skill** uses `memory_list` → `memory_append` → `memory_compact`. Do not fall back to `get_text` + Edit tool for memory writes.
+The **memory skill** uses `memory_list` → `memory_append` → `memory_compact` for session decisions and `note_list` / `note_get` / `note_create` / `note_append` for canonical story notes. Do not fall back to `get_text` + Edit tool for memory or note writes when a structured tool exists.
+
+Current authoring-tool boundary: note, character, arc, memory, and chapter-status MCP/LM tools exist and have matching VS Code/Obsidian host command wrappers. Dedicated session-focus and inbox-processing tools/commands are still planned.
 
 ### AI setup versioning
 `FILE_VERSION_INFO` in `bindery-core/src/templates.ts` is a per-file version table/map (a Record keyed by output path) that controls staleness detection.
@@ -200,6 +219,10 @@ npm run build  # builds bindery-core, bindery-merge, compiles all others
 
 # Type-check only (no emit)
 npx tsc --noEmit
+
+# Parity guards
+node scripts/check-tool-parity.mjs
+node scripts/check-command-parity.mjs
 ```
 
 ### Release workflow

@@ -9,8 +9,9 @@ Works with any Markdown book project structured with the Bindery VS Code extensi
 - **Chapter navigation** — jump to any chapter by number and language
 - **Full-text search** — lexical BM25, semantic rerank, or full semantic search across the book corpus
 - **Translation management** — list, look up, add, and update translation and dialect substitution rules
+- **Opinionated authoring scaffold** — initialize Arc, Notes, Characters, COWORK, memory, and chapter-status files for agent-assisted writing
 - **Session memory** — append, list, and compact persistent cross-session notes in `.bindery/memories/`
-- **Workspace setup** — create or update `.bindery/settings.json` and scaffold AI instruction files
+- **Workspace setup** — create or update `.bindery/settings.json`, `.bindery/translations.json`, `.bindery/README.md`, the opinionated authoring scaffold, and AI instruction files
 - **Chapter status tracking** — record and query per-chapter progress (draft, in-progress, done, needs-review)
 - **Typography formatting** — curly quotes, em-dashes, ellipses
 - **Workspace sync** — fetch and pull the current branch before a session, with branch/default-branch reporting
@@ -45,6 +46,28 @@ To install manually without using published Claude Connectors
 
 Claude calls `list_books` to discover the book name, then `get_overview` to show
 all acts and chapters with titles.
+
+### Initialize an agent-ready book workspace
+
+> "Set this folder up as a Bindery book"
+
+Claude calls `init_workspace`. The tool creates `.bindery/settings.json`,
+`.bindery/translations.json`, the generated `.bindery/README.md` capability
+reference, and the default authoring scaffold: `COWORK.md`, `Arc/index.md`,
+`Arc/Overall.md`, `Arc/Acts/`, `Notes/Inbox.md`, `Notes/Characters/index.md`,
+structured note folders, `.bindery/memories/global.md`, and
+`.bindery/chapter-status.json`. Existing files are preserved.
+
+After that, Claude can call `setup_ai_files` to generate CLAUDE.md,
+Copilot instructions, Cursor rules, AGENTS.md, and Claude skill templates.
+
+### Answer what Bindery can do
+
+> "What can Bindery do for this book?"
+
+Claude reads `.bindery/README.md`. That generated file is the canonical local
+capability reference for the book, including available commands, MCP tools,
+skill workflows, and the current opinionated authoring layout.
 
 ### Search for a character's mentions
 
@@ -100,6 +123,12 @@ then calls `memory_append` with `file: "global.md"`, a short title, and the
 decisions to record. The tool stamps the current date automatically — no manual
 date formatting needed.
 
+### Create or append a story note
+
+> "Add this world detail to the notes"
+
+Claude calls `note_list` or `note_get` to find the right target under the configured notes folder, then uses `note_create` for a new note or `note_append` for an existing one. Older note layouts remain readable through `get_notes`.
+
 ### Compact a memory file that has grown too large
 
 > "The global memory file is getting long — please compact it"
@@ -133,8 +162,8 @@ table with issue type, location, and the reference that contradicts it.
 | `list_books` | List all configured book names |
 | `identify_book` | Match a working directory to a book name |
 | `health` | Server status: settings, index, embedding backend |
-| `init_workspace` | Create or update `.bindery/settings.json` and `translations.json` with smart defaults |
-| `setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md) and Claude skill templates |
+| `init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold |
+| `setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, skill zips, and refresh generated `.bindery/README.md` |
 | `index_build` | Build or rebuild the lexical index and, when enabled, the semantic embedding index |
 | `index_status` | Show lexical and semantic index status, build times, and stale hints |
 | `get_text` | Read any file by relative path, with optional line range |
@@ -142,6 +171,18 @@ table with issue type, location, and the reference that contradicts it.
 | `get_book_until` | Chapters from a start chapter through N (inclusive), concatenated in order |
 | `get_overview` | Chapter structure — acts, chapters, titles |
 | `get_notes` | Notes/ files, filterable by category or name |
+| `note_list` | List story note files under the configured notes folder |
+| `note_get` | Read a single story note by path relative to the notes folder |
+| `note_create` | Create a story note under the configured notes folder |
+| `note_append` | Append markdown content to a story note, creating it if needed |
+| `character_list` | List structured character profile files |
+| `character_get` | Read a structured character profile by name |
+| `character_create` | Create a character profile and update the character index |
+| `character_update` | Update a character profile and refresh the character index row |
+| `arc_list` | List structured arc files |
+| `arc_get` | Read a structured arc file |
+| `arc_create` | Create an arc file and update the arc index |
+| `arc_update` | Update an arc file and refresh the arc index |
 | `search` | Search in lexical, semantic-rerank, or full-semantic mode; semantic modes fall back to lexical with warnings |
 | `format` | Apply typography formatting to a file or folder |
 | `get_review_text` | Git diff of uncommitted changes plus any `<!-- Bindery: Review start/stop -->` marker regions; optional auto-staging consumes the markers |
@@ -158,6 +199,8 @@ table with issue type, location, and the reference that contradicts it.
 | `memory_compact` | Overwrite a memory file with a summary (backs up original) |
 | `chapter_status_get` | Read the chapter progress tracker — returns entries grouped by status (done, in-progress, draft, planned, needs-review) |
 | `chapter_status_update` | Upsert chapter progress entries — send only changed chapters; unmentioned entries are preserved |
+
+Current boundary: Arc, character, note, memory, and chapter-status workflows are available through MCP tools. Dedicated session-focus, inbox-processing, and VS Code/Obsidian host command wrappers are planned but not yet part of this MCPB tool surface.
 
 ## Privacy Policy
 

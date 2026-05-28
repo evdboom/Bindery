@@ -2,82 +2,120 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/memory/SKILL.md',
-    version: 11,
+    version: 12,
     label:   'memory skill',
     zip:     '.claude/skills/memory.zip',
 };
 
+const CONTENT = [
+    "---",
+    "name: memory",
+    "description: Bindery workspace - Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, \"save this to memory\", \"update memories\", or at end of session.",
+    "---",
+    "# Skill: /memory",
+    "",
+    "Update project memory files with decisions from the current session.",
+    "",
+    "**What memory is:** A working log of decisions and preferences as they stood at the time — not canonical truth. Canonical sources live in `Notes/`, `Arc/`, and `COWORK.md`. If something in memory conflicts with those files, the canonical file wins.",
+    "",
+    "**What memory is not:** A substitute for proper notes files. Character profiles, world rules, and writing conventions belong in their dedicated files, not accumulating in memory.",
+    "",
+    "## Prerequisites",
+    "This skill requires a Bindery workspace. If unsure, call `identify_book` to check. If no workspace is found, tell the user and stop.",
+    "",
+    "## Trigger",
+    "User says `/memory`, \"save this to memory\", \"update memories\", at meaningful points, or at session end.",
+    "",
+    "## Tools",
+    "Use these Bindery MCP tools:",
+    "- `note_list(category?)` — list canonical story note files",
+    "- `note_get(path)` / `get_notes(category, name)` — read existing canonical notes before routing settled facts out of memory",
+    "- `note_create(path, title, content)` — create a new canonical story note when the user confirms settled reference material",
+    "- `note_append(path, content, heading?)` — append confirmed material to an existing canonical story note",
+    "- `memory_list` — discover which memory files exist and their line counts",
+    "- `memory_append(file, title, content)` — append a dated session entry; the tool stamps the date automatically",
+    "- `memory_compact(file, compacted_content)` — overwrite a file with a summary; backs up the original to `archive/` automatically",
+    "- `git_snapshot(message)` — after updating memories, offer to save a snapshot",
+    "",
+    "## Steps",
+    "",
+    "### 0. Cross-check assistant memory (if available)",
+    "If the runtime has local/session memory, review entries from this session.",
+    "Promote repo-worthy entries into Step 3 content.",
+    "",
+    "Promote:",
+    "- Story/craft decisions",
+    "- Character or world rules",
+    "- Structural decisions needed in future sessions",
+    "- Anything that must survive across devices",
+    "",
+    "Keep local only:",
+    "- Workflow/tool preferences",
+    "- Assistant behavior feedback",
+    "- Setup/environment notes",
+    "- Session-local context",
+    "",
+    "If no local/session memory exists, skip this step.",
+    "",
+    "### 1. Identify what to save and where it belongs",
+    "List the decisions, insights, or facts from the session worth preserving. For each item, classify it before writing anything. If an item looks like settled character or world reference material, use `note_list` and `note_get`/`get_notes` first to check whether the canonical note already exists or needs updating:",
+    "",
+    "| Destination | What goes here |",
+    "|---|---|",
+    "| `global.md` | Cross-chapter decisions that must survive sessions: confirmed character names, confirmed world rules, confirmed style choices |",
+    "| `chXX.md` | Chapter-specific decisions: confirmed plot choices, resolved open questions for that chapter |",
+    "| **Notes/Arc/COWORK file** (not memory) | Character profiles, world-building detail, magic rules, writing conventions, arc commitments — anything that has become settled enough to be a reference |",
+    "| **Discard** | Session-local context, tool/workflow observations, things that were speculative and were not confirmed |",
+    "",
+    "> If an item is a preference or suggestion rather than a confirmed decision, either discard it or note it explicitly as tentative (e.g., `\"Tentative: consider X\"`) — do not write it as a fact.",
+    "",
+    "Items routed to canonical story notes should be written with `note_create` or `note_append` after the user confirms the target file and wording. Do not duplicate them into memory.",
+    "",
+    "> Current tool boundary: Bindery has first-class note, character, and arc write tools, but no dedicated COWORK/session-focus write tools yet. Session-focus changes should be listed for the user unless the runtime can edit the target file and the user explicitly asks for that edit.",
+    "",
+    "### 2. Check existing files",
+    "Use `memory_list` to see which memory files exist and how large they are.",
+    "",
+    "### 3. Append the entry",
+    "Use `memory_append` to write to the right file:",
+    "- `global.md` — cross-chapter decisions (character names, world rules, style choices)",
+    "- `chXX.md` — chapter-specific decisions (e.g. `ch10.md`)",
+    "",
+    "Arguments:",
+    "- `file`: just the filename, e.g. `global.md` or `ch10.md`",
+    "- `title`: short topic label, e.g. `\"Elder introduction — character decisions\"`",
+    "- `content`: the decisions to record, one per line",
+    "",
+    "The tool stamps the current date. Do not add a date to the content.",
+    "",
+    "### 4. Compact if needed",
+    "If `memory_list` shows a file exceeding ~150 lines, offer to compact it:",
+    "- Summarize the existing content into a concise replacement",
+    "- For each summarized entry, apply the routing table from Step 1: does it stay in memory, move to a canonical file, or get discarded? Use `note_list` and `note_get`/`get_notes` when checking whether routed note material already exists.",
+    "- Call `memory_compact(file, compacted_content)` — original is backed up automatically",
+    "- Move confirmed note material with `note_create` or `note_append`, character material with `character_create` or `character_update`, and arc material with `arc_create` or `arc_update`; list COWORK items that still need manual placement",
+    "",
+    "The compaction pass is also a good time to flag any entries that were written as facts but were originally preferences — surface these for the user to confirm or soften.",
+    "",
+    "#### Canonical homes for content moving out of memory:",
+    "- Character decisions → `Notes/Characters/index.md` for cast-level facts or `Notes/Characters/<Name>.md` for per-character profiles",
+    "- World rules → `Notes/World/` or the project's existing world reference file",
+    "- Arc commitments → `Arc/index.md`, `Arc/Overall.md`, or the relevant file under `Arc/Acts/`",
+    "- Writing/style conventions → `COWORK.md` or a dedicated style file under `Notes/`",
+    "",
+    "### 5. Snapshot",
+    "Offer to save a snapshot with `git_snapshot`.",
+    "",
+    "## Rules",
+    "- Always use `memory_append` — never use the Edit tool to write to memory files",
+    "- Do not add dates to content — the tool stamps them automatically",
+    "- Compaction is always opt-in",
+    "- Memory is a log, not a spec — when memory conflicts with `Notes/`, `Arc/`, or `COWORK.md`, the canonical file is authoritative",
+    "",
+    "## Tool boundary",
+    "Bindery can create and append canonical note files with `note_create` and `note_append`, manage character profiles with `character_create` and `character_update`, and manage arc files with `arc_create` and `arc_update`. It does not yet have dedicated COWORK/session-focus write tools, so route those items by listing the exact target file and proposed content for the user, or by editing the target file only when the runtime supports file edits and the user asks for it.",
+].join('\n') + '\n';
+
 export function render(_ctx: TemplateContext): string {
-    return `---
-name: memory
-description: Bindery workspace - Save session decisions to persistent memory files using Bindery MCP tools. Use for /memory, "save this to memory", "update memories", or at end of session.
----
-# Skill: /memory
-
-Update project memory files with decisions from the current session.
-
-## Prerequisites
-This skill requires a Bindery workspace. If unsure, call \`identify_book\` to check.
-
-## Trigger
-User says \`/memory\`, "save this to memory", "update memories", at meaningful points, or at session end.
-
-## Tools
-Use these Bindery MCP tools:
-- \`memory_list\` — discover which memory files exist and their line counts
-- \`memory_append(file, title, content)\` — append a dated session entry; the tool stamps the date automatically
-- \`memory_compact(file, compacted_content)\` — overwrite a file with a summary; backs up the original to \`archive/\` automatically
-- \`git_snapshot(message)\` — after updating memories, offer to save a snapshot
-
-## Steps
-
-### 0. Cross-check assistant memory (if available)
-If the runtime has local/session memory, review entries from this session.
-Promote repo-worthy entries into Step 3 content.
-
-Promote:
-- Story/craft decisions
-- Character or world rules
-- Structural decisions needed in future sessions
-- Anything that must survive across devices
-
-Keep local only:
-- Workflow/tool preferences
-- Assistant behavior feedback
-- Setup/environment notes
-- Session-local context
-
-If no local/session memory exists, skip this step.
-
-### 1. Identify what to save
-List the decisions, insights, or facts from the session worth preserving.
-
-### 2. Check existing files
-Use \`memory_list\` to see which memory files exist and how large they are.
-
-### 3. Append the entry
-Use \`memory_append\` to write to the right file:
-- \`global.md\` — cross-chapter decisions (character names, world rules, style choices)
-- \`chXX.md\` — chapter-specific decisions (e.g. \`ch10.md\`)
-
-Arguments:
-- \`file\`: just the filename, e.g. \`global.md\` or \`ch10.md\`
-- \`title\`: short topic label, e.g. \`"Elder introduction — character decisions"\`
-- \`content\`: the decisions to record, one per line
-
-The tool stamps the current date. Do not add a date to the content.
-
-### 4. Compact if needed
-If \`memory_list\` shows a file exceeding ~150 lines, offer to compact it:
-- Summarize the existing content into a concise replacement
-- Call \`memory_compact(file, compacted_content)\` — original is backed up automatically
-
-### 5. Snapshot
-Offer to save a snapshot with \`git_snapshot\`.
-
-## Rules
-- Always use \`memory_append\` — never use the Edit tool to write to memory files
-- Do not add dates to content — the tool stamps them automatically
-- Compaction is always opt-in
-`;
+    return CONTENT;
 }

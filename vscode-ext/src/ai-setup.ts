@@ -15,7 +15,16 @@
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
 import type { WorkspaceSettings } from './workspace';
-import { renderTemplate, type TemplateContext } from '@bindery/core';
+import {
+    getArcFolder,
+    getArcGranularity,
+    getCharactersFolder,
+    getNotesFolder,
+    getSessionFile,
+    getStoryFolder,
+    renderTemplate,
+    type TemplateContext,
+} from '@bindery/core';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -46,10 +55,12 @@ export type SkillTemplate =
     | 'continuity'
     | 'read-aloud'
     | 'read-in'
-    | 'proof-read';
+    | 'proof-read'
+    | 'plan-beats'
+    | 'character-setup';
 
 export const ALL_SKILLS: SkillTemplate[] = [
-    'review', 'brainstorm', 'memory', 'translate', 'translation-review', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read',
+    'review', 'brainstorm', 'memory', 'translate', 'translation-review', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read', 'plan-beats', 'character-setup',
 ];
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -90,21 +101,44 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
 // ─── Context builder ──────────────────────────────────────────────────────────
 
 function buildContext(s: WorkspaceSettings): TemplateContext {
-    const title       = (typeof s.bookTitle === 'string' ? s.bookTitle : undefined) ?? 'Untitled';
+    const title       = titleFromSetting(s.bookTitle);
     const author      = s.author      ?? '';
     const description = s.description ?? '';
     const genre       = s.genre       ?? '';
     const audience    = s.targetAudience ?? '';
-    const storyFolder = s.storyFolder  ?? 'Story';
-    const notesFolder = 'Notes';
-    const arcFolder   = 'Arc';
+    const storyFolder = getStoryFolder(s);
+    const notesFolder = getNotesFolder(s);
+    const arcFolder   = getArcFolder(s);
     const languages: Array<{ code: string; folderName: string }> = s.languages ?? [];
 
     const langList = languages.length > 0
         ? languages.map((l, i) => i === 0 ? `${l.code} (source)` : `${l.code} (translation)`).join(', ')
         : 'EN (source)';
 
-    return { title, author, description, genre, audience, storyFolder, notesFolder, arcFolder, languages, langList, hasMultiLang: languages.length > 1, memoriesFolder: '.bindery/memories' };
+    return {
+        title, author, description, genre, audience,
+        storyFolder,
+        notesFolder,
+        arcFolder,
+        charactersFolder: getCharactersFolder(s),
+        sessionFile: getSessionFile(s),
+        arcGranularity: getArcGranularity(s),
+        languages,
+        langList,
+        hasMultiLang: languages.length > 1,
+        memoriesFolder: '.bindery/memories',
+    };
+}
+
+function titleFromSetting(value: WorkspaceSettings['bookTitle']): string {
+    if (typeof value === 'string' && value.trim()) { return value.trim(); }
+    if (value && typeof value === 'object') {
+        const en = value['en'];
+        if (typeof en === 'string' && en.trim()) { return en.trim(); }
+        const first = Object.values(value).find(v => typeof v === 'string' && v.trim());
+        if (typeof first === 'string') { return first.trim(); }
+    }
+    return 'Untitled';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

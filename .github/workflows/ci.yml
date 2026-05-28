@@ -168,6 +168,9 @@ jobs:
       - name: Tool parity guard
         run: node scripts/check-tool-parity.mjs
 
+      - name: Command parity guard
+        run: node scripts/check-command-parity.mjs
+
       - name: bindery-core coverage
         run: npm run test:coverage --workspace=bindery-core
 

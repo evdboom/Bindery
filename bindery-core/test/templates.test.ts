@@ -14,6 +14,9 @@ function makeCtx(overrides: Partial<TemplateContext> = {}): TemplateContext {
     storyFolder:    'Story',
     notesFolder:    'Notes',
     arcFolder:      'Arc',
+    charactersFolder: 'Notes/Characters',
+    sessionFile:    'COWORK.md',
+    arcGranularity: 'act',
     memoriesFolder: '.bindery/memories',
     languages:      [{ code: 'EN', folderName: 'EN' }],
     langList:       'EN (source)',
@@ -40,6 +43,9 @@ function makeMinimalCtx(): TemplateContext {
     storyFolder:    'Story',
     notesFolder:    'Notes',
     arcFolder:      'Arc',
+    charactersFolder: 'Notes/Characters',
+    sessionFile:    'COWORK.md',
+    arcGranularity: 'act',
     memoriesFolder: '.bindery/memories',
     languages:      [],
     langList:       'EN (source)',
@@ -130,6 +136,8 @@ describe('renderTemplate — copilot', () => {
     expect(result).toContain('.claude/skills/');
     expect(result).toContain('/translation-review');
     expect(result).toContain('/read-in');
+    expect(result).toContain('/plan-beats');
+    expect(result).toContain('/character-setup');
   });
 
   it('ends with a newline', () => {
@@ -161,6 +169,8 @@ describe('renderTemplate — cursor', () => {
     expect(result).toContain('.claude/skills/');
     expect(result).toContain('/translation-review');
     expect(result).toContain('/proof-read');
+    expect(result).toContain('/plan-beats');
+    expect(result).toContain('/character-setup');
   });
 
   it('ends with a newline', () => {
@@ -198,6 +208,8 @@ describe('renderTemplate — agents', () => {
     expect(result).toContain('.claude/skills/');
     expect(result).toContain('/translation-review');
     expect(result).toContain('/review');
+    expect(result).toContain('/plan-beats');
+    expect(result).toContain('/character-setup');
   });
 
   it('ends with a newline', () => {
@@ -254,12 +266,12 @@ describe('renderTemplate — review skill', () => {
 });
 
 describe('renderTemplate — brainstorm skill', () => {
-  it('contains YAML front-matter, title, trigger, and steps', () => {
+  it('contains YAML front-matter, title, trigger, and phases', () => {
     const result = renderTemplate('brainstorm', makeCtx());
     expect(result).toContain('name: brainstorm');
     expect(result).toContain('# Skill: /brainstorm');
     expect(result).toContain('## Trigger');
-    expect(result).toContain('## Steps');
+    expect(result).toContain('## Phases');
     expect(result).toContain('## Tools');
     expect(result).toContain('## Rules');
   });
@@ -283,9 +295,65 @@ describe('renderTemplate — memory skill', () => {
 
   it('references memory_append and memory_compact tools', () => {
     const result = renderTemplate('memory', makeCtx());
+    expect(result).toContain('note_create');
+    expect(result).toContain('note_append');
     expect(result).toContain('memory_append');
     expect(result).toContain('memory_compact');
     expect(result).toContain('memory_list');
+  });
+
+  it('describes the note and arc write-tool boundary accurately', () => {
+    const result = renderTemplate('memory', makeCtx());
+    expect(result).toContain('## Tool boundary');
+    expect(result).toContain('note_create');
+    expect(result).toContain('note_append');
+    expect(result).toContain('arc_create');
+    expect(result).toContain('character_update');
+    expect(result).toContain('no dedicated COWORK/session-focus write tools');
+    expect(result).not.toContain('## Future work');
+  });
+});
+
+describe('renderTemplate — character-setup skill', () => {
+  it('contains YAML front-matter, title, trigger, tools, steps, and rules', () => {
+    const result = renderTemplate('character-setup', makeCtx());
+    expect(result).toContain('name: character-setup');
+    expect(result).toContain('# Skill: /character-setup');
+    expect(result).toContain('argument-hint');
+    expect(result).toContain('## Trigger');
+    expect(result).toContain('## Tools');
+    expect(result).toContain('## Steps');
+    expect(result).toContain('## Rules');
+  });
+
+  it('uses the structured character tools', () => {
+    const result = renderTemplate('character-setup', makeCtx());
+    expect(result).toContain('character_list');
+    expect(result).toContain('character_get');
+    expect(result).toContain('character_create');
+    expect(result).toContain('character_update');
+  });
+});
+
+describe('renderTemplate — plan-beats skill', () => {
+  it('contains YAML front-matter, title, trigger, tools, steps, and rules', () => {
+    const result = renderTemplate('plan-beats', makeCtx());
+    expect(result).toContain('name: plan-beats');
+    expect(result).toContain('# Skill: /plan-beats');
+    expect(result).toContain('argument-hint');
+    expect(result).toContain('## Trigger');
+    expect(result).toContain('## Tools');
+    expect(result).toContain('## Steps');
+    expect(result).toContain('## Rules');
+  });
+
+  it('uses the current Bindery arc and character scaffold', () => {
+    const result = renderTemplate('plan-beats', makeCtx());
+    expect(result).toContain('Arc/index.md');
+    expect(result).toContain('Arc/Overall.md');
+    expect(result).toContain('Arc/Acts/');
+    expect(result).toContain('character_list');
+    expect(result).toContain('character_get');
   });
 });
 
@@ -431,10 +499,43 @@ describe('renderTemplate — bindery-readme', () => {
   it('includes the workspace title and key capability sections', () => {
     const result = renderTemplate('bindery-readme', makeCtx());
     expect(result).toContain('Test Book');
+    expect(result).toContain('## Opinionated Authoring Layout');
     expect(result).toContain('## VS Code / Obsidian commands');
     expect(result).toContain('## MCP tools');
+    expect(result).toContain('## Tool Workflow Shortcuts');
     expect(result).toContain('## Skill workflows');
     expect(result).toContain('## Review markers');
+  });
+
+  it('documents the generated scaffold and setup tools', () => {
+    const result = renderTemplate('bindery-readme', makeCtx());
+    expect(result).toContain('COWORK.md');
+    expect(result).toContain('Arc/index.md');
+    expect(result).toContain('Arc/Overall.md');
+    expect(result).toContain('Notes/Characters/index.md');
+    expect(result).toContain('init_workspace');
+    expect(result).toContain('setup_ai_files');
+    expect(result).toContain('/plan-beats');
+    expect(result).toContain('/character-setup');
+    expect(result).toContain('note_list');
+    expect(result).toContain('note_append');
+    expect(result).toContain('character_list');
+    expect(result).toContain('arc_create');
+    expect(result).toContain('List/Create/Append Notes');
+    expect(result).toContain('List/Create/Update Character Profile');
+    expect(result).toContain('List/Create/Update Arc File');
+    expect(result).toContain('Show/Update Chapter Status');
+    expect(result).toContain('User-owned current focus');
+    expect(result).toContain('creates only a small neutral scaffold');
+    expect(result).not.toContain('Dedicated note/memory/status/arc/character host commands are still planned');
+  });
+
+  it('does not indent generated top-level README headings or table rows', () => {
+    const result = renderTemplate('bindery-readme', makeCtx());
+    expect(result).toContain('\n## Opinionated Authoring Layout\n');
+    expect(result).toContain('\n| Path | Purpose |\n');
+    expect(result).not.toContain('\n  ## Opinionated');
+    expect(result).not.toContain('\n  | Path | Purpose |');
   });
 
   it('documents review marker syntax and consumption behavior', () => {

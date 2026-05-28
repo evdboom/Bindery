@@ -83,6 +83,74 @@ class TextPromptModal extends Modal {
     }
 }
 
+interface AuthoringCharacterInput {
+    name: string;
+    role?: string;
+    firstAppearance?: string;
+    background?: string;
+    continuityNotes?: string;
+}
+
+interface AuthoringArcInput {
+    path: string;
+    title?: string;
+    kind?: string;
+    purpose?: string;
+    majorBeats?: string;
+    continuityRisks?: string;
+}
+
+interface AuthoringChapterStatusEntry {
+    number: number;
+    title: string;
+    language: string;
+    status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review';
+    wordCount?: number;
+    notes?: string;
+}
+
+interface AuthoringTools {
+    toolNoteList: (_root: string, _args: { category?: string }) => string;
+    toolNoteGet: (_root: string, _args: { path: string }) => string;
+    toolNoteCreate: (_root: string, _args: { path: string; title?: string; content?: string; overwrite?: boolean }) => string;
+    toolNoteAppend: (_root: string, _args: { path: string; content: string; heading?: string }) => string;
+    toolCharacterList: (_root: string, _args: { name?: string }) => string;
+    toolCharacterGet: (_root: string, _args: { name: string }) => string;
+    toolCharacterCreate: (_root: string, _args: AuthoringCharacterInput) => string;
+    toolCharacterUpdate: (_root: string, _args: AuthoringCharacterInput) => string;
+    toolArcList: (_root: string, _args: { kind?: string }) => string;
+    toolArcGet: (_root: string, _args: { path: string }) => string;
+    toolArcCreate: (_root: string, _args: AuthoringArcInput) => string;
+    toolArcUpdate: (_root: string, _args: AuthoringArcInput) => string;
+    toolMemoryList: (_root: string) => string;
+    toolMemoryAppend: (_root: string, _args: { file: string; title: string; content: string }) => string;
+    toolMemoryCompact: (_root: string, _args: { file: string; compacted_content: string }) => string;
+    toolChapterStatusGet: (_root: string) => string;
+    toolChapterStatusUpdate: (_root: string, _args: { chapters: AuthoringChapterStatusEntry[] }) => string;
+}
+
+function loadAuthoringTools(): AuthoringTools {
+    try {
+        // Keep this literal so esbuild can bundle the shared tools into the Obsidian plugin release.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- runtime bridge to shared MCP tool module
+        return require('../../mcp-ts/out/tools') as AuthoringTools;
+    } catch {
+        // Fall back to runtime paths for local development and manually copied release layouts.
+    }
+
+    const candidates = [
+        path.join(__dirname, 'mcp-ts', 'out', 'tools'),
+        path.join(__dirname, '..', 'mcp-ts', 'out', 'tools'),
+        path.join(__dirname, '..', '..', 'mcp-ts', 'out', 'tools'),
+    ];
+    const modulePath = candidates.find(candidate => fs.existsSync(candidate + '.js'));
+    if (!modulePath) {
+        throw new Error('Compiled Bindery authoring tools were not found. Run npm run compile --workspace=mcp-ts before using authoring commands.');
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- runtime bridge to shared MCP tool module
+    return require(modulePath) as AuthoringTools;
+}
+
 export default class BinderyPlugin extends Plugin {
     settings: BinderySettings = { ...DEFAULT_SETTINGS };
 
@@ -244,6 +312,25 @@ export default class BinderyPlugin extends Plugin {
             name:     'Find probable us to uk words',
             callback: () => void this.findUsToUkCommand(),
         });
+
+        // Authoring tool commands: mirrors the MCP/LM authoring surface.
+        this.addCommand({ id: 'note-list', name: 'List notes', callback: () => void this.noteListCommand() });
+        this.addCommand({ id: 'note-get', name: 'Open note tool output', callback: () => void this.noteGetCommand() });
+        this.addCommand({ id: 'note-create', name: 'Create note', callback: () => void this.noteCreateCommand() });
+        this.addCommand({ id: 'note-append', name: 'Append to note', callback: () => void this.noteAppendCommand() });
+        this.addCommand({ id: 'character-list', name: 'List characters', callback: () => void this.characterListCommand() });
+        this.addCommand({ id: 'character-get', name: 'Open character tool output', callback: () => void this.characterGetCommand() });
+        this.addCommand({ id: 'character-create', name: 'Create character profile', callback: () => void this.characterCreateCommand() });
+        this.addCommand({ id: 'character-update', name: 'Update character profile', callback: () => void this.characterUpdateCommand() });
+        this.addCommand({ id: 'arc-list', name: 'List arcs', callback: () => void this.arcListCommand() });
+        this.addCommand({ id: 'arc-get', name: 'Open arc tool output', callback: () => void this.arcGetCommand() });
+        this.addCommand({ id: 'arc-create', name: 'Create arc file', callback: () => void this.arcCreateCommand() });
+        this.addCommand({ id: 'arc-update', name: 'Update arc file', callback: () => void this.arcUpdateCommand() });
+        this.addCommand({ id: 'memory-list', name: 'List memories', callback: () => void this.memoryListCommand() });
+        this.addCommand({ id: 'memory-append', name: 'Append memory', callback: () => void this.memoryAppendCommand() });
+        this.addCommand({ id: 'memory-compact', name: 'Compact memory', callback: () => void this.memoryCompactCommand() });
+        this.addCommand({ id: 'chapter-status-get', name: 'Show chapter status', callback: () => void this.chapterStatusGetCommand() });
+        this.addCommand({ id: 'chapter-status-update', name: 'Update chapter status', callback: () => void this.chapterStatusUpdateCommand() });
 
         // Show MCP config snippet — copies JSON to clipboard
         this.addCommand({
@@ -489,6 +576,244 @@ export default class BinderyPlugin extends Plugin {
             console.error(`✗ Failed: ${message}`);
             this.notify(`Action failed: ${message}`);
         }
+    }
+
+    private getBookRoot(): string {
+        const vaultPath = this.getVaultBasePath();
+        return resolveBookRoot(vaultPath, this.settings.bookRoot);
+    }
+
+    private async copyText(text: string): Promise<boolean> {
+        const activeWindow = this.app.workspace?.containerEl.ownerDocument.defaultView;
+        const clipboard = activeWindow?.navigator?.clipboard;
+        if (!clipboard?.writeText) { return false; }
+        await clipboard.writeText(text);
+        return true;
+    }
+
+    private async showAuthoringResult(title: string, result: string): Promise<void> {
+        const text = result.trim() || '(no output)';
+        if (text.length > 250 || text.includes('\n')) {
+            const copied = await this.copyText(text);
+            this.notify(copied ? `${title}: copied result to clipboard` : `${title}: ${text.slice(0, 220)}`);
+            return;
+        }
+        this.notify(`${title}: ${text}`);
+    }
+
+    private async runAuthoringCommand(
+        title: string,
+        callback: (_root: string, _tools: AuthoringTools) => Promise<string | null> | string | null,
+    ): Promise<void> {
+        try {
+            const result = await callback(this.getBookRoot(), loadAuthoringTools());
+            if (result !== null) { await this.showAuthoringResult(title, result); }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            console.error(`✗ ${title} failed: ${message}`);
+            this.notify(`${title} failed: ${message}`);
+        }
+    }
+
+    private async promptRequired(promptText: string, defaultValue = ''): Promise<string | null> {
+        const value = await this.promptString(promptText, defaultValue);
+        if (value === null) { return null; }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            this.notify(`${promptText} is required`);
+            return null;
+        }
+        return trimmed;
+    }
+
+    private async promptOptional(promptText: string, defaultValue = ''): Promise<string | undefined | null> {
+        const value = await this.promptString(promptText, defaultValue);
+        if (value === null) { return null; }
+        return value.trim() || undefined;
+    }
+
+    private async promptCharacterInput(update: boolean): Promise<AuthoringCharacterInput | null> {
+        const name = await this.promptRequired('Character name:');
+        if (!name) { return null; }
+        const role = await this.promptOptional('Role (optional):');
+        if (role === null) { return null; }
+        const firstAppearance = await this.promptOptional('First appearance (optional):');
+        if (firstAppearance === null) { return null; }
+        const background = await this.promptOptional('Background or notes (optional):');
+        if (background === null) { return null; }
+        const continuityNotes = update ? await this.promptOptional('Continuity notes (optional):') : undefined;
+        if (continuityNotes === null) { return null; }
+        return { name, role, firstAppearance, background, continuityNotes };
+    }
+
+    private async promptArcInput(update: boolean): Promise<AuthoringArcInput | null> {
+        const arcPath = await this.promptRequired('Arc path relative to Arc folder:', update ? '' : 'Acts/Act_I.md');
+        if (!arcPath) { return null; }
+        const title = await this.promptOptional('Title (optional):');
+        if (title === null) { return null; }
+        const kind = await this.promptOptional('Kind (overall, act, chapter, thread, custom; optional):');
+        if (kind === null) { return null; }
+        const purpose = await this.promptOptional('Purpose (optional):');
+        if (purpose === null) { return null; }
+        const majorBeats = await this.promptOptional('Major beats (optional):');
+        if (majorBeats === null) { return null; }
+        const continuityRisks = update ? await this.promptOptional('Continuity risks (optional):') : undefined;
+        if (continuityRisks === null) { return null; }
+        return { path: arcPath, title, kind, purpose, majorBeats, continuityRisks };
+    }
+
+    private async promptChapterStatusEntry(): Promise<AuthoringChapterStatusEntry | null> {
+        const chapterNumberRaw = await this.promptRequired('Chapter number:');
+        if (!chapterNumberRaw) { return null; }
+        const chapterNumber = Number(chapterNumberRaw);
+        if (!Number.isInteger(chapterNumber) || chapterNumber < 0) {
+            this.notify('Chapter number must be a non-negative integer');
+            return null;
+        }
+
+        const title = await this.promptRequired('Chapter title:');
+        if (!title) { return null; }
+        const language = await this.promptOptional('Language code:', 'EN');
+        if (language === null) { return null; }
+        const status = await this.promptRequired('Status (done, in-progress, needs-review, draft, planned):', 'draft');
+        if (!status) { return null; }
+        if (!['done', 'in-progress', 'needs-review', 'draft', 'planned'].includes(status)) {
+            this.notify('Invalid chapter status');
+            return null;
+        }
+        const wordCountRaw = await this.promptOptional('Word count (optional):');
+        if (wordCountRaw === null) { return null; }
+        const notes = await this.promptOptional('Notes (optional):');
+        if (notes === null) { return null; }
+        let wordCount: number | undefined;
+        if (wordCountRaw) {
+            const parsedWordCount = Number(wordCountRaw);
+            if (!Number.isInteger(parsedWordCount) || parsedWordCount < 0) {
+                this.notify('Word count must be a non-negative integer');
+                return null;
+            }
+            wordCount = parsedWordCount;
+        }
+        return { number: chapterNumber, title, language: language ?? 'EN', status: status as AuthoringChapterStatusEntry['status'], wordCount, notes };
+    }
+
+    private async noteListCommand(): Promise<void> {
+        await this.runAuthoringCommand('Note list', (root, tools) => tools.toolNoteList(root, {}));
+    }
+
+    private async noteGetCommand(): Promise<void> {
+        await this.runAuthoringCommand('Note get', async (root, tools) => {
+            const notePath = await this.promptRequired('Note path relative to Notes folder:');
+            return notePath ? tools.toolNoteGet(root, { path: notePath }) : null;
+        });
+    }
+
+    private async noteCreateCommand(): Promise<void> {
+        await this.runAuthoringCommand('Note create', async (root, tools) => {
+            const notePath = await this.promptRequired('Note path relative to Notes folder:', 'Inbox.md');
+            if (!notePath) { return null; }
+            const title = await this.promptOptional('Title (optional):');
+            if (title === null) { return null; }
+            const content = await this.promptOptional('Initial content (optional):');
+            if (content === null) { return null; }
+            return tools.toolNoteCreate(root, { path: notePath, title, content });
+        });
+    }
+
+    private async noteAppendCommand(): Promise<void> {
+        await this.runAuthoringCommand('Note append', async (root, tools) => {
+            const notePath = await this.promptRequired('Note path relative to Notes folder:', 'Inbox.md');
+            if (!notePath) { return null; }
+            const heading = await this.promptOptional('Heading (optional):');
+            if (heading === null) { return null; }
+            const content = await this.promptRequired('Content to append:');
+            return content ? tools.toolNoteAppend(root, { path: notePath, heading, content }) : null;
+        });
+    }
+
+    private async characterListCommand(): Promise<void> {
+        await this.runAuthoringCommand('Character list', (root, tools) => tools.toolCharacterList(root, {}));
+    }
+
+    private async characterGetCommand(): Promise<void> {
+        await this.runAuthoringCommand('Character get', async (root, tools) => {
+            const name = await this.promptRequired('Character name:');
+            return name ? tools.toolCharacterGet(root, { name }) : null;
+        });
+    }
+
+    private async characterCreateCommand(): Promise<void> {
+        await this.runAuthoringCommand('Character create', async (root, tools) => {
+            const input = await this.promptCharacterInput(false);
+            return input ? tools.toolCharacterCreate(root, input) : null;
+        });
+    }
+
+    private async characterUpdateCommand(): Promise<void> {
+        await this.runAuthoringCommand('Character update', async (root, tools) => {
+            const input = await this.promptCharacterInput(true);
+            return input ? tools.toolCharacterUpdate(root, input) : null;
+        });
+    }
+
+    private async arcListCommand(): Promise<void> {
+        await this.runAuthoringCommand('Arc list', (root, tools) => tools.toolArcList(root, {}));
+    }
+
+    private async arcGetCommand(): Promise<void> {
+        await this.runAuthoringCommand('Arc get', async (root, tools) => {
+            const arcPath = await this.promptRequired('Arc path relative to Arc folder:');
+            return arcPath ? tools.toolArcGet(root, { path: arcPath }) : null;
+        });
+    }
+
+    private async arcCreateCommand(): Promise<void> {
+        await this.runAuthoringCommand('Arc create', async (root, tools) => {
+            const input = await this.promptArcInput(false);
+            return input ? tools.toolArcCreate(root, input) : null;
+        });
+    }
+
+    private async arcUpdateCommand(): Promise<void> {
+        await this.runAuthoringCommand('Arc update', async (root, tools) => {
+            const input = await this.promptArcInput(true);
+            return input ? tools.toolArcUpdate(root, input) : null;
+        });
+    }
+
+    private async memoryListCommand(): Promise<void> {
+        await this.runAuthoringCommand('Memory list', (root, tools) => tools.toolMemoryList(root));
+    }
+
+    private async memoryAppendCommand(): Promise<void> {
+        await this.runAuthoringCommand('Memory append', async (root, tools) => {
+            const file = await this.promptRequired('Memory file:', 'global.md');
+            if (!file) { return null; }
+            const title = await this.promptRequired('Session title:');
+            if (!title) { return null; }
+            const content = await this.promptRequired('Memory content:');
+            return content ? tools.toolMemoryAppend(root, { file, title, content }) : null;
+        });
+    }
+
+    private async memoryCompactCommand(): Promise<void> {
+        await this.runAuthoringCommand('Memory compact', async (root, tools) => {
+            const file = await this.promptRequired('Memory file:', 'global.md');
+            if (!file) { return null; }
+            const compactedContent = await this.promptRequired('Compacted content:');
+            return compactedContent ? tools.toolMemoryCompact(root, { file, compacted_content: compactedContent }) : null;
+        });
+    }
+
+    private async chapterStatusGetCommand(): Promise<void> {
+        await this.runAuthoringCommand('Chapter status', (root, tools) => tools.toolChapterStatusGet(root));
+    }
+
+    private async chapterStatusUpdateCommand(): Promise<void> {
+        await this.runAuthoringCommand('Chapter status update', async (root, tools) => {
+            const entry = await this.promptChapterStatusEntry();
+            return entry ? tools.toolChapterStatusUpdate(root, { chapters: [entry] }) : null;
+        });
     }
 
     private async promptString(promptText: string, defaultValue: string = ''): Promise<string | null> {
