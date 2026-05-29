@@ -2,7 +2,7 @@ import { audienceNote, languageSection, type TemplateContext, type TemplateMeta 
 
 export const meta: TemplateMeta = {
     file:    'CLAUDE.md',
-    version: 14,
+    version: 15,
     label:   'project instructions',
     zip:     null,
 };
@@ -114,6 +114,8 @@ export function render(ctx: TemplateContext): string {
         '| `chapter_status_update` | Upsert chapter progress entries (send only changed chapters) |',
         `| \`session_focus_get\` | Read current working state from ${sessionFile} (optionally one section) |`,
         `| \`session_focus_update\` | Update neutral ${sessionFile} sections (Current Focus, Next Actions, Open Questions, Handoff Notes); leaves ${preferencesFile} untouched |`,
+        `| \`inbox_process\` | Enumerate ${notesFolder}/Inbox.md items with stable numbers and propose destinations (read-only) |`,
+        `| \`inbox_resolve\` | Remove already-routed inbox items by number after confirmation |`,
     );
     return lines.filter(l => l !== '\n').join('\n') + '\n';
 }

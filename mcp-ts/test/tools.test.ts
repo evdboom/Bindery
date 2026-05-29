@@ -26,6 +26,8 @@ import {
   toolSetupAiFiles,
   toolSessionFocusGet,
   toolSessionFocusUpdate,
+  toolInboxProcess,
+  toolInboxResolve,
 } from '../src/tools';
 
 const tempRoots: string[] = [];
@@ -597,5 +599,69 @@ describe('mcp tools', () => {
   it('errors when no session section is provided', () => {
     const root = makeRoot();
     expect(toolSessionFocusUpdate(root, {})).toContain('provide at least one');
+  });
+
+  it('reports an empty state when the inbox has no items beyond the intro', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Notes', 'Inbox.md'), '# Inbox\n\nDrop loose ideas here.\n');
+    expect(toolInboxProcess(root)).toContain('is empty');
+  });
+
+  it('enumerates heading-delimited inbox items with stable numbers', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Notes', 'Inbox.md'),
+      '# Inbox\n\nDrop loose ideas here.\n\n## Dragon lore\nDragons hoard memories.\n\n## New side character\nA tinkerer named Pell.\n');
+    const result = toolInboxProcess(root);
+    expect(result).toContain('2 item(s)');
+    expect(result).toContain('### Item 1');
+    expect(result).toContain('Dragon lore');
+    expect(result).toContain('### Item 2');
+    expect(result).toContain('Pell');
+    // surfaces destination guidance and the no-auto-move rule
+    expect(result).toContain('session_focus_update');
+    expect(result).toContain('without the user');
+  });
+
+  it('splits blank-line blocks when there are no headings', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Notes', 'Inbox.md'),
+      '# Inbox\n\nIntro line.\n\nFirst loose idea.\n\nSecond loose idea.\n');
+    const result = toolInboxProcess(root);
+    expect(result).toContain('2 item(s)');
+    expect(result).toContain('First loose idea');
+    expect(result).toContain('Second loose idea');
+  });
+
+  it('resolves confirmed inbox items by number and preserves the rest and the intro', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Notes', 'Inbox.md'),
+      '# Inbox\n\nDrop loose ideas here.\n\n## One\nfirst\n\n## Two\nsecond\n\n## Three\nthird\n');
+
+    const msg = toolInboxResolve(root, { items: [1, 3] });
+    expect(msg).toContain('Resolved 2');
+    expect(msg).toContain('1 remaining');
+
+    const text = fs.readFileSync(path.join(root, 'Notes', 'Inbox.md'), 'utf-8');
+    expect(text).toContain('# Inbox');
+    expect(text).toContain('Drop loose ideas here.');
+    expect(text).toContain('## Two');
+    expect(text).not.toContain('## One');
+    expect(text).not.toContain('## Three');
+  });
+
+  it('rejects out-of-range inbox item numbers without modifying the file', () => {
+    const root = makeRoot();
+    const inbox = '# Inbox\n\nintro\n\n## Only\nbody\n';
+    write(path.join(root, 'Notes', 'Inbox.md'), inbox);
+
+    const msg = toolInboxResolve(root, { items: [5] });
+    expect(msg).toContain('invalid item number');
+    expect(fs.readFileSync(path.join(root, 'Notes', 'Inbox.md'), 'utf-8')).toBe(inbox);
+  });
+
+  it('errors when inbox_resolve is called with no item numbers', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Notes', 'Inbox.md'), '# Inbox\n\nintro\n\n## A\nx\n');
+    expect(toolInboxResolve(root, { items: [] })).toContain('provide the item numbers');
   });
 });

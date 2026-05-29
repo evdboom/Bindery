@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.cursor/rules',
-    version: 10,
+    version: 11,
     label:   'cursor rules',
     zip:     null,
 };
@@ -28,6 +28,7 @@ export function render(ctx: TemplateContext): string {
         `- \`${notesFolder}/\` — story notes, like world rules, scene ideas, inbox, and research`,
         '- Shared workflows live in `.claude/skills/`; if your runtime exposes them, prefer `/read-in`, `/review`, `/translation-review`, `/translate`, `/memory`, `/continuity`, `/status`, `/read-aloud`, `/proof-read`, `/plan-beats`, and `/character-setup` for those tasks.',
         '- Use `arc_*` tools for story structure, `character_*` tools for cast profiles, `note_*` tools for story notes, `memory_*` tools for session decisions, `chapter_status_*` tools for progress, and `session_focus_*` tools for current working state.',
+        '- Send rough, unsorted, or pasted material to `Notes/Inbox.md`, then triage with `inbox_process` and `inbox_resolve` — do not dump it into memory.',
         '',
         '## Rules',
         '- HTML comments `<!-- -->` in chapter files are writer notes. Treat as context, not story content.',

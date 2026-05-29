@@ -338,6 +338,16 @@
         "category": "Bindery"
       },
       {
+        "command": "bindery.inboxProcess",
+        "title": "Process Inbox",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.inboxResolve",
+        "title": "Resolve Inbox Items",
+        "category": "Bindery"
+      },
+      {
         "command": "bindery.registerMcp",
         "title": "Register MCP Server",
         "category": "Bindery"
@@ -1440,6 +1450,45 @@
               "description": "replace (default) or append section body"
             }
           }
+        }
+      },
+      {
+        "name": "bindery_inbox_process",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Process Inbox",
+        "toolReferenceName": "binderyInboxProcess",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Read the notes Inbox (Notes/Inbox.md) and return a structured triage proposal: each loose item enumerated with a stable number, plus the destination tools to route them (note_*, character_*, arc_*, memory_*, chapter_status_*, session_focus_*). Read-only — never moves, deletes, or categorizes. After the user confirms and items are routed, call inbox_resolve with the item numbers to clear them.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "bindery_inbox_resolve",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Resolve Inbox Items",
+        "toolReferenceName": "binderyInboxResolve",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Remove already-routed items from the notes Inbox (Notes/Inbox.md) by their item numbers, as enumerated by inbox_process. Use only after the items have been routed and the user has confirmed. Item numbers are stable between inbox_process and inbox_resolve; other items and the inbox heading/intro are preserved.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "description": "Item numbers to remove, as shown by inbox_process (1-based)"
+            }
+          },
+          "required": [
+            "items"
+          ]
         }
       }
     ],

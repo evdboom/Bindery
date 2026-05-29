@@ -64,6 +64,8 @@ const expectedPairs = [
   ['sessionFocusShow', 'bindery.sessionFocusShow', 'session-focus-show'],
   ['sessionFocusUpdate', 'bindery.sessionFocusUpdate', 'session-focus-update'],
   ['sessionFocusAppendHandoff', 'bindery.sessionFocusAppendHandoff', 'session-focus-append-handoff'],
+  ['inboxProcess', 'bindery.inboxProcess', 'inbox-process'],
+  ['inboxResolve', 'bindery.inboxResolve', 'inbox-resolve'],
 ];
 
 const exceptions = [

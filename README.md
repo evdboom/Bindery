@@ -48,6 +48,7 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes
 - **Story note management** — agents can list, read, create, and append notes under the configured notes folder while `get_notes` remains compatible with older recursive note layouts
 - **Session memory** — persistent `.bindery/memories/` files for cross-session decisions, with append, list, and compact operations
 - **Session focus** — `session_focus_*` tools maintain the ephemeral working-state file `SESSION.md` (current focus, next actions, open questions, handoff); durable preferences live in the user-owned `PREFERENCES.md`
+- **Inbox triage** — `inbox_process` enumerates loose items in `Notes/Inbox.md` and proposes destinations (read-only); `inbox_resolve` clears items after they are routed and confirmed — rough/pasted material goes to the Inbox, not memory
 - **Chapter status tracking** — per-chapter progress tracker (`draft`, `in-progress`, `done`, `needs-review`)
 - **Structured arc & character management** — agents can create/update arc files and character profiles using structured tools that keep indexes in sync
 - **Host command parity** — VS Code and Obsidian expose command-palette actions for notes, characters, arcs, memory, and chapter status, backed by the same structured tool functions agents use

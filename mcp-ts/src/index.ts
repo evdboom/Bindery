@@ -55,6 +55,8 @@ import {
     toolChapterStatusUpdate,
     toolSessionFocusGet,
     toolSessionFocusUpdate,
+    toolInboxProcess,
+    toolInboxResolve,
 } from './tools.js';
 import { resolveBook, listBooks, findBookByPath } from './registry.js';
 
@@ -744,6 +746,34 @@ server.registerTool('session_focus_update', {
             currentFocus, nextActions, openQuestions, handoffNotes, mode,
         }));
     } catch (e) { return err(e); }
+});
+
+server.registerTool('inbox_process', {
+    title: 'Inbox Process',
+    description:
+        'Read the notes Inbox (Notes/Inbox.md) and return a structured triage proposal: each loose item enumerated with a stable number, ' +
+        'plus the destination tools to route them (note_*, character_*, arc_*, memory_*, chapter_status_*, session_focus_*). ' +
+        'This tool only reads and proposes — it never moves, deletes, or categorizes anything. ' +
+        'After the user confirms and items are routed with the destination tools, call inbox_resolve with the item numbers to clear them.',
+    inputSchema: { book: bookSchema },
+    annotations: { readOnlyHint: true },
+}, ({ book }) => {
+    try { return ok(toolInboxProcess(resolveBook(book).root)); } catch (e) { return err(e); }
+});
+
+server.registerTool('inbox_resolve', {
+    title: 'Inbox Resolve',
+    description:
+        'Remove already-routed items from the notes Inbox (Notes/Inbox.md) by their item numbers, as enumerated by inbox_process. ' +
+        'Use only after the items have been routed to their destinations and the user has confirmed. ' +
+        'Item numbers are stable between inbox_process and inbox_resolve. Other items and the inbox heading/intro are preserved.',
+    inputSchema: {
+        book: bookSchema,
+        items: z.array(z.number().int()).describe('Item numbers to remove, as shown by inbox_process (1-based)'),
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, items }) => {
+    try { return ok(toolInboxResolve(resolveBook(book).root, { items })); } catch (e) { return err(e); }
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────

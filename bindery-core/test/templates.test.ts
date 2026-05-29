@@ -313,6 +313,8 @@ describe('renderTemplate — memory skill', () => {
     expect(result).toContain('character_update');
     expect(result).toContain('session_focus_update');
     expect(result).toContain('PREFERENCES.md');
+    expect(result).toContain('inbox_process');
+    expect(result).toContain('Notes/Inbox.md');
     expect(result).not.toContain('no dedicated COWORK/session-focus write tools');
     expect(result).not.toContain('## Future work');
   });
@@ -533,6 +535,8 @@ describe('renderTemplate — bindery-readme', () => {
     expect(result).toContain('Show/Update Chapter Status');
     expect(result).toContain('Show/Update Session Focus');
     expect(result).toContain('session_focus_get');
+    expect(result).toContain('inbox_process');
+    expect(result).toContain('inbox_resolve');
     expect(result).toContain('never edits it');
     expect(result).not.toContain('session-focus/COWORK tools are not available yet');
   });

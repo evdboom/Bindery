@@ -2,7 +2,7 @@ import { audienceNote, languageSection, type TemplateContext, type TemplateMeta 
 
 export const meta: TemplateMeta = {
     file:    'AGENTS.md',
-    version: 10,
+    version: 11,
     label:   'agents instructions',
     zip:     null,
 };
@@ -35,6 +35,7 @@ export function render(ctx: TemplateContext): string {
         '- Shared workflows live in `.claude/skills/` and can be used by agents beyond Claude when the runtime supports workspace skills.',
         '- Prefer `/read-in`, `/review`, `/translation-review`, `/translate`, `/memory`, `/continuity`, `/status`, `/read-aloud`, `/proof-read`, `/plan-beats`, and `/character-setup` when the user is asking for one of those structured tasks.',
         '- Use `arc_*` tools for story structure, `character_*` tools for cast profiles, `note_*` tools for story notes, `memory_*` tools for session decisions, `chapter_status_*` tools for progress, and `session_focus_*` tools for current working state. PREFERENCES.md is user-owned — propose changes rather than writing it.',
+        '- Send rough, unsorted, or pasted material to `Notes/Inbox.md`, then triage with `inbox_process` (propose destinations) and `inbox_resolve` (clear routed items) — do not dump it into memory.',
         '',
         '## Writing guidelines',
         '- Do not rewrite paragraphs unless explicitly asked. Suggest edits only.',

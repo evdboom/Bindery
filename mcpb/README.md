@@ -12,6 +12,7 @@ Works with any Markdown book project structured with the Bindery VS Code extensi
 - **Opinionated authoring scaffold** — initialize Arc, Notes, Characters, SESSION, PREFERENCES, memory, and chapter-status files for agent-assisted writing
 - **Session memory** — append, list, and compact persistent cross-session notes in `.bindery/memories/`
 - **Session focus** — read and update the ephemeral working-state file `SESSION.md` (current focus, next actions, open questions, handoff); durable preferences stay user-owned in `PREFERENCES.md`
+- **Inbox triage** — enumerate loose `Notes/Inbox.md` items and propose destinations (`inbox_process`), then clear routed items after confirmation (`inbox_resolve`)
 - **Workspace setup** — create or update `.bindery/settings.json`, `.bindery/translations.json`, `.bindery/README.md`, the opinionated authoring scaffold, and AI instruction files
 - **Chapter status tracking** — record and query per-chapter progress (draft, in-progress, done, needs-review)
 - **Typography formatting** — curly quotes, em-dashes, ellipses
@@ -202,8 +203,10 @@ table with issue type, location, and the reference that contradicts it.
 | `chapter_status_update` | Upsert chapter progress entries — send only changed chapters; unmentioned entries are preserved |
 | `session_focus_get` | Read working state from `SESSION.md` (optionally a single section: Current Focus, Next Actions, Open Questions, Handoff Notes) |
 | `session_focus_update` | Update neutral `SESSION.md` sections (replace or append); leaves `PREFERENCES.md` and other content untouched |
+| `inbox_process` | Enumerate `Notes/Inbox.md` items with stable numbers and propose destinations — read-only, never moves or categorizes |
+| `inbox_resolve` | Remove already-routed inbox items by number after confirmation; preserves other items and the heading/intro |
 
-Current boundary: Arc, character, note, memory, chapter-status, and session-focus workflows are available through MCP tools, with matching VS Code and Obsidian host command wrappers. `session_focus_update` touches only the neutral `SESSION.md` sections; `PREFERENCES.md` is user-owned and never tool-written. Inbox-processing workflows are planned but not yet part of this MCPB tool surface.
+Current boundary: Arc, character, note, memory, chapter-status, session-focus, and inbox-triage workflows are available through MCP tools, with matching VS Code and Obsidian host command wrappers. `session_focus_update` touches only the neutral `SESSION.md` sections; `PREFERENCES.md` is user-owned and never tool-written. `inbox_process` only proposes and `inbox_resolve` only removes named items — route confirmed items with the destination tools first.
 
 ## Privacy Policy
 

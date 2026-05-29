@@ -77,6 +77,7 @@ interface MemoryCompactInput  { file: string; compacted_content: string }
 interface ChapterStatusUpdateInput { chapters: Array<{ number: number; title: string; language: string; status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review'; wordCount?: number; notes?: string }> }
 interface SessionFocusGetInput    { section?: string }
 interface SessionFocusUpdateInput { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }
+interface InboxResolveInput       { items: number[] }
 
 interface McpTools {
     toolHealth:           (_root: string) => string;
@@ -119,6 +120,8 @@ interface McpTools {
     toolChapterStatusUpdate: (_root: string, _args: ChapterStatusUpdateInput) => string;
     toolSessionFocusGet:     (_root: string, _args: SessionFocusGetInput) => string;
     toolSessionFocusUpdate:  (_root: string, _args: SessionFocusUpdateInput) => string;
+    toolInboxProcess:        (_root: string) => string;
+    toolInboxResolve:        (_root: string, _args: InboxResolveInput) => string;
 }
 
 /**
@@ -318,6 +321,14 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<SessionFocusUpdateInput>('bindery_session_focus_update', {
             invoke: (opts, _token) => ok(t.toolSessionFocusUpdate(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool('bindery_inbox_process', {
+            invoke: (_opts, _token) => ok(t.toolInboxProcess(requireRoot())),
+        }),
+
+        vscode.lm.registerTool<InboxResolveInput>('bindery_inbox_resolve', {
+            invoke: (opts, _token) => ok(t.toolInboxResolve(requireRoot(), opts.input)),
         }),
     );
 }

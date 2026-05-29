@@ -84,6 +84,8 @@ interface McpToolsForAi {
     toolChapterStatusUpdate: (_root: string, _args: { chapters: AuthoringChapterStatusEntry[] }) => string;
     toolSessionFocusGet: (_root: string, _args: { section?: string }) => string;
     toolSessionFocusUpdate: (_root: string, _args: { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }) => string;
+    toolInboxProcess: (_root: string) => string;
+    toolInboxResolve: (_root: string, _args: { items: number[] }) => string;
 }
 
 interface AuthoringCharacterInput {
@@ -1640,6 +1642,23 @@ async function sessionFocusAppendHandoffCommand(context: vscode.ExtensionContext
     });
 }
 
+async function inboxProcessCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Process Inbox', (root, tools) => tools.toolInboxProcess(root));
+}
+
+async function inboxResolveCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Resolve Inbox Items', async (root, tools) => {
+        const raw = await promptRequired('Bindery: Resolve Inbox Items', 'Item numbers to remove (comma-separated)');
+        if (!raw) { return undefined; }
+        const items = raw.split(',').map(s => Number(s.trim())).filter(n => Number.isInteger(n) && n > 0);
+        if (items.length === 0) {
+            vscode.window.showWarningMessage('Bindery: enter one or more item numbers, e.g. "1, 3".');
+            return undefined;
+        }
+        return tools.toolInboxResolve(root, { items });
+    });
+}
+
 // ─── Activation ───────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
@@ -1727,6 +1746,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bindery.sessionFocusShow',        () => sessionFocusShowCommand(context)),
         vscode.commands.registerCommand('bindery.sessionFocusUpdate',      () => sessionFocusUpdateCommand(context)),
         vscode.commands.registerCommand('bindery.sessionFocusAppendHandoff', () => sessionFocusAppendHandoffCommand(context)),
+        vscode.commands.registerCommand('bindery.inboxProcess',            () => inboxProcessCommand(context)),
+        vscode.commands.registerCommand('bindery.inboxResolve',            () => inboxResolveCommand(context)),
         vscode.commands.registerCommand('bindery.registerMcp',             () => registerMcpCommand(context)),
     );
 

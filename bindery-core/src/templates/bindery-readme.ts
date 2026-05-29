@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-    version: 8,
+    version: 9,
     label:   'bindery capabilities',
     zip:     null,
 };
@@ -48,7 +48,7 @@ work from the same map:
 | \`${arcFolder}/Acts/\` | Act-level arc files. Default arc granularity: \`${arcGranularity}\`. |
 | \`${charactersFolder}/index.md\` | Cast overview. |
 | \`${charactersFolder}/<character>.md\` | One durable profile per character. |
-| \`${notesFolder}/Inbox.md\` | Loose notes, pasted mobile chats, and unsorted ideas before triage. |
+| \`${notesFolder}/Inbox.md\` | Loose notes, pasted mobile chats, and unsorted ideas before triage. Triage with \`inbox_process\` / \`inbox_resolve\`. |
 | \`${notesFolder}/World/\`, \`${notesFolder}/Scenes/\`, \`${notesFolder}/Research/\` | Structured supporting notes. |
 | \`${memoriesFolder}/global.md\` | Durable cross-session decisions and story rules. |
 | \`${storyFolder}/\` | Chapter source files by language. |
@@ -75,6 +75,7 @@ Treat \`${arcFolder}/\` as story architecture, \`${charactersFolder}/\` as cast 
 | \`Bindery: List/Append/Compact Memories\` | Maintain durable session-memory files under \`${memoriesFolder}/\`. |
 | \`Bindery: Show/Update Chapter Status\` | Read or update \`.bindery/chapter-status.json\`. |
 | \`Bindery: Show/Update Session Focus\` / \`Append Handoff Note\` | Read or update the neutral working-state sections of \`${sessionFile}\`. |
+| \`Bindery: Process Inbox\` / \`Resolve Inbox Items\` | Triage \`${notesFolder}/Inbox.md\`: list items with stable numbers, then remove routed items by number. |
 | \`Bindery: Register MCP Server\` | Write \`.vscode/mcp.json\` so Claude / Codex pick the bundled server up. |
 
 ### Default keybindings (markdown editors only)
@@ -115,6 +116,7 @@ tagged **(writes)** modify files or git state.
 | \`memory_list\` / \`memory_append\` / \`memory_compact\` (reads / writes) | Manage \`.bindery/memories/\` files. |
 | \`chapter_status_get\` / \`chapter_status_update\` (reads / writes) | Per-chapter progress tracker in \`.bindery/chapter-status.json\`. |
 | \`session_focus_get\` / \`session_focus_update\` (reads / writes) | Read or update the neutral working-state sections of \`${sessionFile}\` (Current Focus, Next Actions, Open Questions, Handoff Notes). Leaves \`${preferencesFile}\` and other content untouched. |
+| \`inbox_process\` / \`inbox_resolve\` (reads / writes) | \`inbox_process\` enumerates \`${notesFolder}/Inbox.md\` items with stable numbers and proposes destinations (read-only); \`inbox_resolve\` removes already-routed items by number after confirmation. |
 
 ### Tool Workflow Shortcuts
 
@@ -124,10 +126,12 @@ tagged **(writes)** modify files or git state.
 - Use \`character_*\` for cast profiles under \`${charactersFolder}/\`.
 - Use \`note_*\` for canonical story notes under \`${notesFolder}/\`.
 - Use \`get_notes\` for broad note lookup, \`memory_*\` for durable session decisions, \`chapter_status_*\` for progress state, and \`session_focus_*\` for ephemeral current-focus/handoff in \`${sessionFile}\`.
+- Send rough, unsorted, or pasted material to \`${notesFolder}/Inbox.md\` (e.g. \`note_append\`), then triage it with \`inbox_process\` (propose) and \`inbox_resolve\` (clear routed items) — do not dump it into memory.
 
 ### Current Tool Boundaries
 
-- Dedicated note, character, arc, memory, chapter-status, and session-focus tools are available now.
+- Dedicated note, character, arc, memory, chapter-status, session-focus, and inbox-triage tools are available now.
+- \`inbox_process\` only reads and proposes; \`inbox_resolve\` only removes items you name after they have been routed. Neither moves or categorizes content on its own — route confirmed items with the destination tools first.
 - \`session_focus_*\` updates only the neutral working-state sections of \`${sessionFile}\`. \`${preferencesFile}\` is durable and user-owned — Bindery scaffolds it once and never edits it; propose preference changes for the author to apply.
 - VS Code and Obsidian host commands now mirror the structured note, character, arc, memory, chapter-status, and session-focus tools. Host prompts cover common fields; agents can still call the MCP tools directly for complete structured payloads.
 

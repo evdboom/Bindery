@@ -161,6 +161,8 @@ host-specific UI/activation):
 | `bindery.sessionFocusShow` / `session-focus-show` | ✅ | ✅ | Show working state from SESSION.md (optionally one section) |
 | `bindery.sessionFocusUpdate` / `session-focus-update` | ✅ | ✅ | Update a neutral SESSION.md section (replace/append) |
 | `bindery.sessionFocusAppendHandoff` / `session-focus-append-handoff` | ✅ | ✅ | Append a handoff note to SESSION.md |
+| `bindery.inboxProcess` / `inbox-process` | ✅ | ✅ | Enumerate Notes/Inbox.md items and propose destinations (read-only) |
+| `bindery.inboxResolve` / `inbox-resolve` | ✅ | ✅ | Remove already-routed inbox items by number |
 | `bindery.registerMcp` | ✅ | — | Write .vscode/mcp.json for Claude/Codex MCP discovery (VS Code-only) |
 | `bindery.showMcpConfig` | — | ✅ | Display MCP configuration snippet (Obsidian-only) |
 
@@ -181,9 +183,9 @@ Skills: `review`, `brainstorm`, `memory`, `translate`, `translation-review`, `st
 
 The **memory skill** uses `memory_list` → `memory_append` → `memory_compact` for session decisions and `note_list` / `note_get` / `note_create` / `note_append` for canonical story notes. Do not fall back to `get_text` + Edit tool for memory or note writes when a structured tool exists.
 
-The split: durable story/project decisions → `memory_*` (`.bindery/memories/`); ephemeral working state (current focus, next actions, open questions, handoff) → `session_focus_*` (`SESSION.md`); durable working preferences → `PREFERENCES.md` (user-owned, never tool-written — propose changes instead).
+The split: durable story/project decisions → `memory_*` (`.bindery/memories/`); ephemeral working state (current focus, next actions, open questions, handoff) → `session_focus_*` (`SESSION.md`); durable working preferences → `PREFERENCES.md` (user-owned, never tool-written — propose changes instead); rough/unsorted/pasted material → `Notes/Inbox.md`, triaged with `inbox_process` / `inbox_resolve` (not memory).
 
-Current authoring-tool boundary: note, character, arc, memory, chapter-status, and session-focus MCP/LM tools exist and have matching VS Code/Obsidian host command wrappers. `session_focus_update` only touches neutral SESSION.md sections. Inbox-processing tools/commands are still planned.
+Current authoring-tool boundary: note, character, arc, memory, chapter-status, session-focus, and inbox-triage MCP/LM tools exist and have matching VS Code/Obsidian host command wrappers. `session_focus_update` only touches neutral SESSION.md sections; `inbox_process` only proposes and `inbox_resolve` only removes named items (route confirmed items with the destination tools first).
 
 ### AI setup versioning
 `FILE_VERSION_INFO` in `bindery-core/src/templates.ts` is a per-file version table/map (a Record keyed by output path) that controls staleness detection.

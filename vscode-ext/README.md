@@ -104,6 +104,8 @@ Bindery includes a bundled MCP server that makes your book's chapters, arc files
 | `bindery_chapter_status_update` | Upsert chapter progress entries |
 | `bindery_session_focus_get` | Read working state from `SESSION.md` (optionally a single section) |
 | `bindery_session_focus_update` | Update neutral `SESSION.md` sections (replace/append); leaves `PREFERENCES.md` untouched |
+| `bindery_inbox_process` | Enumerate `Notes/Inbox.md` items with stable numbers and propose destinations (read-only) |
+| `bindery_inbox_resolve` | Remove already-routed inbox items by number after confirmation |
 
 `bindery_search` supports `lexical`, `semantic_rerank`, and `full_semantic` modes. Semantic modes require an Ollama instance and fall back to lexical results with a warning if unavailable.
 
@@ -154,6 +156,7 @@ All commands are available from the Command Palette (`Ctrl+Shift+P`) under the *
 | `List Memories` / `Append Memory` / `Compact Memory` | Maintain durable `.bindery/memories/` files |
 | `Show Chapter Status` / `Update Chapter Status` | Read or update `.bindery/chapter-status.json` |
 | `Show Session Focus` / `Update Session Focus` / `Append Handoff Note` | Read or update the neutral working-state sections of `SESSION.md` |
+| `Process Inbox` / `Resolve Inbox Items` | Triage `Notes/Inbox.md`: list items with stable numbers, then remove routed items by number |
 
 Keybindings only fire while editing a markdown file (`editorTextFocus && resourceLangId == markdown`); rebind via **File → Preferences → Keyboard Shortcuts** if they conflict with another extension.
 

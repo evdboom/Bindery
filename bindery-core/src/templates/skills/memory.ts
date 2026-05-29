@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/memory/SKILL.md',
-    version: 13,
+    version: 14,
     label:   'memory skill',
     zip:     '.claude/skills/memory.zip',
 };
@@ -20,7 +20,7 @@ const CONTENT = [
     "",
     "**Three-way split:** durable story/project decisions → memory (`.bindery/memories/`); durable working preferences (\"do it like this for me\") → `PREFERENCES.md` (user-owned, never tool-written); ephemeral current focus, next actions, open questions, and handoff → `SESSION.md` via `session_focus_*`.",
     "",
-    "**What memory is not:** A substitute for proper notes files. Character profiles, world rules, and writing conventions belong in their dedicated files, not accumulating in memory.",
+    "**What memory is not:** A substitute for proper notes files. Character profiles, world rules, and writing conventions belong in their dedicated files, not accumulating in memory. Rough, unsorted, or pasted material (mobile chats, brain-dumps) goes to the notes Inbox (`Notes/Inbox.md`), not memory — triage it later with `inbox_process`.",
     "",
     "## Prerequisites",
     "This skill requires a Bindery workspace. If unsure, call `identify_book` to check. If no workspace is found, tell the user and stop.",
@@ -70,6 +70,7 @@ const CONTENT = [
     "| **Notes / Arc files** (not memory) | Character profiles, world-building detail, magic rules, arc commitments — anything that has become settled enough to be a reference |",
     "| **`PREFERENCES.md`** (not memory) | Durable working preferences and writing conventions — \"do it like this for me\". User-owned; propose edits, do not write it with tools |",
     "| **`SESSION.md`** via `session_focus_update` (not memory) | Current focus, next actions, open questions, handoff — ephemeral working state |",
+    "| **`Notes/Inbox.md`** (not memory) | Rough, unsorted, or pasted material not yet triaged. Append with `note_append`; triage later with `inbox_process` / `inbox_resolve` |",
     "| **Discard** | Session-local context, tool/workflow observations, things that were speculative and were not confirmed |",
     "",
     "> If an item is a preference or suggestion rather than a confirmed decision, either discard it or note it explicitly as tentative (e.g., `\"Tentative: consider X\"`) — do not write it as a fact.",

@@ -137,6 +137,8 @@ interface AuthoringTools {
     toolChapterStatusUpdate: (_root: string, _args: { chapters: AuthoringChapterStatusEntry[] }) => string;
     toolSessionFocusGet: (_root: string, _args: { section?: string }) => string;
     toolSessionFocusUpdate: (_root: string, _args: { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }) => string;
+    toolInboxProcess: (_root: string) => string;
+    toolInboxResolve: (_root: string, _args: { items: number[] }) => string;
 }
 
 function loadAuthoringTools(): AuthoringTools {
@@ -344,6 +346,8 @@ export default class BinderyPlugin extends Plugin {
         this.addCommand({ id: 'session-focus-show', name: 'Show session focus', callback: () => void this.sessionFocusShowCommand() });
         this.addCommand({ id: 'session-focus-update', name: 'Update session focus', callback: () => void this.sessionFocusUpdateCommand() });
         this.addCommand({ id: 'session-focus-append-handoff', name: 'Append handoff note', callback: () => void this.sessionFocusAppendHandoffCommand() });
+        this.addCommand({ id: 'inbox-process', name: 'Process inbox', callback: () => void this.inboxProcessCommand() });
+        this.addCommand({ id: 'inbox-resolve', name: 'Resolve inbox items', callback: () => void this.inboxResolveCommand() });
 
         // Show MCP config snippet — copies JSON to clipboard
         this.addCommand({
@@ -856,6 +860,20 @@ export default class BinderyPlugin extends Plugin {
         await this.runAuthoringCommand('Append handoff note', async (root, tools) => {
             const content = await this.promptRequired('Handoff note to append:');
             return content ? tools.toolSessionFocusUpdate(root, { handoffNotes: content, mode: 'append' }) : null;
+        });
+    }
+
+    private async inboxProcessCommand(): Promise<void> {
+        await this.runAuthoringCommand('Process inbox', (root, tools) => tools.toolInboxProcess(root));
+    }
+
+    private async inboxResolveCommand(): Promise<void> {
+        await this.runAuthoringCommand('Resolve inbox items', async (root, tools) => {
+            const raw = await this.promptRequired('Item numbers to remove (comma-separated):');
+            if (!raw) { return null; }
+            const items = raw.split(',').map(s => Number(s.trim())).filter(n => Number.isInteger(n) && n > 0);
+            if (items.length === 0) { this.notify('Enter one or more item numbers, e.g. "1, 3".'); return null; }
+            return tools.toolInboxResolve(root, { items });
         });
     }
 
