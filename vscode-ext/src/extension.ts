@@ -295,21 +295,26 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
     if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return; }
 
     const settingsPath = getSettingsPath(root);
+    let existingSettings: WorkspaceSettings | undefined;
     if (fs.existsSync(settingsPath)) {
         const choice = await vscode.window.showQuickPick(
             [
-                { label: 'Re-initialize', description: 'Overwrites settings.json (translations.json is kept)', value: true  as const },
-                { label: 'Cancel',                                                                               value: false as const },
+                { label: 'Re-initialize', description: 'Merges updates into existing settings; existing values are pre-filled', value: true  as const },
+                { label: 'Cancel',                                                                                               value: false as const },
             ],
             { placeHolder: '.bindery/settings.json already exists' }
         );
         if (!choice?.value) { return; }
+        try { existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as WorkspaceSettings; }
+        catch { /* corrupt — proceed as new */ }
     }
 
+    const existingTitle = typeof existingSettings?.bookTitle === 'string' ? existingSettings.bookTitle : undefined;
     const title = await vscode.window.showInputBox({
         title:       'Bindery: Initialize (1/4)',
         prompt:      'Book title',
         placeHolder: 'e.g. The Hollow Road',
+        value:       existingTitle,
     });
     if (title === undefined) { return; }
 
@@ -317,13 +322,14 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
         title:       'Bindery: Initialize (2/4)',
         prompt:      'Author name',
         placeHolder: 'e.g. Jane Smith',
+        value:       existingSettings?.author,
     });
     if (author === undefined) { return; }
 
     const storyFolder = await vscode.window.showInputBox({
         title:  'Bindery: Initialize (3/4)',
         prompt: 'Story folder name (relative to workspace root)',
-        value:  'Story',
+        value:  existingSettings?.storyFolder ?? 'Story',
     });
     if (!storyFolder) { return; }
 
@@ -331,14 +337,15 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
         title:       'Bindery: Initialize (4/5)',
         prompt:      'Target audience (used for AI review feedback)',
         placeHolder: 'e.g. 12+, adults, 8-10',
+        value:       existingSettings?.targetAudience,
     });
     if (audience === undefined) { return; }
 
+    const currentFormatOnSave = existingSettings?.formatOnSave ?? false;
     const formatOption = await vscode.window.showQuickPick(
-        [
-            { label: 'No',  value: false as const },
-            { label: 'Yes', value: true  as const },
-        ],
+        currentFormatOnSave
+            ? [{ label: 'Yes', value: true as const }, { label: 'No', value: false as const }]
+            : [{ label: 'No',  value: false as const }, { label: 'Yes', value: true as const }],
         { title: 'Bindery: Initialize (5/5)', placeHolder: 'Auto-apply typography on save (Story folder only)?' }
     );
     if (!formatOption) { return; }
