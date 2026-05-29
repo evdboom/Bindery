@@ -24,6 +24,14 @@ import * as path from 'node:path';
 const REVIEW_START_MARKER = '<!-- Bindery: Review start -->';
 const REVIEW_STOP_MARKER  = '<!-- Bindery: Review stop -->';
 
+// Maps a SESSION.md section name (lowercased) to the session_focus_update argument key.
+const SESSION_FOCUS_KEYS: Record<string, 'currentFocus' | 'nextActions' | 'openQuestions' | 'handoffNotes'> = {
+    'current focus':  'currentFocus',
+    'next actions':   'nextActions',
+    'open questions': 'openQuestions',
+    'handoff notes':  'handoffNotes',
+};
+
 // Type guard to check if an object is a TFile
 function isTFile(obj: unknown): obj is TFile {
     return typeof obj === 'object' && obj !== null && 'extension' in obj && 'path' in obj;
@@ -127,6 +135,8 @@ interface AuthoringTools {
     toolMemoryCompact: (_root: string, _args: { file: string; compacted_content: string }) => string;
     toolChapterStatusGet: (_root: string) => string;
     toolChapterStatusUpdate: (_root: string, _args: { chapters: AuthoringChapterStatusEntry[] }) => string;
+    toolSessionFocusGet: (_root: string, _args: { section?: string }) => string;
+    toolSessionFocusUpdate: (_root: string, _args: { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }) => string;
 }
 
 function loadAuthoringTools(): AuthoringTools {
@@ -331,6 +341,9 @@ export default class BinderyPlugin extends Plugin {
         this.addCommand({ id: 'memory-compact', name: 'Compact memory', callback: () => void this.memoryCompactCommand() });
         this.addCommand({ id: 'chapter-status-get', name: 'Show chapter status', callback: () => void this.chapterStatusGetCommand() });
         this.addCommand({ id: 'chapter-status-update', name: 'Update chapter status', callback: () => void this.chapterStatusUpdateCommand() });
+        this.addCommand({ id: 'session-focus-show', name: 'Show session focus', callback: () => void this.sessionFocusShowCommand() });
+        this.addCommand({ id: 'session-focus-update', name: 'Update session focus', callback: () => void this.sessionFocusUpdateCommand() });
+        this.addCommand({ id: 'session-focus-append-handoff', name: 'Append handoff note', callback: () => void this.sessionFocusAppendHandoffCommand() });
 
         // Show MCP config snippet — copies JSON to clipboard
         this.addCommand({
@@ -813,6 +826,36 @@ export default class BinderyPlugin extends Plugin {
         await this.runAuthoringCommand('Chapter status update', async (root, tools) => {
             const entry = await this.promptChapterStatusEntry();
             return entry ? tools.toolChapterStatusUpdate(root, { chapters: [entry] }) : null;
+        });
+    }
+
+    private async sessionFocusShowCommand(): Promise<void> {
+        await this.runAuthoringCommand('Session focus', async (root, tools) => {
+            const section = await this.promptOptional('Section to show (blank = whole file):');
+            if (section === null) { return null; }
+            return tools.toolSessionFocusGet(root, { section });
+        });
+    }
+
+    private async sessionFocusUpdateCommand(): Promise<void> {
+        await this.runAuthoringCommand('Session focus update', async (root, tools) => {
+            const section = await this.promptRequired('Section (Current Focus, Next Actions, Open Questions, Handoff Notes):', 'Current Focus');
+            if (!section) { return null; }
+            const key = SESSION_FOCUS_KEYS[section.trim().toLowerCase()];
+            if (!key) { this.notify('Unknown section. Use Current Focus, Next Actions, Open Questions, or Handoff Notes.'); return null; }
+            const content = await this.promptRequired('New content:');
+            if (!content) { return null; }
+            const mode = await this.promptOptional('Mode (replace or append):', 'replace');
+            if (mode === null) { return null; }
+            const resolvedMode = mode === 'append' ? 'append' : 'replace';
+            return tools.toolSessionFocusUpdate(root, { [key]: content, mode: resolvedMode });
+        });
+    }
+
+    private async sessionFocusAppendHandoffCommand(): Promise<void> {
+        await this.runAuthoringCommand('Append handoff note', async (root, tools) => {
+            const content = await this.promptRequired('Handoff note to append:');
+            return content ? tools.toolSessionFocusUpdate(root, { handoffNotes: content, mode: 'append' }) : null;
         });
     }
 

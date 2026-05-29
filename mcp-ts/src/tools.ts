@@ -42,6 +42,7 @@ import {
     getCharactersFolder,
     getNotesFolder,
     getSessionFile,
+    getPreferencesFile,
     getStoryFolder,
     type WorkspaceSettings,
 } from '@bindery/core';
@@ -70,6 +71,7 @@ interface Settings extends WorkspaceSettings {
     arcFolder?: string;
     charactersFolder?: string;
     sessionFile?: string;
+    preferencesFile?: string;
     arcGranularity?: 'overall' | 'act' | 'chapter' | 'thread' | 'custom';
     author?: string;
     bookTitle?: string | Record<string, string>;
@@ -2238,11 +2240,10 @@ function titleAsString(value: unknown, fallback: string): string {
 
 function cowriteSessionFile(settings: Record<string, unknown>, _languages: Array<Record<string, unknown>>): string {
     const title = titleAsString(settings['bookTitle'], 'Untitled');
-    return `# Session
+    return `# Session — ${title}
 
-Book: ${title}
-
-This file is intentionally user-owned. Bindery creates it so authors and agents have a shared place for current focus and handoff notes, but personal workflow rules and collaboration preferences belong here only if the author chooses to add them.
+Ephemeral working state. Bindery and agents keep current focus and handoff here, and \`session_focus_*\` tools update its sections.
+Durable preferences live in PREFERENCES.md; durable story decisions live in \`.bindery/memories/\`.
 
 ## Current Focus
 
@@ -2255,8 +2256,26 @@ This file is intentionally user-owned. Bindery creates it so authors and agents 
 
 ## Handoff Notes
 
+`;
+}
 
-## Personal Working Notes
+function preferencesFileTemplate(settings: Record<string, unknown>): string {
+    const title = titleAsString(settings['bookTitle'], 'Untitled');
+    return `# Preferences — ${title}
+
+Your durable working preferences. User-owned: Bindery scaffolds this once and never edits it.
+"Do it like this for me" — tone, conventions, review style, and collaboration rules. Current working state belongs in SESSION.md.
+
+## Working Style
+
+
+## Writing Conventions
+
+
+## Review Preferences
+
+
+## Collaboration Notes
 
 `;
 }
@@ -2346,6 +2365,7 @@ function scaffoldOpinionatedWorkspace(root: string, settings: Record<string, unk
     const arcFolderName = getArcFolder(typedSettings);
     const charactersFolderName = getCharactersFolder(typedSettings);
     const sessionFileName = getSessionFile(typedSettings);
+    const preferencesFileName = getPreferencesFile(typedSettings);
     const title = titleAsString(settings['bookTitle'], path.basename(root));
 
     for (const lang of languages) {
@@ -2370,6 +2390,7 @@ function scaffoldOpinionatedWorkspace(root: string, settings: Record<string, unk
 
     const files: Array<[string, string]> = [
         [sessionFileName, cowriteSessionFile(settings, languages)],
+        [preferencesFileName, preferencesFileTemplate(settings)],
         [`${arcFolderName}/index.md`, arcIndexTemplate(arcFolderName)],
         [`${arcFolderName}/Overall.md`, overallArcTemplate()],
         [`${notesFolderName}/Inbox.md`, noteIndexTemplate('Inbox', 'Drop loose ideas, pasted mobile chats, and unsorted notes here. Process them into structured notes when ready.')],
@@ -2409,6 +2430,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         arcFolder:         existing['arcFolder'] as string | undefined,
         charactersFolder:  existing['charactersFolder'] as string | undefined,
         sessionFile:       existing['sessionFile'] as string | undefined,
+        preferencesFile:   existing['preferencesFile'] as string | undefined,
         arcGranularity:    existing['arcGranularity'] as WorkspaceSettings['arcGranularity'],
     };
 
@@ -2426,6 +2448,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         arcFolder:       existing['arcFolder']        ?? getArcFolder(settingsForDefaults),
         charactersFolder: existing['charactersFolder'] ?? getCharactersFolder(settingsForDefaults),
         sessionFile:     existing['sessionFile']      ?? getSessionFile(settingsForDefaults),
+        preferencesFile: existing['preferencesFile']  ?? getPreferencesFile(settingsForDefaults),
         arcGranularity:  existing['arcGranularity']   ?? getArcGranularity(settingsForDefaults),
         mergedOutputDir: (existing['mergedOutputDir'])  ?? 'Merged',
         mergeFilePrefix: (existing['mergeFilePrefix'])  ?? slug,
@@ -2807,6 +2830,125 @@ export function toolChapterStatusUpdate(root: string, args: ChapterStatusUpdateA
     fs.writeFileSync(filePath, JSON.stringify(out, null, 2) + '\n', 'utf-8');
 
     return `Chapter status updated: ${added} added, ${updated} updated. Total: ${chapters.length} chapters.`;
+}
+
+// ─── Session focus (SESSION.md) ─────────────────────────────────────────────────
+
+/** Neutral SESSION.md sections that session_focus_update is allowed to touch. */
+const SESSION_SECTIONS = [
+    ['currentFocus',  'Current Focus'],
+    ['nextActions',   'Next Actions'],
+    ['openQuestions', 'Open Questions'],
+    ['handoffNotes',  'Handoff Notes'],
+] as const;
+
+type SessionSectionKey = (typeof SESSION_SECTIONS)[number][0];
+
+function sessionFilePath(root: string): string {
+    return path.join(root, getSessionFile(readSettings(root) ?? null));
+}
+
+interface ParsedSection { title: string; body: string; }
+interface ParsedSessionFile { preamble: string; sections: ParsedSection[]; }
+
+/** Split a markdown file into a preamble plus ordered `## ` sections, preserving body text. */
+function parseSessionFile(text: string): ParsedSessionFile {
+    const lines = text.split(/\r?\n/);
+    const preambleLines: string[] = [];
+    const sections: ParsedSection[] = [];
+    let current: { title: string; lines: string[] } | null = null;
+
+    for (const line of lines) {
+        const match = /^##\s+(.+?)\s*$/.exec(line);
+        if (match) {
+            if (current) { sections.push({ title: current.title, body: current.lines.join('\n').trim() }); }
+            current = { title: match[1].trim(), lines: [] };
+        } else if (current) {
+            current.lines.push(line);
+        } else {
+            preambleLines.push(line);
+        }
+    }
+    if (current) { sections.push({ title: current.title, body: current.lines.join('\n').trim() }); }
+    return { preamble: preambleLines.join('\n').trim(), sections };
+}
+
+function serializeSessionFile(parsed: ParsedSessionFile): string {
+    const parts: string[] = [];
+    if (parsed.preamble.trim()) { parts.push(parsed.preamble.trim()); }
+    for (const section of parsed.sections) {
+        parts.push(`## ${section.title}${section.body ? `\n\n${section.body}` : ''}`);
+    }
+    return parts.join('\n\n') + '\n';
+}
+
+export function toolSessionFocusGet(root: string, args: { section?: string } = {}): string {
+    const filePath = sessionFilePath(root);
+    const rel = getSessionFile(readSettings(root) ?? null);
+    if (!fs.existsSync(filePath)) {
+        return `No session file on record at ${rel}. Run init_workspace or use session_focus_update to create it.`;
+    }
+    const text = fs.readFileSync(filePath, 'utf-8');
+    const wanted = args.section?.trim();
+    if (!wanted) { return text; }
+
+    const parsed = parseSessionFile(text);
+    const section = parsed.sections.find(s => s.title.toLowerCase() === wanted.toLowerCase());
+    if (!section) {
+        const titles = parsed.sections.map(s => s.title).join(', ') || '(none)';
+        return `Section "${wanted}" not found in ${rel}. Available sections: ${titles}.`;
+    }
+    return `## ${section.title}\n\n${section.body || '(empty)'}`;
+}
+
+export interface SessionFocusUpdateArgs {
+    currentFocus?: string;
+    nextActions?: string;
+    openQuestions?: string;
+    handoffNotes?: string;
+    /** 'replace' (default) overwrites a section body; 'append' adds beneath existing content. */
+    mode?: 'replace' | 'append';
+}
+
+export function toolSessionFocusUpdate(root: string, args: SessionFocusUpdateArgs): string {
+    const provided = SESSION_SECTIONS.filter(([key]) => {
+        const value = args[key as SessionSectionKey];
+        return typeof value === 'string' && value.trim().length > 0;
+    });
+    if (provided.length === 0) {
+        return 'Error: provide at least one of currentFocus, nextActions, openQuestions, or handoffNotes.';
+    }
+
+    const filePath = sessionFilePath(root);
+    const rel = getSessionFile(readSettings(root) ?? null);
+    const mode = args.mode === 'append' ? 'append' : 'replace';
+
+    let text: string;
+    if (fs.existsSync(filePath)) {
+        text = fs.readFileSync(filePath, 'utf-8');
+    } else {
+        text = cowriteSessionFile((readSettings(root) ?? {}) as Record<string, unknown>, []);
+    }
+    const parsed = parseSessionFile(text);
+
+    const touched: string[] = [];
+    for (const [key, title] of provided) {
+        const incoming = (args[key as SessionSectionKey] as string).trim();
+        let section = parsed.sections.find(s => s.title.toLowerCase() === title.toLowerCase());
+        if (!section) {
+            section = { title, body: '' };
+            parsed.sections.push(section);
+        }
+        section.body = mode === 'append' && section.body
+            ? `${section.body}\n\n${incoming}`
+            : incoming;
+        touched.push(title);
+    }
+
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, serializeSessionFile(parsed), 'utf-8');
+
+    return `Session focus updated in ${rel} (${mode}): ${touched.join(', ')}.`;
 }
 
 // ─── Shared formatter ─────────────────────────────────────────────────────────

@@ -52,7 +52,8 @@ describe('toolInitWorkspace', () => {
         expect(settings['notesFolder']).toBe('Notes');
         expect(settings['arcFolder']).toBe('Arc');
         expect(settings['charactersFolder']).toBe('Notes/Characters');
-        expect(settings['sessionFile']).toBe('COWORK.md');
+        expect(settings['sessionFile']).toBe('SESSION.md');
+        expect(settings['preferencesFile']).toBe('PREFERENCES.md');
         expect(settings['arcGranularity']).toBe('act');
         expect(fs.existsSync(path.join(root, '.bindery', 'translations.json'))).toBe(true);
     });
@@ -61,8 +62,9 @@ describe('toolInitWorkspace', () => {
         const root = makeRoot();
         const result = toolInitWorkspace(root, { bookTitle: 'My Novel' });
 
-        expect(result).toContain('COWORK.md');
-        expect(fs.existsSync(path.join(root, 'COWORK.md'))).toBe(true);
+        expect(result).toContain('SESSION.md');
+        expect(fs.existsSync(path.join(root, 'SESSION.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'PREFERENCES.md'))).toBe(true);
         expect(fs.existsSync(path.join(root, 'Arc', 'index.md'))).toBe(true);
         expect(fs.existsSync(path.join(root, 'Arc', 'Overall.md'))).toBe(true);
         expect(fs.existsSync(path.join(root, 'Arc', 'Acts'))).toBe(true);
@@ -75,30 +77,36 @@ describe('toolInitWorkspace', () => {
 
     it('does not overwrite existing scaffold files', () => {
         const root = makeRoot();
-        write(path.join(root, 'COWORK.md'), '# Existing focus\n');
+        write(path.join(root, 'SESSION.md'), '# Existing focus\n');
 
         toolInitWorkspace(root, { bookTitle: 'My Novel' });
 
-        expect(fs.readFileSync(path.join(root, 'COWORK.md'), 'utf-8')).toBe('# Existing focus\n');
+        expect(fs.readFileSync(path.join(root, 'SESSION.md'), 'utf-8')).toBe('# Existing focus\n');
     });
 
-    it('creates a minimal user-owned session file without embedded assistant rules', () => {
+    it('creates a minimal session file and a separate user-owned preferences file', () => {
         const root = makeRoot();
 
         toolInitWorkspace(root, { bookTitle: 'My Novel', genre: 'Fantasy', targetAudience: '12+' });
 
-        const session = fs.readFileSync(path.join(root, 'COWORK.md'), 'utf-8');
+        const session = fs.readFileSync(path.join(root, 'SESSION.md'), 'utf-8');
         expect(session).toContain('# Session');
-        expect(session).toContain('Book: My Novel');
-        expect(session).toContain('intentionally user-owned');
+        expect(session).toContain('My Novel');
+        expect(session).toContain('Ephemeral working state');
         expect(session).toContain('## Current Focus');
         expect(session).toContain('## Handoff Notes');
-        expect(session).toContain('## Personal Working Notes');
+        // Working-state file only — preferences live in their own file now.
+        expect(session).not.toContain('## Personal Working Notes');
         expect(session).not.toContain('## Common tasks');
         expect(session).not.toContain('## Notes for the assistant');
         expect(session).not.toContain('Do not rewrite prose');
-        expect(session).not.toContain('Target audience');
         expect(session).not.toContain('Fantasy');
+
+        const prefs = fs.readFileSync(path.join(root, 'PREFERENCES.md'), 'utf-8');
+        expect(prefs).toContain('# Preferences');
+        expect(prefs).toContain('My Novel');
+        expect(prefs).toContain('never edits it');
+        expect(prefs).toContain('## Working Style');
     });
 
     it('uses configured authoring paths when updating an existing workspace', () => {

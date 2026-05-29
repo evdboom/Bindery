@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/continuity/SKILL.md',
-    version: 13,
+    version: 14,
     label:   'continuity skill',
     zip:     '.claude/skills/continuity.zip',
 };
@@ -29,7 +29,8 @@ const CONTENT = [
     "",
     "## Tools",
     "Use these Bindery MCP tools:",
-    "- `get_text(path)` — read settings, COWORK.md, and memory files",
+    "- `get_text(path)` — read settings and memory files",
+    "- `session_focus_get(section?)` — read the current focus / working state from `SESSION.md`",
     "- `arc_list` / `arc_get` — read structured arc files",
     "- `character_list` / `character_get` — read structured character profiles",
     "- `get_chapter(chapterNumber, language)` — read a specific chapter",

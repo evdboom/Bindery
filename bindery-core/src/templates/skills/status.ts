@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/status/SKILL.md',
-    version: 13,
+    version: 14,
     label:   'status skill',
     zip:     '.claude/skills/status.zip',
 };
@@ -29,7 +29,8 @@ const CONTENT = [
     "- `chapter_status_get(book)` — read the structured progress tracker from `.bindery/chapter-status.json`",
     "- `chapter_status_update(book, chapters)` — upsert chapter progress entries (send only changed chapters)",
     "- `get_overview(language)` — list all acts and chapters with titles",
-    "- `get_text(identifier)` — read COWORK.md, settings.json, and memory files",
+    "- `session_focus_get(section?)` — read the current focus / working state from `SESSION.md`",
+    "- `get_text(identifier)` — read settings.json and memory files",
     "- `arc_list` / `arc_get` — inspect arc structure and relevant arc files",
     "- `character_list` — inspect the cast index when character-profile coverage matters",
     "- `memory_list` — discover which chapter memory files exist (`chXX.md`)",
@@ -38,7 +39,7 @@ const CONTENT = [
     "",
     "1. Use `get_text(\".bindery/settings.json\")` to pick up the current book's structure and conventions.",
     "2. Use `chapter_status_get` to read the current tracker. Use `memory_list` to check available memory files.",
-    "3. Use `get_text` to read COWORK.md (current focus), `.bindery/memories/global.md`, and for in-progress chapters `.bindery/memories/chXX.md`. Use `arc_list`/`arc_get` for arc context and `character_list` for cast coverage when needed.",
+    "3. Use `session_focus_get` to read the current focus from `SESSION.md`, and `get_text` to read `.bindery/memories/global.md` and for in-progress chapters `.bindery/memories/chXX.md`. Use `arc_list`/`arc_get` for arc context and `character_list` for cast coverage when needed.",
     "4. Use `get_overview` for the full chapter listing if the tracker is empty or incomplete.",
     "5. Check `Arc/` for what's planned vs written (`index.md`, `Overall.md`, and the relevant act/thread/chapter arc file).",
     "6. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.",
@@ -64,7 +65,7 @@ const CONTENT = [
     "**Open questions:**",
     "- [From global.md or chapter memory — unresolved decisions relevant to what comes next]",
     "",
-    "**Current focus:** [From COWORK.md, if present]",
+    "**Current focus:** [From SESSION.md via session_focus_get, if present]",
     "```",
     "",
     "If the tracker was updated in Step 7, note which entries were added or changed.",

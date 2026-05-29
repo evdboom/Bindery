@@ -24,6 +24,8 @@ import {
   toolSearch,
   toolHealth,
   toolSetupAiFiles,
+  toolSessionFocusGet,
+  toolSessionFocusUpdate,
 } from '../src/tools';
 
 const tempRoots: string[] = [];
@@ -525,5 +527,75 @@ describe('mcp tools', () => {
     expect(health.ai_version_outdated).toBe(true);
     expect(health.ai_versions_outdated?.some(x => x.file === '.claude/skills/review/SKILL.md')).toBe(true);
     expect(health.ai_versions_outdated?.some(x => x.label === 'review skill')).toBe(true);
+  });
+
+  it('reports an empty state when the session file is missing', () => {
+    const root = makeRoot();
+    const result = toolSessionFocusGet(root, {});
+    expect(result).toContain('No session file on record');
+    expect(result).toContain('SESSION.md');
+  });
+
+  it('creates SESSION.md from scaffold on first update and fills only the named section', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ bookTitle: 'Test Book' }, null, 2) + '\n');
+
+    const msg = toolSessionFocusUpdate(root, { currentFocus: 'Draft chapter 3' });
+    expect(msg).toContain('SESSION.md');
+    expect(msg).toContain('Current Focus');
+
+    const text = fs.readFileSync(path.join(root, 'SESSION.md'), 'utf-8');
+    expect(text).toContain('## Current Focus\n\nDraft chapter 3');
+    expect(text).toContain('## Next Actions');
+    expect(text).toContain('## Handoff Notes');
+    // PREFERENCES content must never bleed into the session file.
+    expect(text).not.toContain('Personal Working Notes');
+  });
+
+  it('replaces a section by default and appends in append mode, preserving other sections', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ bookTitle: 'Test Book' }, null, 2) + '\n');
+
+    toolSessionFocusUpdate(root, { currentFocus: 'First focus', openQuestions: 'Who is the villain?' });
+    toolSessionFocusUpdate(root, { currentFocus: 'Second focus' });
+
+    let text = fs.readFileSync(path.join(root, 'SESSION.md'), 'utf-8');
+    expect(text).toContain('## Current Focus\n\nSecond focus');
+    expect(text).not.toContain('First focus');
+    // unrelated section preserved
+    expect(text).toContain('Who is the villain?');
+
+    toolSessionFocusUpdate(root, { handoffNotes: 'Line one', mode: 'append' });
+    toolSessionFocusUpdate(root, { handoffNotes: 'Line two', mode: 'append' });
+    text = fs.readFileSync(path.join(root, 'SESSION.md'), 'utf-8');
+    expect(text).toContain('Line one');
+    expect(text).toContain('Line two');
+    expect(text.indexOf('Line one')).toBeLessThan(text.indexOf('Line two'));
+  });
+
+  it('does not touch a user-owned PREFERENCES.md when updating session focus', () => {
+    const root = makeRoot();
+    write(path.join(root, 'PREFERENCES.md'), '# Preferences\n\n## Working Style\n\nTerse.\n');
+    write(path.join(root, 'SESSION.md'), '# Session\n\n## Current Focus\n\nold\n');
+
+    toolSessionFocusUpdate(root, { currentFocus: 'new' });
+
+    const prefs = fs.readFileSync(path.join(root, 'PREFERENCES.md'), 'utf-8');
+    expect(prefs).toContain('Terse.');
+  });
+
+  it('reads a single section and rejects unknown ones with available options', () => {
+    const root = makeRoot();
+    write(path.join(root, 'SESSION.md'), '# Session\n\n## Current Focus\n\nShip phase 4\n\n## Handoff Notes\n\nNothing yet\n');
+
+    expect(toolSessionFocusGet(root, { section: 'Current Focus' })).toContain('Ship phase 4');
+    const missing = toolSessionFocusGet(root, { section: 'Nope' });
+    expect(missing).toContain('not found');
+    expect(missing).toContain('Current Focus');
+  });
+
+  it('errors when no session section is provided', () => {
+    const root = makeRoot();
+    expect(toolSessionFocusUpdate(root, {})).toContain('provide at least one');
   });
 });

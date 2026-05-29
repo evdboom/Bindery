@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/plan-beats/SKILL.md',
-    version: 2,
+    version: 3,
     label:   'plan-beats skill',
     zip:     '.claude/skills/plan-beats.zip',
 };
@@ -44,12 +44,12 @@ const CONTENT = [
     "",
     "If mode is ambiguous, infer it: existing beats found and user mentions adding/removing/reordering → **update**; existing beats found and user mentions improving/tightening/clarifying → **refine**; existing 1-line beats and user mentions expanding/fleshing out → **expand**; existing beats found and intent unclear → default to **refine**; no beats found → **create**. This skill is meant to be interactive and iterative — if the user just wants a full beatmap generated without discussion, they can clarify that in the prompt or ask for a draft first.",
     "",
-    "> **Project convention**: Beat storage varies by project. Common locations: `Arc/Acts/` planning files, chapter sections in `Arc/Overall.md`, inline comments in the chapter file, or a separate outline file. Detect this from the project files or workspace instructions (for example `COWORK.md` or `.bindery/README.md`). If unclear, ask the user.",
+    "> **Project convention**: Beat storage varies by project. Common locations: `Arc/Acts/` planning files, chapter sections in `Arc/Overall.md`, inline comments in the chapter file, or a separate outline file. Detect this from the project files or workspace instructions (for example `PREFERENCES.md` or `.bindery/README.md`). If unclear, ask the user.",
     "",
     "## Tools",
     "Use these Bindery MCP tools:",
     "- `get_chapter(chapterNumber, language)` — read an existing chapter and any embedded beatmap",
-    "- `get_text(path)` — read settings, `COWORK.md`, `.bindery/README.md`, or memory files",
+    "- `get_text(path)` — read settings, `PREFERENCES.md`, `.bindery/README.md`, or memory files",
     "- `arc_list` / `arc_get` / `arc_update` — read or update structured arc files that hold beatmaps",
     "- `character_list` / `character_get` — load relevant structured character profiles",
     "- `get_notes(category, name)` — look up characters, world rules, or equipment",
@@ -68,7 +68,7 @@ const CONTENT = [
     "",
     "### Phase 3 — Locate existing beats",
     "4. Locate beat storage using this fallback chain:",
-    "   1. Check COWORK.md or README for a beat storage convention.",
+    "   1. Check PREFERENCES.md or README for a beat storage convention.",
     "   2. If not found, check `Arc/index.md`, `Arc/Overall.md`, relevant `Arc/Acts/` files, then the chapter file itself.",
     "   3. If still not found, ask the user: *\"Where do you keep your chapter beats — in an arc file, in the chapter itself, or somewhere else?\"*",
     "   4. If no arc, outline, chapter, or beat file exists at all, tell the user there is no context to work from and ask them to describe the chapter's purpose and key events before proceeding.",

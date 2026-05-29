@@ -75,6 +75,8 @@ interface SetupAiFilesInput   { targets?: string[]; skills?: string[]; overwrite
 interface MemoryAppendInput   { file: string; title: string; content: string }
 interface MemoryCompactInput  { file: string; compacted_content: string }
 interface ChapterStatusUpdateInput { chapters: Array<{ number: number; title: string; language: string; status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review'; wordCount?: number; notes?: string }> }
+interface SessionFocusGetInput    { section?: string }
+interface SessionFocusUpdateInput { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }
 
 interface McpTools {
     toolHealth:           (_root: string) => string;
@@ -115,6 +117,8 @@ interface McpTools {
     toolMemoryCompact:    (_root: string, _args: MemoryCompactInput) => string;
     toolChapterStatusGet:    (_root: string) => string;
     toolChapterStatusUpdate: (_root: string, _args: ChapterStatusUpdateInput) => string;
+    toolSessionFocusGet:     (_root: string, _args: SessionFocusGetInput) => string;
+    toolSessionFocusUpdate:  (_root: string, _args: SessionFocusUpdateInput) => string;
 }
 
 /**
@@ -306,6 +310,14 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<ChapterStatusUpdateInput>('bindery_chapter_status_update', {
             invoke: (opts, _token) => ok(t.toolChapterStatusUpdate(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<SessionFocusGetInput>('bindery_session_focus_get', {
+            invoke: (opts, _token) => ok(t.toolSessionFocusGet(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<SessionFocusUpdateInput>('bindery_session_focus_update', {
+            invoke: (opts, _token) => ok(t.toolSessionFocusUpdate(requireRoot(), opts.input)),
         }),
     );
 }

@@ -2,13 +2,13 @@ import { audienceNote, languageSection, type TemplateContext, type TemplateMeta 
 
 export const meta: TemplateMeta = {
     file:    'CLAUDE.md',
-    version: 13,
+    version: 14,
     label:   'project instructions',
     zip:     null,
 };
 
 export function render(ctx: TemplateContext): string {
-    const { title, author, description, genre, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, arcGranularity } = ctx;
+    const { title, author, description, genre, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, preferencesFile, arcGranularity } = ctx;
     const lines: string[] = [
         `# Claude — ${title}`,
         '',
@@ -24,7 +24,7 @@ export function render(ctx: TemplateContext): string {
         '1. Use /read-in at the start of a session to load context and get your bearings.',
         '2. Run `health` from the Bindery MCP and check `ai_versions_outdated`.',
         '3. If `ai_versions_outdated` has entries, run `setup_ai_files` and present the returned `skill_zips.reupload_required` list to the user for Claude Desktop.',
-        `4. If the skill or MCP server is not available, read at least ${sessionFile} (if present) for user-owned current focus and handoff context.`,
+        `4. If the skill or MCP server is not available, read at least ${sessionFile} (if present) for current focus and handoff context, and ${preferencesFile} for the author's durable working preferences.`,
         '',
         '## Memory system',
         '1. When concluding a discussion, or after you give a meaningful, preservation-worthy response: use /memory to store it.',
@@ -38,7 +38,8 @@ export function render(ctx: TemplateContext): string {
         `  Acts/  ← act-level arc files`,
         `${notesFolder}/  ← story notes`,
         `${charactersFolder}/  ← character index and one profile per character`,
-        `${sessionFile}  ← user-owned current focus / handoff notes`,
+        `${sessionFile}  ← ephemeral working state (current focus / next actions / open questions / handoff) via session_focus_*`,
+        `${preferencesFile}  ← durable working preferences ("do it like this for me"); user-owned, never tool-written`,
         `${storyFolder}/`,
         ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters (one .md per chapter)`),
         '```',
@@ -80,7 +81,7 @@ export function render(ctx: TemplateContext): string {
         '| `list_books` | List all configured book names |',
         '| `identify_book` | Match a working directory to a book name |',
         '| `health` | Server status: settings, index, embedding backend |',
-        '| `init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold |',
+        '| `init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |',
         '| `setup_ai_files` | Regenerate AI instruction files, rebuild Claude skill zip files, and return a change manifest |',
         '| `index_build` | Build or rebuild the full-text search index |',
         '| `index_status` | Show index chunk count and build time |',
@@ -111,6 +112,8 @@ export function render(ctx: TemplateContext): string {
         '| `memory_compact` | Overwrite a file in `.bindery/memories/` with a summary (backs up original to `.bindery/memories/archive/`) |',
         '| `chapter_status_get` | Read the chapter progress tracker — entries grouped by status |',
         '| `chapter_status_update` | Upsert chapter progress entries (send only changed chapters) |',
+        `| \`session_focus_get\` | Read current working state from ${sessionFile} (optionally one section) |`,
+        `| \`session_focus_update\` | Update neutral ${sessionFile} sections (Current Focus, Next Actions, Open Questions, Handoff Notes); leaves ${preferencesFile} untouched |`,
     );
     return lines.filter(l => l !== '\n').join('\n') + '\n';
 }

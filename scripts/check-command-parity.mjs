@@ -61,6 +61,9 @@ const expectedPairs = [
   ['memoryCompact', 'bindery.memoryCompact', 'memory-compact'],
   ['chapterStatusGet', 'bindery.chapterStatusGet', 'chapter-status-get'],
   ['chapterStatusUpdate', 'bindery.chapterStatusUpdate', 'chapter-status-update'],
+  ['sessionFocusShow', 'bindery.sessionFocusShow', 'session-focus-show'],
+  ['sessionFocusUpdate', 'bindery.sessionFocusUpdate', 'session-focus-update'],
+  ['sessionFocusAppendHandoff', 'bindery.sessionFocusAppendHandoff', 'session-focus-append-handoff'],
 ];
 
 const exceptions = [
