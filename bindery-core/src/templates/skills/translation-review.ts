@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/translation-review/SKILL.md',
-    version: 3,
+    version: 4,
     label:   'translation-review skill',
     zip:     '.claude/skills/translation-review.zip',
 };
@@ -43,7 +43,7 @@ const CONTENT = [
     "",
     "1. Call `get_review_text`. The response has two sections: a `# Git diff` block and a `# Review markers` block (one or both may be empty).",
     "2. If both sections are empty, report that nothing new has been translated yet.",
-    "3. Identify changed files and determine source/target language from available context: session file (for example COWORK.md), recent conversation, or ask the user if ambiguous.",
+    "3. Identify changed files and determine source/target language from available context: the session file (`SESSION.md`), recent conversation, or ask the user if ambiguous.",
     "4. If the target-language file changed (or has marker regions), capture the changed/marked target line range.",
     "5. **Line parity matching** — attempt to fetch the corresponding source lines:",
     "   - First, assume line parity: call `get_text(sourceFile, startLine, endLine)` for the same range as the target.",

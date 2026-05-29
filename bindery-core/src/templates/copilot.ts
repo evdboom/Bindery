@@ -2,13 +2,13 @@ import { audienceNote, languageSection, type TemplateContext, type TemplateMeta 
 
 export const meta: TemplateMeta = {
     file:    '.github/copilot-instructions.md',
-    version: 9,
+    version: 11,
     label:   'copilot instructions',
     zip:     null,
 };
 
 export function render(ctx: TemplateContext): string {
-    const { title, author, description, genre, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, arcGranularity } = ctx;
+    const { title, author, description, genre, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, preferencesFile, arcGranularity } = ctx;
     const lines: string[] = [`# GitHub Copilot — ${title}`, ''];
     if (genre || description || ctx.audience) {
         lines.push('## Project');
@@ -25,7 +25,8 @@ export function render(ctx: TemplateContext): string {
         `  index.md / Overall.md / Acts/`,
         `${notesFolder}/  ← story notes`,
         `${charactersFolder}/  ← character index and one profile per character`,
-        `${sessionFile}  ← user-owned current focus / handoff notes`,
+        `${sessionFile}  ← ephemeral working state (current focus / handoff) via session_focus_*`,
+        `${preferencesFile}  ← durable working preferences; user-owned, never tool-written`,
         `${storyFolder}/`,
         ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters`),
         '```',
@@ -33,7 +34,8 @@ export function render(ctx: TemplateContext): string {
         '## Shared skill workflows',
         '- Workspace skill files live in `.claude/skills/` and may also be picked up by agents beyond Claude.',
         '- Prefer those shared slash workflows when available: `/read-in`, `/review`, `/translation-review`, `/translate`, `/memory`, `/continuity`, `/status`, `/read-aloud`, `/proof-read`, `/plan-beats`, `/character-setup`.',
-        '- Treat arc files as story architecture, not generic notes. Use `arc_*` tools for structure, `character_*` tools for durable cast facts, `note_*` tools for story notes, and `memory_*` tools for cross-session decisions when available.',
+        '- Treat arc files as story architecture, not generic notes. Use `arc_*` tools for structure, `character_*` tools for durable cast facts, `note_*` tools for story notes, `memory_*` tools for cross-session decisions, and `session_focus_*` tools for current working state. Durable preferences are user-owned in PREFERENCES.md — propose changes rather than writing it.',
+        '- Send rough, unsorted, or pasted material to `Notes/Inbox.md`, then triage it with `inbox_process` (propose destinations) and `inbox_resolve` (clear routed items) — do not dump it into memory.',
         '',
         '## Writing guidelines',
         '- HTML comments `<!-- -->` in chapter files are writer notes — treat as context only.',

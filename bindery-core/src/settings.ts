@@ -64,8 +64,10 @@ export interface WorkspaceSettings {
     arcFolder?:       string;
     /** Character profile folder relative to the book root. */
     charactersFolder?: string;
-    /** Current-focus/session file relative to the book root. */
+    /** Ephemeral current-focus/session file relative to the book root (default SESSION.md). */
     sessionFile?:     string;
+    /** Durable user preferences file relative to the book root (default PREFERENCES.md). User-owned; Bindery never edits it. */
+    preferencesFile?: string;
     /** Preferred arc planning granularity. */
     arcGranularity?:  ArcGranularity;
     mergedOutputDir?:  string;
@@ -91,7 +93,8 @@ export const DEFAULT_STORY_FOLDER       = 'Story';
 export const DEFAULT_NOTES_FOLDER       = 'Notes';
 export const DEFAULT_ARC_FOLDER         = 'Arc';
 export const DEFAULT_CHARACTERS_FOLDER  = 'Notes/Characters';
-export const DEFAULT_SESSION_FILE       = 'COWORK.md';
+export const DEFAULT_SESSION_FILE       = 'SESSION.md';
+export const DEFAULT_PREFERENCES_FILE   = 'PREFERENCES.md';
 export const DEFAULT_ARC_GRANULARITY: ArcGranularity = 'act';
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
@@ -111,7 +114,7 @@ export function getTranslationsPath(root: string): string {
 // ─── Authoring Path Defaults ─────────────────────────────────────────────────
 
 type AuthoringPathSettings = Pick<WorkspaceSettings,
-    'storyFolder' | 'notesFolder' | 'arcFolder' | 'charactersFolder' | 'sessionFile' | 'arcGranularity'
+    'storyFolder' | 'notesFolder' | 'arcFolder' | 'charactersFolder' | 'sessionFile' | 'preferencesFile' | 'arcGranularity'
 >;
 
 export function getStoryFolder(settings: AuthoringPathSettings | null): string {
@@ -132,6 +135,10 @@ export function getCharactersFolder(settings: AuthoringPathSettings | null): str
 
 export function getSessionFile(settings: AuthoringPathSettings | null): string {
     return settings?.sessionFile ?? DEFAULT_SESSION_FILE;
+}
+
+export function getPreferencesFile(settings: AuthoringPathSettings | null): string {
+    return settings?.preferencesFile ?? DEFAULT_PREFERENCES_FILE;
 }
 
 export function getArcGranularity(settings: AuthoringPathSettings | null): ArcGranularity {

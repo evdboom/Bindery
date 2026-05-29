@@ -20,6 +20,7 @@ import {
     getDialectsForLanguage,
     getNotesFolder,
     getSessionFile,
+    getPreferencesFile,
     getSettingsPath,
     getStoryFolder,
     getTranslationsPath,
@@ -70,7 +71,8 @@ describe('authoring defaults', () => {
         expect(getNotesFolder(null)).toBe('Notes');
         expect(getArcFolder(null)).toBe('Arc');
         expect(getCharactersFolder(null)).toBe('Notes/Characters');
-        expect(getSessionFile(null)).toBe('COWORK.md');
+        expect(getSessionFile(null)).toBe('SESSION.md');
+        expect(getPreferencesFile(null)).toBe('PREFERENCES.md');
         expect(getArcGranularity(null)).toBe('act');
     });
 

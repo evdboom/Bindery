@@ -15,7 +15,8 @@ function makeCtx(overrides: Partial<TemplateContext> = {}): TemplateContext {
     notesFolder:    'Notes',
     arcFolder:      'Arc',
     charactersFolder: 'Notes/Characters',
-    sessionFile:    'COWORK.md',
+    sessionFile:    'SESSION.md',
+    preferencesFile: 'PREFERENCES.md',
     arcGranularity: 'act',
     memoriesFolder: '.bindery/memories',
     languages:      [{ code: 'EN', folderName: 'EN' }],
@@ -44,7 +45,8 @@ function makeMinimalCtx(): TemplateContext {
     notesFolder:    'Notes',
     arcFolder:      'Arc',
     charactersFolder: 'Notes/Characters',
-    sessionFile:    'COWORK.md',
+    sessionFile:    'SESSION.md',
+    preferencesFile: 'PREFERENCES.md',
     arcGranularity: 'act',
     memoriesFolder: '.bindery/memories',
     languages:      [],
@@ -309,7 +311,11 @@ describe('renderTemplate — memory skill', () => {
     expect(result).toContain('note_append');
     expect(result).toContain('arc_create');
     expect(result).toContain('character_update');
-    expect(result).toContain('no dedicated COWORK/session-focus write tools');
+    expect(result).toContain('session_focus_update');
+    expect(result).toContain('PREFERENCES.md');
+    expect(result).toContain('inbox_process');
+    expect(result).toContain('Notes/Inbox.md');
+    expect(result).not.toContain('no dedicated COWORK/session-focus write tools');
     expect(result).not.toContain('## Future work');
   });
 });
@@ -509,7 +515,9 @@ describe('renderTemplate — bindery-readme', () => {
 
   it('documents the generated scaffold and setup tools', () => {
     const result = renderTemplate('bindery-readme', makeCtx());
-    expect(result).toContain('COWORK.md');
+    expect(result).toContain('SESSION.md');
+    expect(result).toContain('PREFERENCES.md');
+    expect(result).toContain('session_focus_update');
     expect(result).toContain('Arc/index.md');
     expect(result).toContain('Arc/Overall.md');
     expect(result).toContain('Notes/Characters/index.md');
@@ -525,9 +533,12 @@ describe('renderTemplate — bindery-readme', () => {
     expect(result).toContain('List/Create/Update Character Profile');
     expect(result).toContain('List/Create/Update Arc File');
     expect(result).toContain('Show/Update Chapter Status');
-    expect(result).toContain('User-owned current focus');
-    expect(result).toContain('creates only a small neutral scaffold');
-    expect(result).not.toContain('Dedicated note/memory/status/arc/character host commands are still planned');
+    expect(result).toContain('Show/Update Session Focus');
+    expect(result).toContain('session_focus_get');
+    expect(result).toContain('inbox_process');
+    expect(result).toContain('inbox_resolve');
+    expect(result).toContain('never edits it');
+    expect(result).not.toContain('session-focus/COWORK tools are not available yet');
   });
 
   it('does not indent generated top-level README headings or table rows', () => {

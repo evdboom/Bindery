@@ -82,6 +82,10 @@ interface McpToolsForAi {
     toolMemoryCompact: (_root: string, _args: { file: string; compacted_content: string }) => string;
     toolChapterStatusGet: (_root: string) => string;
     toolChapterStatusUpdate: (_root: string, _args: { chapters: AuthoringChapterStatusEntry[] }) => string;
+    toolSessionFocusGet: (_root: string, _args: { section?: string }) => string;
+    toolSessionFocusUpdate: (_root: string, _args: { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }) => string;
+    toolInboxProcess: (_root: string) => string;
+    toolInboxResolve: (_root: string, _args: { items: number[] }) => string;
 }
 
 interface AuthoringCharacterInput {
@@ -1594,6 +1598,67 @@ async function chapterStatusUpdateCommand(context: vscode.ExtensionContext): Pro
     });
 }
 
+const SESSION_FOCUS_SECTIONS = [
+    { label: 'Current Focus',  key: 'currentFocus'  as const },
+    { label: 'Next Actions',   key: 'nextActions'   as const },
+    { label: 'Open Questions', key: 'openQuestions' as const },
+    { label: 'Handoff Notes',  key: 'handoffNotes'  as const },
+];
+
+async function sessionFocusShowCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Session Focus', async (root, tools) => {
+        const pick = await vscode.window.showQuickPick(
+            [{ label: 'Whole file', section: undefined as string | undefined },
+             ...SESSION_FOCUS_SECTIONS.map(s => ({ label: s.label, section: s.label }))],
+            { placeHolder: 'Show which part of the session file?' }
+        );
+        if (!pick) { return undefined; }
+        return tools.toolSessionFocusGet(root, { section: pick.section });
+    });
+}
+
+async function sessionFocusUpdateCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Update Session Focus', async (root, tools) => {
+        const sectionPick = await vscode.window.showQuickPick(
+            SESSION_FOCUS_SECTIONS.map(s => ({ label: s.label, key: s.key })),
+            { placeHolder: 'Which section to update?' }
+        );
+        if (!sectionPick) { return undefined; }
+        const content = await promptRequired('Bindery: Update Session Focus', `New content for ${sectionPick.label}`);
+        if (!content) { return undefined; }
+        const modePick = await vscode.window.showQuickPick(
+            [{ label: 'Replace', value: 'replace' as const }, { label: 'Append', value: 'append' as const }],
+            { placeHolder: `Replace or append ${sectionPick.label}?` }
+        );
+        if (!modePick) { return undefined; }
+        return tools.toolSessionFocusUpdate(root, { [sectionPick.key]: content, mode: modePick.value });
+    });
+}
+
+async function sessionFocusAppendHandoffCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Append Handoff Note', async (root, tools) => {
+        const content = await promptRequired('Bindery: Append Handoff Note', 'Handoff note to append');
+        return content ? tools.toolSessionFocusUpdate(root, { handoffNotes: content, mode: 'append' }) : undefined;
+    });
+}
+
+async function inboxProcessCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Process Inbox', (root, tools) => tools.toolInboxProcess(root));
+}
+
+async function inboxResolveCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Resolve Inbox Items', async (root, tools) => {
+        const raw = await promptRequired('Bindery: Resolve Inbox Items', 'Item numbers to remove (comma-separated)');
+        if (!raw) { return undefined; }
+        const items = raw.split(',').map(s => Number(s.trim())).filter(n => Number.isInteger(n) && n > 0);
+        if (items.length === 0) {
+            vscode.window.showWarningMessage('Bindery: enter one or more item numbers, e.g. "1, 3".');
+            return undefined;
+        }
+        return tools.toolInboxResolve(root, { items });
+    });
+}
+
 // ─── Activation ───────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
@@ -1678,6 +1743,11 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bindery.memoryCompact',           () => memoryCompactCommand(context)),
         vscode.commands.registerCommand('bindery.chapterStatusGet',        () => chapterStatusGetCommand(context)),
         vscode.commands.registerCommand('bindery.chapterStatusUpdate',     () => chapterStatusUpdateCommand(context)),
+        vscode.commands.registerCommand('bindery.sessionFocusShow',        () => sessionFocusShowCommand(context)),
+        vscode.commands.registerCommand('bindery.sessionFocusUpdate',      () => sessionFocusUpdateCommand(context)),
+        vscode.commands.registerCommand('bindery.sessionFocusAppendHandoff', () => sessionFocusAppendHandoffCommand(context)),
+        vscode.commands.registerCommand('bindery.inboxProcess',            () => inboxProcessCommand(context)),
+        vscode.commands.registerCommand('bindery.inboxResolve',            () => inboxResolveCommand(context)),
         vscode.commands.registerCommand('bindery.registerMcp',             () => registerMcpCommand(context)),
     );
 

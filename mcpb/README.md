@@ -9,8 +9,10 @@ Works with any Markdown book project structured with the Bindery VS Code extensi
 - **Chapter navigation** — jump to any chapter by number and language
 - **Full-text search** — lexical BM25, semantic rerank, or full semantic search across the book corpus
 - **Translation management** — list, look up, add, and update translation and dialect substitution rules
-- **Opinionated authoring scaffold** — initialize Arc, Notes, Characters, COWORK, memory, and chapter-status files for agent-assisted writing
+- **Opinionated authoring scaffold** — initialize Arc, Notes, Characters, SESSION, PREFERENCES, memory, and chapter-status files for agent-assisted writing
 - **Session memory** — append, list, and compact persistent cross-session notes in `.bindery/memories/`
+- **Session focus** — read and update the ephemeral working-state file `SESSION.md` (current focus, next actions, open questions, handoff); durable preferences stay user-owned in `PREFERENCES.md`
+- **Inbox triage** — enumerate loose `Notes/Inbox.md` items and propose destinations (`inbox_process`), then clear routed items after confirmation (`inbox_resolve`)
 - **Workspace setup** — create or update `.bindery/settings.json`, `.bindery/translations.json`, `.bindery/README.md`, the opinionated authoring scaffold, and AI instruction files
 - **Chapter status tracking** — record and query per-chapter progress (draft, in-progress, done, needs-review)
 - **Typography formatting** — curly quotes, em-dashes, ellipses
@@ -53,7 +55,7 @@ all acts and chapters with titles.
 
 Claude calls `init_workspace`. The tool creates `.bindery/settings.json`,
 `.bindery/translations.json`, the generated `.bindery/README.md` capability
-reference, and the default authoring scaffold: `COWORK.md`, `Arc/index.md`,
+reference, and the default authoring scaffold: `SESSION.md`, `PREFERENCES.md`, `Arc/index.md`,
 `Arc/Overall.md`, `Arc/Acts/`, `Notes/Inbox.md`, `Notes/Characters/index.md`,
 structured note folders, `.bindery/memories/global.md`, and
 `.bindery/chapter-status.json`. Existing files are preserved.
@@ -162,7 +164,7 @@ table with issue type, location, and the reference that contradicts it.
 | `list_books` | List all configured book names |
 | `identify_book` | Match a working directory to a book name |
 | `health` | Server status: settings, index, embedding backend |
-| `init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold |
+| `init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |
 | `setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, skill zips, and refresh generated `.bindery/README.md` |
 | `index_build` | Build or rebuild the lexical index and, when enabled, the semantic embedding index |
 | `index_status` | Show lexical and semantic index status, build times, and stale hints |
@@ -199,8 +201,12 @@ table with issue type, location, and the reference that contradicts it.
 | `memory_compact` | Overwrite a memory file with a summary (backs up original) |
 | `chapter_status_get` | Read the chapter progress tracker — returns entries grouped by status (done, in-progress, draft, planned, needs-review) |
 | `chapter_status_update` | Upsert chapter progress entries — send only changed chapters; unmentioned entries are preserved |
+| `session_focus_get` | Read working state from `SESSION.md` (optionally a single section: Current Focus, Next Actions, Open Questions, Handoff Notes) |
+| `session_focus_update` | Update neutral `SESSION.md` sections (replace or append); leaves `PREFERENCES.md` and other content untouched |
+| `inbox_process` | Enumerate `Notes/Inbox.md` items with stable numbers and propose destinations — read-only, never moves or categorizes |
+| `inbox_resolve` | Remove already-routed inbox items by number after confirmation; preserves other items and the heading/intro |
 
-Current boundary: Arc, character, note, memory, and chapter-status workflows are available through MCP tools. VS Code and Obsidian host command wrappers for these workflows are also available. Dedicated session-focus and inbox-processing workflows are planned but not yet part of this MCPB tool surface.
+Current boundary: Arc, character, note, memory, chapter-status, session-focus, and inbox-triage workflows are available through MCP tools, with matching VS Code and Obsidian host command wrappers. `session_focus_update` touches only the neutral `SESSION.md` sections; `PREFERENCES.md` is user-owned and never tool-written. `inbox_process` only proposes and `inbox_resolve` only removes named items — route confirmed items with the destination tools first.
 
 ## Privacy Policy
 

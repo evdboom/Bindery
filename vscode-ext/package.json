@@ -323,6 +323,31 @@
         "category": "Bindery"
       },
       {
+        "command": "bindery.sessionFocusShow",
+        "title": "Show Session Focus",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.sessionFocusUpdate",
+        "title": "Update Session Focus",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.sessionFocusAppendHandoff",
+        "title": "Append Handoff Note",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.inboxProcess",
+        "title": "Process Inbox",
+        "category": "Bindery"
+      },
+      {
+        "command": "bindery.inboxResolve",
+        "title": "Resolve Inbox Items",
+        "category": "Bindery"
+      },
+      {
         "command": "bindery.registerMcp",
         "title": "Register MCP Server",
         "category": "Bindery"
@@ -1087,7 +1112,7 @@
         "displayName": "Bindery: Init Workspace",
         "toolReferenceName": "binderyInitWorkspace",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Create or update .bindery/settings.json, translations.json, .bindery/README.md, and the opinionated Arc, Notes, Characters, COWORK, memory, and chapter-status scaffold. All arguments optional — smart defaults used for any omitted values. Detects language folders automatically. Safe to run on an existing workspace.",
+        "modelDescription": "Create or update .bindery/settings.json, translations.json, .bindery/README.md, and the opinionated Arc, Notes, Characters, SESSION, PREFERENCES, memory, and chapter-status scaffold. All arguments optional — smart defaults used for any omitted values. Detects language folders automatically. Safe to run on an existing workspace.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1366,6 +1391,103 @@
           },
           "required": [
             "chapters"
+          ]
+        }
+      },
+      {
+        "name": "bindery_session_focus_get",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Session Focus",
+        "toolReferenceName": "binderySessionFocusGet",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Read the ephemeral session file (default SESSION.md) holding current working state. Optionally pass a section name (Current Focus, Next Actions, Open Questions, Handoff Notes) to read just that section. Durable preferences live in PREFERENCES.md and durable decisions in .bindery/memories/. Returns a clear empty-state message if the session file does not exist yet.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "section": {
+              "type": "string",
+              "description": "Optional section name to read, e.g. \"Current Focus\" or \"Handoff Notes\""
+            }
+          }
+        }
+      },
+      {
+        "name": "bindery_session_focus_update",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Session Focus Update",
+        "toolReferenceName": "binderySessionFocusUpdate",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Update neutral sections of the ephemeral session file (default SESSION.md): Current Focus, Next Actions, Open Questions, Handoff Notes. Only the sections you pass change; other content and the user-owned PREFERENCES.md are preserved. mode 'replace' (default) overwrites a section body; 'append' adds beneath existing content. Creates the file from the standard scaffold if missing. Use for current working state, not durable preferences or memory.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "currentFocus": {
+              "type": "string",
+              "description": "New content for the Current Focus section"
+            },
+            "nextActions": {
+              "type": "string",
+              "description": "New content for the Next Actions section"
+            },
+            "openQuestions": {
+              "type": "string",
+              "description": "New content for the Open Questions section"
+            },
+            "handoffNotes": {
+              "type": "string",
+              "description": "New content for the Handoff Notes section"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "replace",
+                "append"
+              ],
+              "description": "replace (default) or append section body"
+            }
+          }
+        }
+      },
+      {
+        "name": "bindery_inbox_process",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Process Inbox",
+        "toolReferenceName": "binderyInboxProcess",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Read the notes Inbox (Notes/Inbox.md) and return a structured triage proposal: each loose item enumerated with a stable number, plus the destination tools to route them (note_*, character_*, arc_*, memory_*, chapter_status_*, session_focus_*). Read-only — never moves, deletes, or categorizes. After the user confirms and items are routed, call inbox_resolve with the item numbers to clear them.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "bindery_inbox_resolve",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Resolve Inbox Items",
+        "toolReferenceName": "binderyInboxResolve",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Remove already-routed items from the notes Inbox (Notes/Inbox.md) by their item numbers, as enumerated by inbox_process. Use only after the items have been routed and the user has confirmed. Item numbers are stable between inbox_process and inbox_resolve; other items and the inbox heading/intro are preserved.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "description": "Item numbers to remove, as shown by inbox_process (1-based)"
+            }
+          },
+          "required": [
+            "items"
           ]
         }
       }

@@ -2,13 +2,13 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-    version: 7,
+    version: 9,
     label:   'bindery capabilities',
     zip:     null,
 };
 
 export function render(ctx: TemplateContext): string {
-    const { title, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, arcGranularity, memoriesFolder } = ctx;
+    const { title, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, preferencesFile, arcGranularity, memoriesFolder } = ctx;
     return `# Bindery — capabilities for this workspace
 
 This file is **the single source agents should consult to answer "What can Bindery do?"**
@@ -41,13 +41,14 @@ work from the same map:
 
 | Path | Purpose |
 |---|---|
-| \`${sessionFile}\` | User-owned current focus, handoff notes, and personal working context. Bindery creates a minimal file if missing; the author owns its contents. |
+| \`${sessionFile}\` | Ephemeral working state: current focus, next actions, open questions, handoff notes. Maintained via \`session_focus_*\` tools and host commands. |
+| \`${preferencesFile}\` | Durable working preferences — "do it like this for me". User-owned: Bindery scaffolds it once and never edits it. |
 | \`${arcFolder}/index.md\` | Arc map and links to structure files. |
 | \`${arcFolder}/Overall.md\` | Whole-book arc, promise, turns, ending direction, and open questions. |
 | \`${arcFolder}/Acts/\` | Act-level arc files. Default arc granularity: \`${arcGranularity}\`. |
 | \`${charactersFolder}/index.md\` | Cast overview. |
 | \`${charactersFolder}/<character>.md\` | One durable profile per character. |
-| \`${notesFolder}/Inbox.md\` | Loose notes, pasted mobile chats, and unsorted ideas before triage. |
+| \`${notesFolder}/Inbox.md\` | Loose notes, pasted mobile chats, and unsorted ideas before triage. Triage with \`inbox_process\` / \`inbox_resolve\`. |
 | \`${notesFolder}/World/\`, \`${notesFolder}/Scenes/\`, \`${notesFolder}/Research/\` | Structured supporting notes. |
 | \`${memoriesFolder}/global.md\` | Durable cross-session decisions and story rules. |
 | \`${storyFolder}/\` | Chapter source files by language. |
@@ -59,7 +60,7 @@ Treat \`${arcFolder}/\` as story architecture, \`${charactersFolder}/\` as cast 
 
 | Command | What it does |
 |---|---|
-| \`Bindery: Initialize Workspace\` | Create \`.bindery/settings.json\`, \`.bindery/translations.json\`, this README, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold. |
+| \`Bindery: Initialize Workspace\` | Create \`.bindery/settings.json\`, \`.bindery/translations.json\`, this README, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold. |
 | \`Bindery: Setup AI Assistant Files\` | Generate CLAUDE.md / copilot-instructions.md / cursor rules / AGENTS.md and refresh this capabilities doc. |
 | \`Bindery: Format Typography\` / \`Format All Markdown in Folder\` | Curly quotes, em-dashes, ellipses, etc. |
 | \`Bindery: Merge Chapters → Markdown / DOCX / EPUB / PDF / All Formats\` | Build a deliverable from chapter files. |
@@ -73,6 +74,8 @@ Treat \`${arcFolder}/\` as story architecture, \`${charactersFolder}/\` as cast 
 | \`Bindery: List/Create/Update Arc File\` | Maintain story architecture files under \`${arcFolder}/\`. |
 | \`Bindery: List/Append/Compact Memories\` | Maintain durable session-memory files under \`${memoriesFolder}/\`. |
 | \`Bindery: Show/Update Chapter Status\` | Read or update \`.bindery/chapter-status.json\`. |
+| \`Bindery: Show/Update Session Focus\` / \`Append Handoff Note\` | Read or update the neutral working-state sections of \`${sessionFile}\`. |
+| \`Bindery: Process Inbox\` / \`Resolve Inbox Items\` | Triage \`${notesFolder}/Inbox.md\`: list items with stable numbers, then remove routed items by number. |
 | \`Bindery: Register MCP Server\` | Write \`.vscode/mcp.json\` so Claude / Codex pick the bundled server up. |
 
 ### Default keybindings (markdown editors only)
@@ -94,7 +97,7 @@ tagged **(writes)** modify files or git state.
 |---|---|
 | \`health\` (reads) | Workspace status: settings, index, AI-file versions, embedding backend. |
 | \`identify_book\` (reads) | Confirm the active book root and registry entry. |
-| \`init_workspace\` (writes) | Create \`.bindery/settings.json\`, \`.bindery/translations.json\`, generated \`.bindery/README.md\`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold. |
+| \`init_workspace\` (writes) | Create \`.bindery/settings.json\`, \`.bindery/translations.json\`, generated \`.bindery/README.md\`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold. |
 | \`update_workspace\` (writes) | \`git fetch\` + pull, optional branch switch, optional auto-stash. |
 | \`settings_update\` (writes) | Patch \`.bindery/settings.json\` from an agent. |
 | \`setup_ai_files\` (writes) | (Re)generate AI instruction files + refresh this capabilities doc. |
@@ -112,6 +115,8 @@ tagged **(writes)** modify files or git state.
 | \`add_language\` (writes) | Scaffold a new language under the story folder. |
 | \`memory_list\` / \`memory_append\` / \`memory_compact\` (reads / writes) | Manage \`.bindery/memories/\` files. |
 | \`chapter_status_get\` / \`chapter_status_update\` (reads / writes) | Per-chapter progress tracker in \`.bindery/chapter-status.json\`. |
+| \`session_focus_get\` / \`session_focus_update\` (reads / writes) | Read or update the neutral working-state sections of \`${sessionFile}\` (Current Focus, Next Actions, Open Questions, Handoff Notes). Leaves \`${preferencesFile}\` and other content untouched. |
+| \`inbox_process\` / \`inbox_resolve\` (reads / writes) | \`inbox_process\` enumerates \`${notesFolder}/Inbox.md\` items with stable numbers and proposes destinations (read-only); \`inbox_resolve\` removes already-routed items by number after confirmation. |
 
 ### Tool Workflow Shortcuts
 
@@ -120,13 +125,15 @@ tagged **(writes)** modify files or git state.
 - Use \`arc_*\` for story architecture under \`${arcFolder}/\`.
 - Use \`character_*\` for cast profiles under \`${charactersFolder}/\`.
 - Use \`note_*\` for canonical story notes under \`${notesFolder}/\`.
-- Use \`get_notes\` for broad note lookup, \`memory_*\` for durable session decisions, and \`chapter_status_*\` for progress state.
+- Use \`get_notes\` for broad note lookup, \`memory_*\` for durable session decisions, \`chapter_status_*\` for progress state, and \`session_focus_*\` for ephemeral current-focus/handoff in \`${sessionFile}\`.
+- Send rough, unsorted, or pasted material to \`${notesFolder}/Inbox.md\` (e.g. \`note_append\`), then triage it with \`inbox_process\` (propose) and \`inbox_resolve\` (clear routed items) — do not dump it into memory.
 
 ### Current Tool Boundaries
 
-- Dedicated note, character, arc, memory, and chapter-status tools are available now.
-- Dedicated session-focus/COWORK tools are not available yet. The configured session file is intentionally user-owned; Bindery creates only a small neutral scaffold and should not replace personal working notes.
-- VS Code and Obsidian host commands now mirror the structured note, character, arc, memory, and chapter-status tools. Host prompts cover common fields; agents can still call the MCP tools directly for complete structured payloads.
+- Dedicated note, character, arc, memory, chapter-status, session-focus, and inbox-triage tools are available now.
+- \`inbox_process\` only reads and proposes; \`inbox_resolve\` only removes items you name after they have been routed. Neither moves or categorizes content on its own — route confirmed items with the destination tools first.
+- \`session_focus_*\` updates only the neutral working-state sections of \`${sessionFile}\`. \`${preferencesFile}\` is durable and user-owned — Bindery scaffolds it once and never edits it; propose preference changes for the author to apply.
+- VS Code and Obsidian host commands now mirror the structured note, character, arc, memory, chapter-status, and session-focus tools. Host prompts cover common fields; agents can still call the MCP tools directly for complete structured payloads.
 
 ## Review markers
 

@@ -16,6 +16,7 @@ export interface TemplateContext {
     arcFolder:      string;
     charactersFolder: string;
     sessionFile:    string;
+    preferencesFile: string;
     arcGranularity: string;
     memoriesFolder: string;
     languages:      Array<{ code: string; folderName: string }>;

@@ -42,6 +42,7 @@ import {
     getCharactersFolder,
     getNotesFolder,
     getSessionFile,
+    getPreferencesFile,
     getStoryFolder,
     type WorkspaceSettings,
 } from '@bindery/core';
@@ -70,6 +71,7 @@ interface Settings extends WorkspaceSettings {
     arcFolder?: string;
     charactersFolder?: string;
     sessionFile?: string;
+    preferencesFile?: string;
     arcGranularity?: 'overall' | 'act' | 'chapter' | 'thread' | 'custom';
     author?: string;
     bookTitle?: string | Record<string, string>;
@@ -2238,11 +2240,10 @@ function titleAsString(value: unknown, fallback: string): string {
 
 function cowriteSessionFile(settings: Record<string, unknown>, _languages: Array<Record<string, unknown>>): string {
     const title = titleAsString(settings['bookTitle'], 'Untitled');
-    return `# Session
+    return `# Session — ${title}
 
-Book: ${title}
-
-This file is intentionally user-owned. Bindery creates it so authors and agents have a shared place for current focus and handoff notes, but personal workflow rules and collaboration preferences belong here only if the author chooses to add them.
+Ephemeral working state. Bindery and agents keep current focus and handoff here, and \`session_focus_*\` tools update its sections.
+Durable preferences live in PREFERENCES.md; durable story decisions live in \`.bindery/memories/\`.
 
 ## Current Focus
 
@@ -2255,8 +2256,26 @@ This file is intentionally user-owned. Bindery creates it so authors and agents 
 
 ## Handoff Notes
 
+`;
+}
 
-## Personal Working Notes
+function preferencesFileTemplate(settings: Record<string, unknown>): string {
+    const title = titleAsString(settings['bookTitle'], 'Untitled');
+    return `# Preferences — ${title}
+
+Your durable working preferences. User-owned: Bindery scaffolds this once and never edits it.
+"Do it like this for me" — tone, conventions, review style, and collaboration rules. Current working state belongs in SESSION.md.
+
+## Working Style
+
+
+## Writing Conventions
+
+
+## Review Preferences
+
+
+## Collaboration Notes
 
 `;
 }
@@ -2346,6 +2365,7 @@ function scaffoldOpinionatedWorkspace(root: string, settings: Record<string, unk
     const arcFolderName = getArcFolder(typedSettings);
     const charactersFolderName = getCharactersFolder(typedSettings);
     const sessionFileName = getSessionFile(typedSettings);
+    const preferencesFileName = getPreferencesFile(typedSettings);
     const title = titleAsString(settings['bookTitle'], path.basename(root));
 
     for (const lang of languages) {
@@ -2370,9 +2390,10 @@ function scaffoldOpinionatedWorkspace(root: string, settings: Record<string, unk
 
     const files: Array<[string, string]> = [
         [sessionFileName, cowriteSessionFile(settings, languages)],
+        [preferencesFileName, preferencesFileTemplate(settings)],
         [`${arcFolderName}/index.md`, arcIndexTemplate(arcFolderName)],
         [`${arcFolderName}/Overall.md`, overallArcTemplate()],
-        [`${notesFolderName}/Inbox.md`, noteIndexTemplate('Inbox', 'Drop loose ideas, pasted mobile chats, and unsorted notes here. Process them into structured notes when ready.')],
+        [`${notesFolderName}/Inbox.md`, noteIndexTemplate('Inbox', 'Drop loose ideas, pasted mobile chats, and unsorted notes here. Triage them with inbox_process, then route confirmed items to notes, characters, arcs, or memory and clear them with inbox_resolve.')],
         [`${notesFolderName}/World/index.md`, noteIndexTemplate('World Notes', 'World rules, setting facts, magic/technology constraints, and culture notes.')],
         [`${notesFolderName}/Scenes/index.md`, noteIndexTemplate('Scene Notes', 'Loose scene ideas, set pieces, fragments, and placement candidates.')],
         [`${notesFolderName}/Research/index.md`, noteIndexTemplate('Research Notes', 'Research references, factual checks, and source links.')],
@@ -2409,6 +2430,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         arcFolder:         existing['arcFolder'] as string | undefined,
         charactersFolder:  existing['charactersFolder'] as string | undefined,
         sessionFile:       existing['sessionFile'] as string | undefined,
+        preferencesFile:   existing['preferencesFile'] as string | undefined,
         arcGranularity:    existing['arcGranularity'] as WorkspaceSettings['arcGranularity'],
     };
 
@@ -2426,6 +2448,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         arcFolder:       existing['arcFolder']        ?? getArcFolder(settingsForDefaults),
         charactersFolder: existing['charactersFolder'] ?? getCharactersFolder(settingsForDefaults),
         sessionFile:     existing['sessionFile']      ?? getSessionFile(settingsForDefaults),
+        preferencesFile: existing['preferencesFile']  ?? getPreferencesFile(settingsForDefaults),
         arcGranularity:  existing['arcGranularity']   ?? getArcGranularity(settingsForDefaults),
         mergedOutputDir: (existing['mergedOutputDir'])  ?? 'Merged',
         mergeFilePrefix: (existing['mergeFilePrefix'])  ?? slug,
@@ -2807,6 +2830,237 @@ export function toolChapterStatusUpdate(root: string, args: ChapterStatusUpdateA
     fs.writeFileSync(filePath, JSON.stringify(out, null, 2) + '\n', 'utf-8');
 
     return `Chapter status updated: ${added} added, ${updated} updated. Total: ${chapters.length} chapters.`;
+}
+
+// ─── Session focus (SESSION.md) ─────────────────────────────────────────────────
+
+/** Neutral SESSION.md sections that session_focus_update is allowed to touch. */
+const SESSION_SECTIONS = [
+    ['currentFocus',  'Current Focus'],
+    ['nextActions',   'Next Actions'],
+    ['openQuestions', 'Open Questions'],
+    ['handoffNotes',  'Handoff Notes'],
+] as const;
+
+type SessionSectionKey = (typeof SESSION_SECTIONS)[number][0];
+
+function sessionFilePath(root: string): string {
+    return path.join(root, getSessionFile(readSettings(root) ?? null));
+}
+
+interface ParsedSection { title: string; body: string; }
+interface ParsedSessionFile { preamble: string; sections: ParsedSection[]; }
+
+/** Split a markdown file into a preamble plus ordered `## ` sections, preserving body text. */
+function parseSessionFile(text: string): ParsedSessionFile {
+    const lines = text.split(/\r?\n/);
+    const preambleLines: string[] = [];
+    const sections: ParsedSection[] = [];
+    let current: { title: string; lines: string[] } | null = null;
+
+    for (const line of lines) {
+        const match = /^##\s+(.+?)\s*$/.exec(line);
+        if (match) {
+            if (current) { sections.push({ title: current.title, body: current.lines.join('\n').trim() }); }
+            current = { title: match[1].trim(), lines: [] };
+        } else if (current) {
+            current.lines.push(line);
+        } else {
+            preambleLines.push(line);
+        }
+    }
+    if (current) { sections.push({ title: current.title, body: current.lines.join('\n').trim() }); }
+    return { preamble: preambleLines.join('\n').trim(), sections };
+}
+
+function serializeSessionFile(parsed: ParsedSessionFile): string {
+    const parts: string[] = [];
+    if (parsed.preamble.trim()) { parts.push(parsed.preamble.trim()); }
+    for (const section of parsed.sections) {
+        parts.push(`## ${section.title}${section.body ? `\n\n${section.body}` : ''}`);
+    }
+    return parts.join('\n\n') + '\n';
+}
+
+export function toolSessionFocusGet(root: string, args: { section?: string } = {}): string {
+    const filePath = sessionFilePath(root);
+    const rel = getSessionFile(readSettings(root) ?? null);
+    if (!fs.existsSync(filePath)) {
+        return `No session file on record at ${rel}. Run init_workspace or use session_focus_update to create it.`;
+    }
+    const text = fs.readFileSync(filePath, 'utf-8');
+    const wanted = args.section?.trim();
+    if (!wanted) { return text; }
+
+    const parsed = parseSessionFile(text);
+    const section = parsed.sections.find(s => s.title.toLowerCase() === wanted.toLowerCase());
+    if (!section) {
+        const titles = parsed.sections.map(s => s.title).join(', ') || '(none)';
+        return `Section "${wanted}" not found in ${rel}. Available sections: ${titles}.`;
+    }
+    return `## ${section.title}\n\n${section.body || '(empty)'}`;
+}
+
+export interface SessionFocusUpdateArgs {
+    currentFocus?: string;
+    nextActions?: string;
+    openQuestions?: string;
+    handoffNotes?: string;
+    /** 'replace' (default) overwrites a section body; 'append' adds beneath existing content. */
+    mode?: 'replace' | 'append';
+}
+
+export function toolSessionFocusUpdate(root: string, args: SessionFocusUpdateArgs): string {
+    const provided = SESSION_SECTIONS.filter(([key]) => {
+        const value = args[key as SessionSectionKey];
+        return typeof value === 'string' && value.trim().length > 0;
+    });
+    if (provided.length === 0) {
+        return 'Error: provide at least one of currentFocus, nextActions, openQuestions, or handoffNotes.';
+    }
+
+    const filePath = sessionFilePath(root);
+    const rel = getSessionFile(readSettings(root) ?? null);
+    const mode = args.mode === 'append' ? 'append' : 'replace';
+
+    let text: string;
+    if (fs.existsSync(filePath)) {
+        text = fs.readFileSync(filePath, 'utf-8');
+    } else {
+        text = cowriteSessionFile((readSettings(root) ?? {}) as Record<string, unknown>, []);
+    }
+    const parsed = parseSessionFile(text);
+
+    const touched: string[] = [];
+    for (const [key, title] of provided) {
+        const incoming = (args[key as SessionSectionKey] as string).trim();
+        let section = parsed.sections.find(s => s.title.toLowerCase() === title.toLowerCase());
+        if (!section) {
+            section = { title, body: '' };
+            parsed.sections.push(section);
+        }
+        section.body = mode === 'append' && section.body
+            ? `${section.body}\n\n${incoming}`
+            : incoming;
+        touched.push(title);
+    }
+
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, serializeSessionFile(parsed), 'utf-8');
+
+    return `Session focus updated in ${rel} (${mode}): ${touched.join(', ')}.`;
+}
+
+// ─── Inbox processing (Notes/Inbox.md) ──────────────────────────────────────────
+
+function inboxFilePath(root: string): { abs: string; rel: string } {
+    const notesFolder = getNotesFolder(readSettings(root) ?? null);
+    const rel = normalizeSlashes(path.posix.join(notesFolder, 'Inbox.md'));
+    return { abs: path.join(root, notesFolder, 'Inbox.md'), rel };
+}
+
+interface ParsedInbox { preamble: string; items: string[]; }
+
+/**
+ * Split Inbox.md into a preamble (H1 + intro paragraph) plus discrete items.
+ * Deterministic so `inbox_process` and `inbox_resolve` enumerate items identically:
+ * if any `## ` headings exist the body is split on them, otherwise on blank-line blocks.
+ */
+function parseInboxItems(text: string): ParsedInbox {
+    const lines = text.split(/\r?\n/);
+    const preamble: string[] = [];
+    let idx = 0;
+
+    if (idx < lines.length && /^#\s/.test(lines[idx])) { preamble.push(lines[idx]); idx++; }
+    while (idx < lines.length && lines[idx].trim() === '') { preamble.push(lines[idx]); idx++; }
+    const isItemStart = (line: string): boolean =>
+        /^##\s/.test(line) || /^\s*[-*+]\s/.test(line) || /^\s*\d+\.\s/.test(line);
+    if (idx < lines.length && !isItemStart(lines[idx])) {
+        while (idx < lines.length && lines[idx].trim() !== '') { preamble.push(lines[idx]); idx++; }
+    }
+
+    const body = lines.slice(idx).join('\n').trim();
+    let items: string[] = [];
+    if (body) {
+        items = /^##\s/m.test(body)
+            ? body.split(/(?=^##\s)/m).map(s => s.trim()).filter(Boolean)
+            : body.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+    }
+    return { preamble: preamble.join('\n').replace(/\n+$/, ''), items };
+}
+
+function inboxItemPreview(item: string): string {
+    const firstLine = (item.split('\n').find(l => l.trim()) ?? '')
+        .replace(/^##\s+/, '')
+        .replace(/^\s*[-*+]\s+/, '')
+        .replace(/^\s*\d+\.\s+/, '')
+        .trim();
+    const multiline = item.split('\n').filter(l => l.trim()).length > 1;
+    const clipped = firstLine.length > 100 ? firstLine.slice(0, 99) + '…' : firstLine;
+    return `${clipped}${multiline ? ' …' : ''}`;
+}
+
+export function toolInboxProcess(root: string): string {
+    const { abs, rel } = inboxFilePath(root);
+    if (!fs.existsSync(abs)) {
+        return `Inbox not found at ${rel}. Run init_workspace to create it, or add notes there first.`;
+    }
+    const { items } = parseInboxItems(fs.readFileSync(abs, 'utf-8'));
+    if (items.length === 0) {
+        return `Inbox (${rel}) is empty — only the heading/intro remain. Nothing to triage.`;
+    }
+
+    const lines: string[] = [`Inbox triage — ${items.length} item(s) in ${rel}`, ''];
+    items.forEach((item, i) => {
+        lines.push(`### Item ${i + 1}: ${inboxItemPreview(item)}`, '', item, '');
+    });
+    lines.push(
+        '## How to triage',
+        'Propose a destination for each item, confirm with the user, then route confirmed items with the matching tool:',
+        '- Story note → `note_create` / `note_append` (World, Scenes, Research, or a custom category)',
+        '- Character → `character_create` / `character_update`',
+        '- Arc / structure → `arc_create` / `arc_update`',
+        '- Durable cross-session decision → `memory_append`',
+        '- Chapter progress → `chapter_status_update`',
+        '- Current focus / next action / handoff → `session_focus_update`',
+        '',
+        'Do not move, delete, or categorize anything without the user\'s confirmation. ' +
+        'After confirmed items are routed, call `inbox_resolve` with their item numbers to remove them from the inbox. ' +
+        'Items left unconfirmed stay in the inbox.',
+    );
+    return lines.join('\n');
+}
+
+export interface InboxResolveArgs {
+    items: number[];
+}
+
+export function toolInboxResolve(root: string, args: InboxResolveArgs): string {
+    const requested = Array.isArray(args.items) ? args.items : [];
+    if (requested.length === 0) {
+        return 'Error: provide the item numbers to remove (as shown by inbox_process).';
+    }
+    const { abs, rel } = inboxFilePath(root);
+    if (!fs.existsSync(abs)) {
+        return `Inbox not found at ${rel}. Nothing to resolve.`;
+    }
+
+    const { preamble, items } = parseInboxItems(fs.readFileSync(abs, 'utf-8'));
+    const remove = new Set<number>();
+    const invalid: number[] = [];
+    for (const n of requested) {
+        if (!Number.isInteger(n) || n < 1 || n > items.length) { invalid.push(n); }
+        else { remove.add(n); }
+    }
+    if (invalid.length > 0) {
+        return `Error: invalid item number(s): ${invalid.join(', ')}. Inbox has ${items.length} item(s); valid range is 1-${items.length}.`;
+    }
+
+    const kept = items.filter((_, i) => !remove.has(i + 1));
+    const parts = [preamble.trim(), ...kept].filter(Boolean);
+    fs.writeFileSync(abs, parts.join('\n\n') + '\n', 'utf-8');
+
+    return `Resolved ${remove.size} item(s) from ${rel}; ${kept.length} remaining.`;
 }
 
 // ─── Shared formatter ─────────────────────────────────────────────────────────

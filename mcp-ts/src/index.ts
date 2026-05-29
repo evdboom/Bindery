@@ -53,6 +53,10 @@ import {
     toolMemoryCompact,
     toolChapterStatusGet,
     toolChapterStatusUpdate,
+    toolSessionFocusGet,
+    toolSessionFocusUpdate,
+    toolInboxProcess,
+    toolInboxResolve,
 } from './tools.js';
 import { resolveBook, listBooks, findBookByPath } from './registry.js';
 
@@ -576,7 +580,7 @@ server.registerTool('init_workspace', {
     title: 'Init Workspace',
     description:
         'Create or update .bindery/settings.json, .bindery/translations.json, .bindery/README.md, ' +
-        'and the opinionated Arc, Notes, Characters, COWORK, memory, and chapter-status scaffold. ' +
+        'and the opinionated Arc, Notes, Characters, SESSION, PREFERENCES, memory, and chapter-status scaffold. ' +
         'All arguments are optional — smart defaults are used for any omitted values. ' +
         'Safe to run on an existing workspace: existing settings are preserved unless explicitly overridden. ' +
         'Detects language folders in the story directory automatically.',
@@ -701,6 +705,75 @@ server.registerTool('chapter_status_update', {
     annotations: { destructiveHint: true },
 }, ({ book, chapters }) => {
     try { return ok(toolChapterStatusUpdate(resolveBook(book).root, { chapters })); } catch (e) { return err(e); }
+});
+
+server.registerTool('session_focus_get', {
+    title: 'Session Focus Get',
+    description:
+        'Read the ephemeral session file (default SESSION.md) holding current working state. ' +
+        'Optionally pass a section name (Current Focus, Next Actions, Open Questions, Handoff Notes) to read just that section. ' +
+        'Durable preferences live in PREFERENCES.md and durable decisions in .bindery/memories/ — this tool does not touch those. ' +
+        'Returns a clear empty-state message if the session file does not exist yet.',
+    inputSchema: {
+        book: bookSchema,
+        section: z.string().optional().describe('Optional section name to read, e.g. "Current Focus" or "Handoff Notes"'),
+    },
+    annotations: { readOnlyHint: true },
+}, ({ book, section }) => {
+    try { return ok(toolSessionFocusGet(resolveBook(book).root, { section })); } catch (e) { return err(e); }
+});
+
+server.registerTool('session_focus_update', {
+    title: 'Session Focus Update',
+    description:
+        'Update neutral sections of the ephemeral session file (default SESSION.md): Current Focus, Next Actions, Open Questions, Handoff Notes. ' +
+        'Only the sections you pass are changed; all other content (and the user-owned PREFERENCES.md) is preserved. ' +
+        'mode "replace" (default) overwrites a section body; mode "append" adds beneath existing content (natural for handoff notes). ' +
+        'Creates the session file from the standard scaffold if it does not exist. ' +
+        'Use this for current working state, not durable preferences (PREFERENCES.md) or durable decisions (memory_append).',
+    inputSchema: {
+        book: bookSchema,
+        currentFocus:  z.string().optional().describe('New content for the Current Focus section'),
+        nextActions:   z.string().optional().describe('New content for the Next Actions section'),
+        openQuestions: z.string().optional().describe('New content for the Open Questions section'),
+        handoffNotes:  z.string().optional().describe('New content for the Handoff Notes section'),
+        mode:          z.enum(['replace', 'append']).optional().describe('replace (default) or append section body'),
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, currentFocus, nextActions, openQuestions, handoffNotes, mode }) => {
+    try {
+        return ok(toolSessionFocusUpdate(resolveBook(book).root, {
+            currentFocus, nextActions, openQuestions, handoffNotes, mode,
+        }));
+    } catch (e) { return err(e); }
+});
+
+server.registerTool('inbox_process', {
+    title: 'Inbox Process',
+    description:
+        'Read the notes Inbox (Notes/Inbox.md) and return a structured triage proposal: each loose item enumerated with a stable number, ' +
+        'plus the destination tools to route them (note_*, character_*, arc_*, memory_*, chapter_status_*, session_focus_*). ' +
+        'This tool only reads and proposes — it never moves, deletes, or categorizes anything. ' +
+        'After the user confirms and items are routed with the destination tools, call inbox_resolve with the item numbers to clear them.',
+    inputSchema: { book: bookSchema },
+    annotations: { readOnlyHint: true },
+}, ({ book }) => {
+    try { return ok(toolInboxProcess(resolveBook(book).root)); } catch (e) { return err(e); }
+});
+
+server.registerTool('inbox_resolve', {
+    title: 'Inbox Resolve',
+    description:
+        'Remove already-routed items from the notes Inbox (Notes/Inbox.md) by their item numbers, as enumerated by inbox_process. ' +
+        'Use only after the items have been routed to their destinations and the user has confirmed. ' +
+        'Item numbers are stable between inbox_process and inbox_resolve. Other items and the inbox heading/intro are preserved.',
+    inputSchema: {
+        book: bookSchema,
+        items: z.array(z.number().int()).describe('Item numbers to remove, as shown by inbox_process (1-based)'),
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, items }) => {
+    try { return ok(toolInboxResolve(resolveBook(book).root, { items })); } catch (e) { return err(e); }
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
