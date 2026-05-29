@@ -65,6 +65,53 @@ interface McpToolsForAi {
     toolHealth: (_root: string) => string;
     toolSetupAiFiles: (_root: string, _args: { targets?: string[]; skills?: string[]; overwrite?: boolean }) => string;
     writeBinderyCapabilitiesReadme: (_root: string) => void;
+    toolNoteList: (_root: string, _args: { category?: string }) => string;
+    toolNoteGet: (_root: string, _args: { path: string }) => string;
+    toolNoteCreate: (_root: string, _args: { path: string; title?: string; content?: string; overwrite?: boolean }) => string;
+    toolNoteAppend: (_root: string, _args: { path: string; content: string; heading?: string }) => string;
+    toolCharacterList: (_root: string, _args: { name?: string }) => string;
+    toolCharacterGet: (_root: string, _args: { name: string }) => string;
+    toolCharacterCreate: (_root: string, _args: AuthoringCharacterInput) => string;
+    toolCharacterUpdate: (_root: string, _args: AuthoringCharacterInput) => string;
+    toolArcList: (_root: string, _args: { kind?: string }) => string;
+    toolArcGet: (_root: string, _args: { path: string }) => string;
+    toolArcCreate: (_root: string, _args: AuthoringArcInput) => string;
+    toolArcUpdate: (_root: string, _args: AuthoringArcInput) => string;
+    toolMemoryList: (_root: string) => string;
+    toolMemoryAppend: (_root: string, _args: { file: string; title: string; content: string }) => string;
+    toolMemoryCompact: (_root: string, _args: { file: string; compacted_content: string }) => string;
+    toolChapterStatusGet: (_root: string) => string;
+    toolChapterStatusUpdate: (_root: string, _args: { chapters: AuthoringChapterStatusEntry[] }) => string;
+}
+
+interface AuthoringCharacterInput {
+    name: string;
+    role?: string;
+    firstAppearance?: string;
+    background?: string;
+    continuityNotes?: string;
+    indexNotes?: string;
+    overwrite?: boolean;
+}
+
+interface AuthoringArcInput {
+    path: string;
+    title?: string;
+    kind?: string;
+    purpose?: string;
+    majorBeats?: string;
+    continuityRisks?: string;
+    linkedChapters?: string;
+    overwrite?: boolean;
+}
+
+interface AuthoringChapterStatusEntry {
+    number: number;
+    title: string;
+    language: string;
+    status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review';
+    wordCount?: number;
+    notes?: string;
 }
 
 function loadMcpToolsForAi(extensionPath: string): McpToolsForAi {
@@ -946,6 +993,8 @@ const SKILL_ITEMS: Array<{ label: string; description: string; value: SkillTempl
     { label: '/read-aloud', description: 'Reading-aloud test for a chapter or passage',                  value: 'read-aloud' },
     { label: '/read-in',    description: 'Load context and get your bearings at the start of a session', value: 'read-in'    },
     { label: '/proof-read', description: 'Multi-perspective proofread with reader and author personas',  value: 'proof-read' },
+    { label: '/plan-beats',      description: 'Create or refine a chapter or scene beatmap',                  value: 'plan-beats'      },
+    { label: '/character-setup', description: 'Build or update a structured character profile',                value: 'character-setup' },
 ];
 
 async function setupAiCommand(context?: vscode.ExtensionContext) {
@@ -1279,6 +1328,272 @@ async function doMerge(outputTypes: OutputType[]) {
     }
 }
 
+// ─── Commands: authoring tool wrappers ───────────────────────────────────────
+
+function requireWorkspaceRoot(): string | undefined {
+    const root = getWorkspaceRoot();
+    if (!root) { vscode.window.showErrorMessage('No workspace folder open.'); return undefined; }
+    return root;
+}
+
+async function showAuthoringResult(title: string, result: string): Promise<void> {
+    const trimmed = result.trim();
+    const content = (trimmed || '(no output)') + '\n';
+    if (trimmed.length > 500 || trimmed.includes('\n')) {
+        const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content });
+        await vscode.window.showTextDocument(doc, { preview: true });
+        return;
+    }
+    vscode.window.showInformationMessage(`Bindery: ${title}: ${trimmed || '(no output)'}`);
+}
+
+async function runAuthoringCommand(
+    context: vscode.ExtensionContext,
+    title: string,
+    callback: (_root: string, _tools: McpToolsForAi) => Promise<string | undefined> | string | undefined,
+): Promise<void> {
+    const root = requireWorkspaceRoot();
+    if (!root) { return; }
+    try {
+        const result = await callback(root, loadMcpToolsForAi(context.extensionPath));
+        if (result !== undefined) { await showAuthoringResult(title, result); }
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Bindery: ${title} failed: ${message}`);
+    }
+}
+
+async function promptRequired(title: string, prompt: string, value = ''): Promise<string | undefined> {
+    const result = await vscode.window.showInputBox({ title, prompt, value });
+    if (result === undefined) { return undefined; }
+    const trimmed = result.trim();
+    if (!trimmed) {
+        vscode.window.showWarningMessage(`Bindery: ${prompt} is required.`);
+        return undefined;
+    }
+    return trimmed;
+}
+
+async function promptOptional(title: string, prompt: string, value = ''): Promise<string | null | undefined> {
+    const result = await vscode.window.showInputBox({ title, prompt, value });
+    if (result === undefined) { return null; }
+    return result.trim() || undefined;
+}
+
+async function promptCharacterInput(title: string, update: boolean): Promise<AuthoringCharacterInput | undefined> {
+    const name = await promptRequired(title, 'Character name');
+    if (!name) { return undefined; }
+    const role = await promptOptional(title, 'Role (optional)');
+    if (role === null) { return undefined; }
+    const firstAppearance = await promptOptional(title, 'First appearance (optional)');
+    if (firstAppearance === null) { return undefined; }
+    const background = await promptOptional(title, 'Background or notes (optional)');
+    if (background === null) { return undefined; }
+    let continuityNotes: string | undefined;
+    if (update) {
+        const rawContinuityNotes = await promptOptional(title, 'Continuity notes (optional)');
+        if (rawContinuityNotes === null) { return undefined; }
+        continuityNotes = rawContinuityNotes;
+    }
+    return { name, role, firstAppearance, background, continuityNotes };
+}
+
+async function promptArcInput(title: string, update: boolean): Promise<AuthoringArcInput | undefined> {
+    const arcPath = await promptRequired(title, 'Arc path relative to Arc folder', update ? '' : 'Acts/Act_I.md');
+    if (!arcPath) { return undefined; }
+    const arcTitle = await promptOptional(title, 'Title (optional)');
+    if (arcTitle === null) { return undefined; }
+    const kindPick = await vscode.window.showQuickPick(
+        [
+            { label: 'overall' },
+            { label: 'act' },
+            { label: 'chapter' },
+            { label: 'thread' },
+            { label: 'custom' },
+            { label: 'Skip', description: 'Leave kind unchanged/empty' },
+        ],
+        { title, placeHolder: 'Arc kind' }
+    );
+    if (!kindPick) { return undefined; }
+    const purpose = await promptOptional(title, 'Purpose (optional)');
+    if (purpose === null) { return undefined; }
+    const majorBeats = await promptOptional(title, 'Major beats (optional)');
+    if (majorBeats === null) { return undefined; }
+    let continuityRisks: string | undefined;
+    if (update) {
+        const rawContinuityRisks = await promptOptional(title, 'Continuity risks (optional)');
+        if (rawContinuityRisks === null) { return undefined; }
+        continuityRisks = rawContinuityRisks;
+    }
+    return {
+        path: arcPath,
+        title: arcTitle,
+        kind: kindPick.label === 'Skip' ? undefined : kindPick.label,
+        purpose,
+        majorBeats,
+        continuityRisks,
+    };
+}
+
+async function promptChapterStatusEntry(title: string): Promise<AuthoringChapterStatusEntry | undefined> {
+    const chapterNumberRaw = await promptRequired(title, 'Chapter number');
+    if (!chapterNumberRaw) { return undefined; }
+    const chapterNumber = Number(chapterNumberRaw);
+    if (!Number.isInteger(chapterNumber) || chapterNumber < 0) {
+        vscode.window.showWarningMessage('Bindery: chapter number must be a non-negative integer.');
+        return undefined;
+    }
+    const chapterTitle = await promptRequired(title, 'Chapter title');
+    if (!chapterTitle) { return undefined; }
+    const languageResult = await promptOptional(title, 'Language code', 'EN');
+    if (languageResult === null) { return undefined; }
+    const language = languageResult ?? 'EN';
+    const statusPick = await vscode.window.showQuickPick(
+        [
+            { label: 'done' as const },
+            { label: 'in-progress' as const },
+            { label: 'needs-review' as const },
+            { label: 'draft' as const },
+            { label: 'planned' as const },
+        ],
+        { title, placeHolder: 'Chapter status' }
+    );
+    if (!statusPick) { return undefined; }
+    const wordCountRaw = await promptOptional(title, 'Word count (optional)');
+    if (wordCountRaw === null) { return undefined; }
+    const notes = await promptOptional(title, 'Notes (optional)');
+    if (notes === null) { return undefined; }
+    let wordCount: number | undefined;
+    if (wordCountRaw) {
+        const parsedWordCount = Number(wordCountRaw);
+        if (!Number.isInteger(parsedWordCount) || parsedWordCount < 0) {
+            vscode.window.showWarningMessage('Bindery: word count must be a non-negative integer.');
+            return undefined;
+        }
+        wordCount = parsedWordCount;
+    }
+    return { number: chapterNumber, title: chapterTitle, language, status: statusPick.label, wordCount, notes };
+}
+
+async function noteListCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Note List', (_root, tools) => tools.toolNoteList(_root, {}));
+}
+
+async function noteGetCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Note Get', async (root, tools) => {
+        const notePath = await promptRequired('Bindery: Get Note', 'Note path relative to Notes folder');
+        return notePath ? tools.toolNoteGet(root, { path: notePath }) : undefined;
+    });
+}
+
+async function noteCreateCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Note Create', async (root, tools) => {
+        const notePath = await promptRequired('Bindery: Create Note', 'Note path relative to Notes folder', 'Inbox.md');
+        if (!notePath) { return undefined; }
+        const title = await promptOptional('Bindery: Create Note', 'Title (optional)');
+        if (title === null) { return undefined; }
+        const content = await promptOptional('Bindery: Create Note', 'Initial content (optional)');
+        if (content === null) { return undefined; }
+        return tools.toolNoteCreate(root, { path: notePath, title, content });
+    });
+}
+
+async function noteAppendCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Note Append', async (root, tools) => {
+        const notePath = await promptRequired('Bindery: Append Note', 'Note path relative to Notes folder', 'Inbox.md');
+        if (!notePath) { return undefined; }
+        const heading = await promptOptional('Bindery: Append Note', 'Heading (optional)');
+        if (heading === null) { return undefined; }
+        const content = await promptRequired('Bindery: Append Note', 'Content to append');
+        return content ? tools.toolNoteAppend(root, { path: notePath, heading, content }) : undefined;
+    });
+}
+
+async function characterListCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Character List', (_root, tools) => tools.toolCharacterList(_root, {}));
+}
+
+async function characterGetCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Character Get', async (root, tools) => {
+        const name = await promptRequired('Bindery: Get Character', 'Character name');
+        return name ? tools.toolCharacterGet(root, { name }) : undefined;
+    });
+}
+
+async function characterCreateCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Character Create', async (root, tools) => {
+        const input = await promptCharacterInput('Bindery: Create Character', false);
+        return input ? tools.toolCharacterCreate(root, input) : undefined;
+    });
+}
+
+async function characterUpdateCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Character Update', async (root, tools) => {
+        const input = await promptCharacterInput('Bindery: Update Character', true);
+        return input ? tools.toolCharacterUpdate(root, input) : undefined;
+    });
+}
+
+async function arcListCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Arc List', (_root, tools) => tools.toolArcList(_root, {}));
+}
+
+async function arcGetCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Arc Get', async (root, tools) => {
+        const arcPath = await promptRequired('Bindery: Get Arc', 'Arc path relative to Arc folder');
+        return arcPath ? tools.toolArcGet(root, { path: arcPath }) : undefined;
+    });
+}
+
+async function arcCreateCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Arc Create', async (root, tools) => {
+        const input = await promptArcInput('Bindery: Create Arc', false);
+        return input ? tools.toolArcCreate(root, input) : undefined;
+    });
+}
+
+async function arcUpdateCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Arc Update', async (root, tools) => {
+        const input = await promptArcInput('Bindery: Update Arc', true);
+        return input ? tools.toolArcUpdate(root, input) : undefined;
+    });
+}
+
+async function memoryListCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Memory List', (_root, tools) => tools.toolMemoryList(_root));
+}
+
+async function memoryAppendCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Memory Append', async (root, tools) => {
+        const file = await promptRequired('Bindery: Append Memory', 'Memory file', 'global.md');
+        if (!file) { return undefined; }
+        const title = await promptRequired('Bindery: Append Memory', 'Session title');
+        if (!title) { return undefined; }
+        const content = await promptRequired('Bindery: Append Memory', 'Memory content');
+        return content ? tools.toolMemoryAppend(root, { file, title, content }) : undefined;
+    });
+}
+
+async function memoryCompactCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Memory Compact', async (root, tools) => {
+        const file = await promptRequired('Bindery: Compact Memory', 'Memory file', 'global.md');
+        if (!file) { return undefined; }
+        const compactedContent = await promptRequired('Bindery: Compact Memory', 'Compacted content');
+        return compactedContent ? tools.toolMemoryCompact(root, { file, compacted_content: compactedContent }) : undefined;
+    });
+}
+
+async function chapterStatusGetCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Chapter Status', (_root, tools) => tools.toolChapterStatusGet(_root));
+}
+
+async function chapterStatusUpdateCommand(context: vscode.ExtensionContext): Promise<void> {
+    await runAuthoringCommand(context, 'Update Chapter Status', async (root, tools) => {
+        const entry = await promptChapterStatusEntry('Bindery: Update Chapter Status');
+        return entry ? tools.toolChapterStatusUpdate(root, { chapters: [entry] }) : undefined;
+    });
+}
+
 // ─── Activation ───────────────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
@@ -1346,6 +1661,23 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bindery.openTranslations',        openTranslationsCommand),
         vscode.commands.registerCommand('bindery.startReviewMarker',       startReviewMarkerCommand),
         vscode.commands.registerCommand('bindery.stopReviewMarker',        stopReviewMarkerCommand),
+        vscode.commands.registerCommand('bindery.noteList',                () => noteListCommand(context)),
+        vscode.commands.registerCommand('bindery.noteGet',                 () => noteGetCommand(context)),
+        vscode.commands.registerCommand('bindery.noteCreate',              () => noteCreateCommand(context)),
+        vscode.commands.registerCommand('bindery.noteAppend',              () => noteAppendCommand(context)),
+        vscode.commands.registerCommand('bindery.characterList',           () => characterListCommand(context)),
+        vscode.commands.registerCommand('bindery.characterGet',            () => characterGetCommand(context)),
+        vscode.commands.registerCommand('bindery.characterCreate',         () => characterCreateCommand(context)),
+        vscode.commands.registerCommand('bindery.characterUpdate',         () => characterUpdateCommand(context)),
+        vscode.commands.registerCommand('bindery.arcList',                 () => arcListCommand(context)),
+        vscode.commands.registerCommand('bindery.arcGet',                  () => arcGetCommand(context)),
+        vscode.commands.registerCommand('bindery.arcCreate',               () => arcCreateCommand(context)),
+        vscode.commands.registerCommand('bindery.arcUpdate',               () => arcUpdateCommand(context)),
+        vscode.commands.registerCommand('bindery.memoryList',              () => memoryListCommand(context)),
+        vscode.commands.registerCommand('bindery.memoryAppend',            () => memoryAppendCommand(context)),
+        vscode.commands.registerCommand('bindery.memoryCompact',           () => memoryCompactCommand(context)),
+        vscode.commands.registerCommand('bindery.chapterStatusGet',        () => chapterStatusGetCommand(context)),
+        vscode.commands.registerCommand('bindery.chapterStatusUpdate',     () => chapterStatusUpdateCommand(context)),
         vscode.commands.registerCommand('bindery.registerMcp',             () => registerMcpCommand(context)),
     );
 

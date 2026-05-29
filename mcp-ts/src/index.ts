@@ -23,6 +23,18 @@ import {
     toolGetBookUntil,
     toolGetOverview,
     toolGetNotes,
+    toolNoteList,
+    toolNoteGet,
+    toolNoteCreate,
+    toolNoteAppend,
+    toolCharacterList,
+    toolCharacterGet,
+    toolCharacterCreate,
+    toolCharacterUpdate,
+    toolArcList,
+    toolArcGet,
+    toolArcCreate,
+    toolArcUpdate,
     toolSearch,
     toolFormat,
     toolGetReviewText,
@@ -56,6 +68,36 @@ const server = new McpServer(
 const bookSchema = z.string().describe(
     'Book name as configured via --book args (e.g. "MyNovel"). Call list_books to see available names.'
 );
+
+const characterFields = {
+    role: z.string().optional().describe('Narrative role or function in the cast.'),
+    age: z.string().optional().describe('Age or age range.'),
+    origin: z.string().optional().describe('Origin, home, faction, or background source.'),
+    skills: z.string().optional().describe('Skills, powers, expertise, or capabilities.'),
+    strengths: z.string().optional().describe('Strengths or advantages.'),
+    weaknesses: z.string().optional().describe('Weaknesses, flaws, limits, or vulnerabilities.'),
+    personality: z.string().optional().describe('Personality notes.'),
+    background: z.string().optional().describe('Backstory and context.'),
+    narrativeArc: z.string().optional().describe('Character movement across the story.'),
+    appearanceNotes: z.string().optional().describe('Appearance, voice, gesture, and identifying details.'),
+    relationships: z.string().optional().describe('Relationships and dynamics with other characters.'),
+    firstAppearance: z.string().optional().describe('First chapter, scene, or note where this character appears.'),
+    openQuestions: z.string().optional().describe('Unresolved author questions about the character.'),
+    continuityNotes: z.string().optional().describe('Continuity constraints or established facts.'),
+    indexNotes: z.string().optional().describe('Short note for the character index row.'),
+};
+
+const arcFields = {
+    title: z.string().optional().describe('Arc file H1 title. Defaults to a title derived from the filename.'),
+    kind: z.string().optional().describe('Arc kind, e.g. overall, act, chapter, thread, or custom.'),
+    purpose: z.string().optional().describe('Purpose of this arc in the story structure.'),
+    majorBeats: z.string().optional().describe('Major beats for this arc.'),
+    characterMovement: z.string().optional().describe('Character movement caused by or tracked in this arc.'),
+    worldImplications: z.string().optional().describe('Setting, world, magic, technology, or culture implications.'),
+    unresolvedQuestions: z.string().optional().describe('Open plot or structure questions.'),
+    continuityRisks: z.string().optional().describe('Continuity risks to watch while drafting or revising.'),
+    linkedChapters: z.string().optional().describe('Linked chapter numbers, titles, or ranges.'),
+};
 
 function ok(text: string)  { return { content: [{ type: 'text' as const, text }] }; }
 function err(e: unknown)   { return { content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }], isError: true as const }; }
@@ -200,6 +242,161 @@ server.registerTool('get_notes', {
     annotations: { readOnlyHint: true },
 }, ({ book, category, name }) => {
     try { return ok(toolGetNotes(resolveBook(book).root, { category, name })); } catch (e) { return err(e); }
+});
+
+server.registerTool('note_list', {
+    title: 'Note List',
+    description: 'List markdown note files under the configured notes folder, optionally filtered to a category folder.',
+    inputSchema: {
+        book:     bookSchema,
+        category: z.string().optional().describe('Optional category/folder under Notes, e.g. Characters, World, Scenes, Research'),
+    },
+    annotations: { readOnlyHint: true },
+}, ({ book, category }) => {
+    try { return ok(toolNoteList(resolveBook(book).root, { category })); } catch (e) { return err(e); }
+});
+
+server.registerTool('note_get', {
+    title: 'Note Get',
+    description: 'Read a single markdown note by path relative to the configured notes folder.',
+    inputSchema: {
+        book: bookSchema,
+        path: z.string().describe('Note path relative to the notes folder, e.g. Inbox.md or Characters/index.md'),
+    },
+    annotations: { readOnlyHint: true },
+}, ({ book, path }) => {
+    try { return ok(toolNoteGet(resolveBook(book).root, { path })); } catch (e) { return err(e); }
+});
+
+server.registerTool('note_create', {
+    title: 'Note Create',
+    description: 'Create a markdown note under the configured notes folder. Refuses to overwrite unless overwrite is true.',
+    inputSchema: {
+        book:      bookSchema,
+        path:      z.string().describe('Note path relative to the notes folder, e.g. World/Rules.md'),
+        title:     z.string().optional().describe('Optional H1 title. Defaults to a title derived from the filename.'),
+        content:   z.string().optional().describe('Optional markdown body to write below the H1 title.'),
+        overwrite: z.boolean().optional().describe('Replace an existing note if true. Default false.'),
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, path, title, content, overwrite }) => {
+    try { return ok(toolNoteCreate(resolveBook(book).root, { path, title, content, overwrite })); } catch (e) { return err(e); }
+});
+
+server.registerTool('note_append', {
+    title: 'Note Append',
+    description: 'Append markdown content to a note under the configured notes folder, creating the file if needed.',
+    inputSchema: {
+        book:    bookSchema,
+        path:    z.string().describe('Note path relative to the notes folder, e.g. Inbox.md or World/Rules.md'),
+        content: z.string().describe('Markdown content to append.'),
+        heading: z.string().optional().describe('Optional H2 heading to insert before the appended content.'),
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, path, content, heading }) => {
+    try { return ok(toolNoteAppend(resolveBook(book).root, { path, content, heading })); } catch (e) { return err(e); }
+});
+
+server.registerTool('character_list', {
+    title: 'Character List',
+    description: 'List structured character profile files under the configured characters folder.',
+    inputSchema: {
+        book: bookSchema,
+        name: z.string().optional().describe('Optional character-name filter.'),
+    },
+    annotations: { readOnlyHint: true },
+}, ({ book, name }) => {
+    try { return ok(toolCharacterList(resolveBook(book).root, { name })); } catch (e) { return err(e); }
+});
+
+server.registerTool('character_get', {
+    title: 'Character Get',
+    description: 'Read a structured character profile by character name.',
+    inputSchema: {
+        book: bookSchema,
+        name: z.string().describe('Character name. The tool resolves the matching slugged profile file.'),
+    },
+    annotations: { readOnlyHint: true },
+}, ({ book, name }) => {
+    try { return ok(toolCharacterGet(resolveBook(book).root, { name })); } catch (e) { return err(e); }
+});
+
+server.registerTool('character_create', {
+    title: 'Character Create',
+    description: 'Create a structured character profile and update Notes/Characters/index.md.',
+    inputSchema: {
+        book: bookSchema,
+        name: z.string().describe('Character name. Used for the profile H1 and slugged filename.'),
+        ...characterFields,
+        overwrite: z.boolean().optional().describe('Replace an existing profile if true. Default false.'),
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, ...args }) => {
+    try { return ok(toolCharacterCreate(resolveBook(book).root, args)); } catch (e) { return err(e); }
+});
+
+server.registerTool('character_update', {
+    title: 'Character Update',
+    description: 'Update known fields in a structured character profile and refresh the character index row.',
+    inputSchema: {
+        book: bookSchema,
+        name: z.string().describe('Character name. The tool resolves the matching slugged profile file.'),
+        ...characterFields,
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, ...args }) => {
+    try { return ok(toolCharacterUpdate(resolveBook(book).root, args)); } catch (e) { return err(e); }
+});
+
+server.registerTool('arc_list', {
+    title: 'Arc List',
+    description: 'List structured arc files under the configured arc folder.',
+    inputSchema: {
+        book: bookSchema,
+        kind: z.string().optional().describe('Optional kind filter, e.g. overall, act, chapter, thread, custom.'),
+    },
+    annotations: { readOnlyHint: true },
+}, ({ book, kind }) => {
+    try { return ok(toolArcList(resolveBook(book).root, { kind })); } catch (e) { return err(e); }
+});
+
+server.registerTool('arc_get', {
+    title: 'Arc Get',
+    description: 'Read a structured arc file by path relative to the configured arc folder.',
+    inputSchema: {
+        book: bookSchema,
+        path: z.string().describe('Arc path relative to the arc folder, e.g. Overall.md or Acts/act-i.md.'),
+    },
+    annotations: { readOnlyHint: true },
+}, ({ book, path }) => {
+    try { return ok(toolArcGet(resolveBook(book).root, { path })); } catch (e) { return err(e); }
+});
+
+server.registerTool('arc_create', {
+    title: 'Arc Create',
+    description: 'Create a structured arc file under the configured arc folder and update Arc/index.md.',
+    inputSchema: {
+        book: bookSchema,
+        path: z.string().describe('Arc path relative to the arc folder, e.g. Acts/act-i.md.'),
+        ...arcFields,
+        overwrite: z.boolean().optional().describe('Replace an existing arc file if true. Default false.'),
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, ...args }) => {
+    try { return ok(toolArcCreate(resolveBook(book).root, args)); } catch (e) { return err(e); }
+});
+
+server.registerTool('arc_update', {
+    title: 'Arc Update',
+    description: 'Update known fields in a structured arc file and refresh Arc/index.md.',
+    inputSchema: {
+        book: bookSchema,
+        path: z.string().describe('Arc path relative to the arc folder, e.g. Acts/act-i.md.'),
+        ...arcFields,
+    },
+    annotations: { destructiveHint: true },
+}, ({ book, ...args }) => {
+    try { return ok(toolArcUpdate(resolveBook(book).root, args)); } catch (e) { return err(e); }
 });
 
 server.registerTool('search', {
@@ -378,7 +575,8 @@ server.registerTool('add_language', {
 server.registerTool('init_workspace', {
     title: 'Init Workspace',
     description:
-        'Create or update .bindery/settings.json and .bindery/translations.json. ' +
+        'Create or update .bindery/settings.json, .bindery/translations.json, .bindery/README.md, ' +
+        'and the opinionated Arc, Notes, Characters, COWORK, memory, and chapter-status scaffold. ' +
         'All arguments are optional — smart defaults are used for any omitted values. ' +
         'Safe to run on an existing workspace: existing settings are preserved unless explicitly overridden. ' +
         'Detects language folders in the story directory automatically.',
@@ -414,12 +612,12 @@ server.registerTool('setup_ai_files', {
     title: 'Setup AI Files',
     description:
         'Generate AI assistant instruction files (CLAUDE.md, .github/copilot-instructions.md, ' +
-        '.cursor/rules, AGENTS.md) and Claude skill templates from .bindery/settings.json. ' +
+        '.cursor/rules, AGENTS.md), Claude skill templates, skill zips, and the generated .bindery/README.md capability reference from .bindery/settings.json. ' +
         'Run init_workspace first. Safe to run multiple times — skips existing files unless overwrite is true.',
     inputSchema: {
         book:      bookSchema,
         targets:   z.array(z.string()).optional().describe('Which files to generate: claude, copilot, cursor, agents. Default: all.'),
-        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, translation-review, status, continuity, read-aloud, read-in, proof-read. Default: all.'),
+        skills:    z.array(z.string()).optional().describe('Which Claude skills to generate: review, brainstorm, memory, translate, translation-review, status, continuity, read-aloud, read-in, proof-read, plan-beats, character-setup. Default: all.'),
         overwrite: z.boolean().optional().describe('Overwrite existing files? Default false (skip existing).'),
     },
     annotations: { destructiveHint: true },

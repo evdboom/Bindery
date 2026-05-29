@@ -2,13 +2,13 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-    version: 6,
+    version: 7,
     label:   'bindery capabilities',
     zip:     null,
 };
 
 export function render(ctx: TemplateContext): string {
-    const { title } = ctx;
+    const { title, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, arcGranularity, memoriesFolder } = ctx;
     return `# Bindery — capabilities for this workspace
 
 This file is **the single source agents should consult to answer "What can Bindery do?"**
@@ -31,14 +31,35 @@ Bindery is a markdown book authoring toolkit with three surfaces:
 3. **Skill workflows** — opinionated slash-commands like \`/review\`, \`/translate\`, \`/memory\`.
 
 All three operate on the same workspace state: \`.bindery/settings.json\`,
-\`.bindery/translations.json\`, the story folder, \`Notes/\`, \`Arc/\`, and
-\`.bindery/memories/\`.
+\`.bindery/translations.json\`, the story folder, \`${notesFolder}/\`, \`${arcFolder}/\`, and
+\`${memoriesFolder}/\`.
+
+## Opinionated Authoring Layout
+
+Bindery's default scaffold is intentionally structured so agents and authors can
+work from the same map:
+
+| Path | Purpose |
+|---|---|
+| \`${sessionFile}\` | User-owned current focus, handoff notes, and personal working context. Bindery creates a minimal file if missing; the author owns its contents. |
+| \`${arcFolder}/index.md\` | Arc map and links to structure files. |
+| \`${arcFolder}/Overall.md\` | Whole-book arc, promise, turns, ending direction, and open questions. |
+| \`${arcFolder}/Acts/\` | Act-level arc files. Default arc granularity: \`${arcGranularity}\`. |
+| \`${charactersFolder}/index.md\` | Cast overview. |
+| \`${charactersFolder}/<character>.md\` | One durable profile per character. |
+| \`${notesFolder}/Inbox.md\` | Loose notes, pasted mobile chats, and unsorted ideas before triage. |
+| \`${notesFolder}/World/\`, \`${notesFolder}/Scenes/\`, \`${notesFolder}/Research/\` | Structured supporting notes. |
+| \`${memoriesFolder}/global.md\` | Durable cross-session decisions and story rules. |
+| \`${storyFolder}/\` | Chapter source files by language. |
+
+Treat \`${arcFolder}/\` as story architecture, \`${charactersFolder}/\` as cast truth,
+\`${notesFolder}/\` as supporting reference, and \`${memoriesFolder}/\` as session memory.
 
 ## VS Code / Obsidian commands (Command Palette → "Bindery: …")
 
 | Command | What it does |
 |---|---|
-| \`Bindery: Initialize Workspace\` | Create \`.bindery/settings.json\`, \`.bindery/translations.json\`, and this README. |
+| \`Bindery: Initialize Workspace\` | Create \`.bindery/settings.json\`, \`.bindery/translations.json\`, this README, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold. |
 | \`Bindery: Setup AI Assistant Files\` | Generate CLAUDE.md / copilot-instructions.md / cursor rules / AGENTS.md and refresh this capabilities doc. |
 | \`Bindery: Format Typography\` / \`Format All Markdown in Folder\` | Curly quotes, em-dashes, ellipses, etc. |
 | \`Bindery: Merge Chapters → Markdown / DOCX / EPUB / PDF / All Formats\` | Build a deliverable from chapter files. |
@@ -47,6 +68,11 @@ All three operate on the same workspace state: \`.bindery/settings.json\`,
 | \`Bindery: Open translations.json\` | Open the per-language rules file. |
 | \`Bindery: Insert Review Start Marker (or wrap selection)\` | Insert \`<!-- Bindery: Review start -->\`, or wrap the current selection in matched start/stop markers. |
 | \`Bindery: Insert Review Stop Marker\` | Insert \`<!-- Bindery: Review stop -->\` at the cursor. |
+| \`Bindery: List/Create/Append Notes\` | Work with story notes under \`${notesFolder}/\` through the same structured tools agents use. |
+| \`Bindery: List/Create/Update Character Profile\` | Maintain structured character files under \`${charactersFolder}/\`. |
+| \`Bindery: List/Create/Update Arc File\` | Maintain story architecture files under \`${arcFolder}/\`. |
+| \`Bindery: List/Append/Compact Memories\` | Maintain durable session-memory files under \`${memoriesFolder}/\`. |
+| \`Bindery: Show/Update Chapter Status\` | Read or update \`.bindery/chapter-status.json\`. |
 | \`Bindery: Register MCP Server\` | Write \`.vscode/mcp.json\` so Claude / Codex pick the bundled server up. |
 
 ### Default keybindings (markdown editors only)
@@ -68,11 +94,14 @@ tagged **(writes)** modify files or git state.
 |---|---|
 | \`health\` (reads) | Workspace status: settings, index, AI-file versions, embedding backend. |
 | \`identify_book\` (reads) | Confirm the active book root and registry entry. |
-| \`init_workspace\` (writes) | Create \`.bindery/settings.json\` with title/author/story-folder defaults. |
+| \`init_workspace\` (writes) | Create \`.bindery/settings.json\`, \`.bindery/translations.json\`, generated \`.bindery/README.md\`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold. |
 | \`update_workspace\` (writes) | \`git fetch\` + pull, optional branch switch, optional auto-stash. |
 | \`settings_update\` (writes) | Patch \`.bindery/settings.json\` from an agent. |
 | \`setup_ai_files\` (writes) | (Re)generate AI instruction files + refresh this capabilities doc. |
 | \`get_text\` / \`get_chapter\` / \`get_book_until\` / \`get_overview\` / \`get_notes\` (reads) | Read source files, chapters, ranges, and notes. |
+| \`note_list\` / \`note_get\` / \`note_create\` / \`note_append\` (reads / writes) | First-class story note management under \`${notesFolder}/\`. |
+| \`character_list\` / \`character_get\` / \`character_create\` / \`character_update\` (reads / writes) | Structured character profiles under \`${charactersFolder}/\`. |
+| \`arc_list\` / \`arc_get\` / \`arc_create\` / \`arc_update\` (reads / writes) | Structured story-architecture files under \`${arcFolder}/\`. |
 | \`search\` (reads) | BM25 / semantic search across the corpus (Ollama optional). |
 | \`index_build\` / \`index_status\` (writes / reads) | Build or inspect the lexical/semantic index. |
 | \`format\` (writes) | Apply typography to a file or folder (\`dryRun\` supported). |
@@ -83,6 +112,21 @@ tagged **(writes)** modify files or git state.
 | \`add_language\` (writes) | Scaffold a new language under the story folder. |
 | \`memory_list\` / \`memory_append\` / \`memory_compact\` (reads / writes) | Manage \`.bindery/memories/\` files. |
 | \`chapter_status_get\` / \`chapter_status_update\` (reads / writes) | Per-chapter progress tracker in \`.bindery/chapter-status.json\`. |
+
+### Tool Workflow Shortcuts
+
+- Use \`init_workspace\` first for a new book. It creates the settings, translation file, generated capability README, and the default authoring scaffold.
+- Use \`setup_ai_files\` after init or when \`health\` reports outdated AI files. It refreshes CLAUDE.md, Copilot instructions, Cursor rules, AGENTS.md, Claude skills, skill zips, and this capability README.
+- Use \`arc_*\` for story architecture under \`${arcFolder}/\`.
+- Use \`character_*\` for cast profiles under \`${charactersFolder}/\`.
+- Use \`note_*\` for canonical story notes under \`${notesFolder}/\`.
+- Use \`get_notes\` for broad note lookup, \`memory_*\` for durable session decisions, and \`chapter_status_*\` for progress state.
+
+### Current Tool Boundaries
+
+- Dedicated note, character, arc, memory, and chapter-status tools are available now.
+- Dedicated session-focus/COWORK tools are not available yet. The configured session file is intentionally user-owned; Bindery creates only a small neutral scaffold and should not replace personal working notes.
+- VS Code and Obsidian host commands now mirror the structured note, character, arc, memory, and chapter-status tools. Host prompts cover common fields; agents can still call the MCP tools directly for complete structured payloads.
 
 ## Review markers
 
@@ -114,6 +158,8 @@ command or by paraphrasing the description.
 | \`/translation-review\` | "review my translation", "what do you think" (translation focus) |
 | \`/translate\` | "translate chapter X", "spot-check the NL of chapter X" |
 | \`/brainstorm\` | "I'm stuck", "help me think of ideas" |
+| \`/plan-beats\` | "help me plan the beats", "refine chapter beats" |
+| \`/character-setup\` | "make a character profile", "help me define this character" |
 | \`/memory\` | "save what we decided", end-of-session memory updates |
 | \`/status\` | "where are we", "what's the book status" |
 | \`/continuity\` | "check chapter X for errors", "continuity check" |

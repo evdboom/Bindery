@@ -13,7 +13,18 @@
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
 import { zipSync, strToU8 } from 'fflate';
-import { renderTemplate, FILE_VERSION_INFO, type TemplateContext } from './templates.js';
+import {
+    renderTemplate,
+    FILE_VERSION_INFO,
+    getArcFolder,
+    getArcGranularity,
+    getCharactersFolder,
+    getNotesFolder,
+    getSessionFile,
+    getStoryFolder,
+    type TemplateContext,
+    type WorkspaceSettings,
+} from './templates.js';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -29,10 +40,12 @@ export type SkillTemplate =
     | 'continuity'
     | 'read-aloud'
     | 'read-in'
-    | 'proof-read';
+    | 'proof-read'
+    | 'plan-beats'
+    | 'character-setup';
 
 export const ALL_SKILLS: SkillTemplate[] = [
-    'review', 'brainstorm', 'memory', 'translate', 'translation-review', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read',
+    'review', 'brainstorm', 'memory', 'translate', 'translation-review', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read', 'plan-beats', 'character-setup',
 ];
 
 export interface AiSetupOptions {
@@ -66,25 +79,32 @@ export interface AiVersionFile {
 
 // ─── Settings types ───────────────────────────────────────────────────────────
 
-interface Settings {
-    bookTitle?:      string | Record<string, string>;
-    author?:         string;
-    description?:    string;
-    genre?:          string;
-    targetAudience?: string;
-    storyFolder?:    string;
+interface Settings extends Omit<WorkspaceSettings, 'languages'> {
     languages?:      Array<{ code: string; folderName: string }>;
+}
+
+function titleFromSetting(value: Settings['bookTitle']): string {
+    if (typeof value === 'string' && value.trim()) { return value.trim(); }
+    if (value && typeof value === 'object') {
+        const en = value['en'];
+        if (typeof en === 'string' && en.trim()) { return en.trim(); }
+        const first = Object.values(value).find(v => typeof v === 'string' && v.trim());
+        if (typeof first === 'string') { return first.trim(); }
+    }
+    return 'Untitled';
 }
 
 // ─── Context builder ──────────────────────────────────────────────────────────
 
 function buildContext(s: Settings): TemplateContext {
-    const title       = (typeof s.bookTitle === 'string' ? s.bookTitle : undefined) ?? 'Untitled';
+    const title       = titleFromSetting(s.bookTitle);
     const author      = s.author         ?? '';
     const description = s.description    ?? '';
     const genre       = s.genre          ?? '';
     const audience    = s.targetAudience ?? '';
-    const storyFolder = s.storyFolder    ?? 'Story';
+    const storyFolder = getStoryFolder(s);
+    const notesFolder = getNotesFolder(s);
+    const arcFolder   = getArcFolder(s);
     const languages   = s.languages      ?? [];
 
     const langList = languages.length > 0
@@ -93,7 +113,12 @@ function buildContext(s: Settings): TemplateContext {
 
     return {
         title, author, description, genre, audience,
-        storyFolder, notesFolder: 'Notes', arcFolder: 'Arc',
+        storyFolder,
+        notesFolder,
+        arcFolder,
+        charactersFolder: getCharactersFolder(s),
+        sessionFile: getSessionFile(s),
+        arcGranularity: getArcGranularity(s),
         memoriesFolder: '.bindery/memories',
         languages, langList,
         hasMultiLang: languages.length > 1,

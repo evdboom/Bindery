@@ -54,19 +54,19 @@ Cross-language glossary entries (e.g. EN→NL world terms) are also stored in `.
 
 ### AI Assistant Integration (MCP)
 
-Bindery includes a bundled MCP server that makes your book's chapters, notes, search index, memory, and translation data available to AI assistants directly inside VS Code.
+Bindery includes a bundled MCP server that makes your book's chapters, arc files, character notes, search index, memory, status tracker, and translation data available to AI assistants directly inside VS Code.
 
 **GitHub Copilot Chat** — tools are registered automatically when the extension activates. Use `#bindery_search`, `#bindery_get_chapter`, etc. in chat.
 
 **Claude for VS Code / Codex** — run `Bindery: Register MCP Server` once per workspace. This writes `.vscode/mcp.json` pointing to the bundled server. Both extensions pick this up automatically on next reload.
 
-#### Available MCP tools (26)
+#### Available MCP tools (38)
 
 | Tool | Description |
 |------|-------------|
 | `bindery_health` | Check workspace status: settings, search index, and embedding backend |
-| `bindery_init_workspace` | Create or update `.bindery/settings.json` and `translations.json` |
-| `bindery_setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, etc.) |
+| `bindery_init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold |
+| `bindery_setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, etc.), Claude skills, skill zips, and refresh generated `.bindery/README.md` |
 | `bindery_settings_update` | Merge a partial patch into `.bindery/settings.json` |
 | `bindery_index_build` | Build or rebuild the search index (lexical + optional semantic) |
 | `bindery_index_status` | Show index metadata and stale-status hints |
@@ -76,6 +76,18 @@ Bindery includes a bundled MCP server that makes your book's chapters, notes, se
 | `bindery_get_book_until` | Chapters from a start through a target chapter, concatenated in order |
 | `bindery_get_overview` | Chapter structure — acts, chapters, titles |
 | `bindery_get_notes` | Notes files, filterable by category or character name |
+| `bindery_note_list` | List story note files under the configured notes folder |
+| `bindery_note_get` | Read a single story note by path |
+| `bindery_note_create` | Create a story note under the configured notes folder |
+| `bindery_note_append` | Append markdown content to a story note |
+| `bindery_character_list` | List structured character profiles |
+| `bindery_character_get` | Read a structured character profile by name |
+| `bindery_character_create` | Create a character profile and update the character index |
+| `bindery_character_update` | Update a character profile and refresh the index row |
+| `bindery_arc_list` | List structured arc files |
+| `bindery_arc_get` | Read a structured arc file |
+| `bindery_arc_create` | Create an arc file and update the arc index |
+| `bindery_arc_update` | Update an arc file and refresh the arc index |
 | `bindery_format` | Apply typography formatting to a file or folder |
 | `bindery_get_review_text` | Git diff of uncommitted changes **plus** any `<!-- Bindery: Review start/stop -->` regions (works on committed work too) |
 | `bindery_update_workspace` | Fetch and pull the current branch, with branch/default-branch reporting |
@@ -94,6 +106,8 @@ Bindery includes a bundled MCP server that makes your book's chapters, notes, se
 `bindery_search` supports `lexical`, `semantic_rerank`, and `full_semantic` modes. Semantic modes require an Ollama instance and fall back to lexical results with a warning if unavailable.
 
 For the standalone MCP server (Claude Desktop / Cowork), two additional tools are available: `list_books` and `identify_book` for multi-book discovery. See [mcpb/README.md](../mcpb/README.md) for full MCP documentation and usage examples.
+
+These are agent-facing MCP / language-model tools. The Command Palette also exposes host commands for the same structured note, character, arc, memory, and chapter-status workflows. Host prompts cover common fields; agents can call the MCP/LM tools directly for complete structured payloads.
 
 ### File Discovery
 
@@ -119,25 +133,24 @@ All commands are available from the Command Palette (`Ctrl+Shift+P`) under the *
 
 | Command | Description |
 |---------|-------------|
-| Command | Description | Default keybinding |
-|---------|-------------|--------------------|
-| `Initialize Workspace` | Create `.bindery/settings.json` and `translations.json` | — |
-| `Setup AI Assistant Files` | Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md | — |
-| `Register MCP Server` | Write `.vscode/mcp.json` for Claude / Codex MCP discovery | — |
-| `Format Typography` | Apply typography formatting to the active markdown file | `Ctrl+K Ctrl+B` |
-| `Format All Markdown in Folder` | Apply typography to all `.md` files in a folder | — |
-| `Insert Review Start Marker (or wrap selection)` | Insert `<!-- Bindery: Review start -->`, or wrap the current selection in matched start/stop markers | `Ctrl+K Ctrl+,` |
-| `Insert Review Stop Marker` | Insert `<!-- Bindery: Review stop -->` at the cursor | `Ctrl+K Ctrl+.` |
-| `Merge Chapters → Markdown` | Merge chapters into a single `.md` file | — |
-| `Merge Chapters → DOCX` | Merge chapters and export via Pandoc | — |
-| `Merge Chapters → EPUB` | Merge chapters and export via Pandoc | — |
-| `Merge Chapters → PDF` | Merge chapters via Pandoc + LibreOffice | — |
-| `Merge Chapters → All Formats` | Export all configured formats at once | — |
-| `Find Probable US→UK Words` | Scan `Story/EN` for likely US spellings | — |
-| `Add Dialect Rule` | Add a dialect substitution rule (e.g. color→colour) | — |
-| `Add Translation (Glossary)` | Add a cross-language glossary entry | — |
-| `Add Language` | Add a new language and scaffold its story folder | — |
-| `Open translations.json` | Open the translations file in the editor | — |
+| `Initialize Workspace` | Create `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold |
+| `Setup AI Assistant Files` | Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md, Claude skills, skill zips, and refresh generated `.bindery/README.md` |
+| `Register MCP Server` | Write `.vscode/mcp.json` for Claude / Codex MCP discovery |
+| `Format Typography` | Apply typography formatting to the active markdown file (`Ctrl+K Ctrl+B`) |
+| `Format All Markdown in Folder` | Apply typography to all `.md` files in a folder |
+| `Insert Review Start Marker (or wrap selection)` | Insert `<!-- Bindery: Review start -->`, or wrap the current selection in matched start/stop markers (`Ctrl+K Ctrl+,`) |
+| `Insert Review Stop Marker` | Insert `<!-- Bindery: Review stop -->` at the cursor (`Ctrl+K Ctrl+.`) |
+| `Merge Chapters → Markdown / DOCX / EPUB / PDF / All Formats` | Export configured languages and dialects |
+| `Find Probable US→UK Words` | Scan `Story/EN` for likely US spellings |
+| `Add Dialect Rule` | Add a dialect substitution rule (e.g. color→colour) |
+| `Add Translation (Glossary)` | Add a cross-language glossary entry |
+| `Add Language` | Add a new language and scaffold its story folder |
+| `Open translations.json` | Open the translations file in the editor |
+| `List Notes` / `Create Note` / `Append to Note` | Work with notes under the configured notes folder |
+| `List Characters` / `Create Character Profile` / `Update Character Profile` | Maintain structured character profiles and the character index |
+| `List Arcs` / `Create Arc File` / `Update Arc File` | Maintain structured story-architecture files and the arc index |
+| `List Memories` / `Append Memory` / `Compact Memory` | Maintain durable `.bindery/memories/` files |
+| `Show Chapter Status` / `Update Chapter Status` | Read or update `.bindery/chapter-status.json` |
 
 Keybindings only fire while editing a markdown file (`editorTextFocus && resourceLangId == markdown`); rebind via **File → Preferences → Keyboard Shortcuts** if they conflict with another extension.
 
@@ -148,6 +161,11 @@ Settings can be defined in `.bindery/settings.json` (preferred) or VS Code setti
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `bindery.storyFolder` | `"Story"` | Folder containing language subfolders |
+| `notesFolder` in `.bindery/settings.json` | `"Notes"` | Story notes root used by generated AI guidance and MCP tools |
+| `arcFolder` in `.bindery/settings.json` | `"Arc"` | Story architecture folder for overall, act, chapter, thread, or custom arcs |
+| `charactersFolder` in `.bindery/settings.json` | `"Notes/Characters"` | Character index and one-profile-per-character folder |
+| `sessionFile` in `.bindery/settings.json` | `"COWORK.md"` | User-owned current focus and handoff file; Bindery creates a minimal scaffold if missing |
+| `arcGranularity` in `.bindery/settings.json` | `"act"` | Preferred planning granularity: overall, act, chapter, thread, or custom |
 | `bindery.languages` | EN | Language configurations (see below) |
 | `bindery.mergedOutputDir` | `"Merged"` | Output directory for merged files |
 | `bindery.author` | `""` | Author name for EPUB/DOCX metadata |

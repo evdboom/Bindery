@@ -19,6 +19,46 @@ interface GetChapterInput { chapterNumber: number; language: string }
 interface GetBookUntilInput { chapterNumber: number; language: string; startChapter?: number }
 interface GetOverviewInput { language?: string; act?: number }
 interface GetNotesInput   { category?: string; name?: string }
+interface NoteListInput   { category?: string }
+interface NoteGetInput    { path: string }
+interface NoteCreateInput { path: string; title?: string; content?: string; overwrite?: boolean }
+interface NoteAppendInput { path: string; content: string; heading?: string }
+interface CharacterListInput { name?: string }
+interface CharacterGetInput { name: string }
+interface CharacterWriteInput {
+    name: string;
+    role?: string;
+    age?: string;
+    origin?: string;
+    skills?: string;
+    strengths?: string;
+    weaknesses?: string;
+    personality?: string;
+    background?: string;
+    narrativeArc?: string;
+    appearanceNotes?: string;
+    relationships?: string;
+    firstAppearance?: string;
+    openQuestions?: string;
+    continuityNotes?: string;
+    indexNotes?: string;
+    overwrite?: boolean;
+}
+interface ArcListInput { kind?: string }
+interface ArcGetInput { path: string }
+interface ArcWriteInput {
+    path: string;
+    title?: string;
+    kind?: string;
+    purpose?: string;
+    majorBeats?: string;
+    characterMovement?: string;
+    worldImplications?: string;
+    unresolvedQuestions?: string;
+    continuityRisks?: string;
+    linkedChapters?: string;
+    overwrite?: boolean;
+}
 interface SearchInput     { query: string; language?: string; maxResults?: number; mode?: 'lexical' | 'semantic_rerank' | 'full_semantic' }
 interface FormatInput     { filePath?: string; dryRun?: boolean; noRecurse?: boolean }
 interface GetReviewTextInput { language?: string; contextLines?: number; autoStage?: boolean }
@@ -45,6 +85,18 @@ interface McpTools {
     toolGetBookUntil:     (_root: string, _args: GetBookUntilInput) => string;
     toolGetOverview:      (_root: string, _args: GetOverviewInput) => string;
     toolGetNotes:         (_root: string, _args: GetNotesInput) => string;
+    toolNoteList:         (_root: string, _args: NoteListInput) => string;
+    toolNoteGet:          (_root: string, _args: NoteGetInput) => string;
+    toolNoteCreate:       (_root: string, _args: NoteCreateInput) => string;
+    toolNoteAppend:       (_root: string, _args: NoteAppendInput) => string;
+    toolCharacterList:    (_root: string, _args: CharacterListInput) => string;
+    toolCharacterGet:     (_root: string, _args: CharacterGetInput) => string;
+    toolCharacterCreate:  (_root: string, _args: CharacterWriteInput) => string;
+    toolCharacterUpdate:  (_root: string, _args: CharacterWriteInput) => string;
+    toolArcList:          (_root: string, _args: ArcListInput) => string;
+    toolArcGet:           (_root: string, _args: ArcGetInput) => string;
+    toolArcCreate:        (_root: string, _args: ArcWriteInput) => string;
+    toolArcUpdate:        (_root: string, _args: ArcWriteInput) => string;
     toolSearch:           (_root: string, _args: SearchInput) => Promise<string>;
     toolFormat:           (_root: string, _args: FormatInput) => string;
     toolGetReviewText:    (_root: string, _args: GetReviewTextInput) => string;
@@ -134,6 +186,54 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<GetNotesInput>('bindery_get_notes', {
             invoke: (opts, _token) => ok(t.toolGetNotes(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<NoteListInput>('bindery_note_list', {
+            invoke: (opts, _token) => ok(t.toolNoteList(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<NoteGetInput>('bindery_note_get', {
+            invoke: (opts, _token) => ok(t.toolNoteGet(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<NoteCreateInput>('bindery_note_create', {
+            invoke: (opts, _token) => ok(t.toolNoteCreate(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<NoteAppendInput>('bindery_note_append', {
+            invoke: (opts, _token) => ok(t.toolNoteAppend(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<CharacterListInput>('bindery_character_list', {
+            invoke: (opts, _token) => ok(t.toolCharacterList(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<CharacterGetInput>('bindery_character_get', {
+            invoke: (opts, _token) => ok(t.toolCharacterGet(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<CharacterWriteInput>('bindery_character_create', {
+            invoke: (opts, _token) => ok(t.toolCharacterCreate(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<CharacterWriteInput>('bindery_character_update', {
+            invoke: (opts, _token) => ok(t.toolCharacterUpdate(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<ArcListInput>('bindery_arc_list', {
+            invoke: (opts, _token) => ok(t.toolArcList(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<ArcGetInput>('bindery_arc_get', {
+            invoke: (opts, _token) => ok(t.toolArcGet(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<ArcWriteInput>('bindery_arc_create', {
+            invoke: (opts, _token) => ok(t.toolArcCreate(requireRoot(), opts.input)),
+        }),
+
+        vscode.lm.registerTool<ArcWriteInput>('bindery_arc_update', {
+            invoke: (opts, _token) => ok(t.toolArcUpdate(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<SearchInput>('bindery_search', {

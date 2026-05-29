@@ -2,13 +2,13 @@ import { audienceNote, languageSection, type TemplateContext, type TemplateMeta 
 
 export const meta: TemplateMeta = {
     file:    'AGENTS.md',
-    version: 8,
+    version: 9,
     label:   'agents instructions',
     zip:     null,
 };
 
 export function render(ctx: TemplateContext): string {
-    const { title, author, description, genre, storyFolder, notesFolder, arcFolder, memoriesFolder } = ctx;
+    const { title, author, description, genre, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, arcGranularity, memoriesFolder } = ctx;
     const lines: string[] = [`# Agent Instructions — ${title}`, ''];
     lines.push('## Project overview');
     if (genre)       { lines.push(`${genre} novel.`); }
@@ -19,18 +19,22 @@ export function render(ctx: TemplateContext): string {
         languageSection(ctx),
         '',
         '## Start of session',
-        `1. Read \`${memoriesFolder}/global.md\` for cross-chapter context.`,
-        `2. If working on a specific chapter, read \`${memoriesFolder}/chXX.md\` if it exists.`,
-        '3. Check `.claude/skills/` for shared slash workflows before improvising a bespoke process.',
+        `1. Read \`${sessionFile}\` for user-owned current focus and handoff notes if it exists.`,
+        `2. Read \`${memoriesFolder}/global.md\` for cross-chapter context.`,
+        `3. If working on a specific chapter, read \`${memoriesFolder}/chXX.md\` if it exists.`,
+        '4. Check `.claude/skills/` for shared slash workflows before improvising a bespoke process.',
         '',
         '## Story files',
         `- Chapter files are \`.md\` files in \`${storyFolder}/\`, organized in act subfolders.`,
+        `- Arc files live in \`${arcFolder}/\`; default planning granularity is \`${arcGranularity}\`. Treat these as story architecture.`,
+        `- Character profiles live in \`${charactersFolder}/\`; use one profile per character plus the index.`,
         '- HTML comments `<!-- -->` are writer notes — treat as context only, not prose.',
         '- Quotation marks and em-dashes are managed by the Bindery extension. Do not normalize them.',
         '',
         '## Shared skill workflows',
         '- Shared workflows live in `.claude/skills/` and can be used by agents beyond Claude when the runtime supports workspace skills.',
-        '- Prefer `/read-in`, `/review`, `/translation-review`, `/translate`, `/memory`, `/continuity`, `/status`, `/read-aloud`, and `/proof-read` when the user is asking for one of those structured tasks.',
+        '- Prefer `/read-in`, `/review`, `/translation-review`, `/translate`, `/memory`, `/continuity`, `/status`, `/read-aloud`, `/proof-read`, `/plan-beats`, and `/character-setup` when the user is asking for one of those structured tasks.',
+        '- Use `arc_*` tools for story structure, `character_*` tools for cast profiles, `note_*` tools for story notes, `memory_*` tools for session decisions, and `chapter_status_*` tools for progress when available.',
         '',
         '## Writing guidelines',
         '- Do not rewrite paragraphs unless explicitly asked. Suggest edits only.',
@@ -44,7 +48,9 @@ export function render(ctx: TemplateContext): string {
         '| File | Contains |',
         '|---|---|',
         `| \`${arcFolder}/\` | Story arc files for overall and per-act structure and beats |`,
-        `| \`${notesFolder}/\` | Story notes, like character profiles and world rules |`,
+        `| \`${charactersFolder}/\` | Character index and one profile per character |`,
+        `| \`${notesFolder}/\` | Story notes, like world rules, scene ideas, inbox, and research |`,
+        `| \`${sessionFile}\` | User-owned current focus, handoff notes, and personal working context |`,
         `| \`${memoriesFolder}/global.md\` | Cross-session decisions |`,
     );
     return lines.join('\n') + '\n';

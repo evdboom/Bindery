@@ -49,7 +49,78 @@ describe('toolInitWorkspace', () => {
         ) as Record<string, unknown>;
         expect(settings['bookTitle']).toBe('My Novel');
         expect(settings['storyFolder']).toBe('Story');
+        expect(settings['notesFolder']).toBe('Notes');
+        expect(settings['arcFolder']).toBe('Arc');
+        expect(settings['charactersFolder']).toBe('Notes/Characters');
+        expect(settings['sessionFile']).toBe('COWORK.md');
+        expect(settings['arcGranularity']).toBe('act');
         expect(fs.existsSync(path.join(root, '.bindery', 'translations.json'))).toBe(true);
+    });
+
+    it('creates the opinionated authoring scaffold for a new workspace', () => {
+        const root = makeRoot();
+        const result = toolInitWorkspace(root, { bookTitle: 'My Novel' });
+
+        expect(result).toContain('COWORK.md');
+        expect(fs.existsSync(path.join(root, 'COWORK.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Arc', 'index.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Arc', 'Overall.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Arc', 'Acts'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Notes', 'Inbox.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Notes', 'Characters', 'index.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, '.bindery', 'memories', 'global.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, '.bindery', 'chapter-status.json'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Story', 'EN'))).toBe(true);
+    });
+
+    it('does not overwrite existing scaffold files', () => {
+        const root = makeRoot();
+        write(path.join(root, 'COWORK.md'), '# Existing focus\n');
+
+        toolInitWorkspace(root, { bookTitle: 'My Novel' });
+
+        expect(fs.readFileSync(path.join(root, 'COWORK.md'), 'utf-8')).toBe('# Existing focus\n');
+    });
+
+    it('creates a minimal user-owned session file without embedded assistant rules', () => {
+        const root = makeRoot();
+
+        toolInitWorkspace(root, { bookTitle: 'My Novel', genre: 'Fantasy', targetAudience: '12+' });
+
+        const session = fs.readFileSync(path.join(root, 'COWORK.md'), 'utf-8');
+        expect(session).toContain('# Session');
+        expect(session).toContain('Book: My Novel');
+        expect(session).toContain('intentionally user-owned');
+        expect(session).toContain('## Current Focus');
+        expect(session).toContain('## Handoff Notes');
+        expect(session).toContain('## Personal Working Notes');
+        expect(session).not.toContain('## Common tasks');
+        expect(session).not.toContain('## Notes for the assistant');
+        expect(session).not.toContain('Do not rewrite prose');
+        expect(session).not.toContain('Target audience');
+        expect(session).not.toContain('Fantasy');
+    });
+
+    it('uses configured authoring paths when updating an existing workspace', () => {
+        const root = makeRoot();
+        write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+            bookTitle: 'Custom Paths',
+            storyFolder: 'Drafts',
+            notesFolder: 'Reference',
+            arcFolder: 'Structure',
+            charactersFolder: 'Reference/Cast',
+            sessionFile: 'SESSION.md',
+            arcGranularity: 'thread',
+            languages: [{ code: 'EN', folderName: 'English' }],
+        }) + '\n');
+
+        toolInitWorkspace(root, {});
+
+        expect(fs.existsSync(path.join(root, 'SESSION.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Structure', 'index.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Reference', 'Inbox.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Reference', 'Cast', 'index.md'))).toBe(true);
+        expect(fs.existsSync(path.join(root, 'Drafts', 'English'))).toBe(true);
     });
 
     it('includes a Tip: hint for new workspaces', () => {

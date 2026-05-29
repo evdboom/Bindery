@@ -36,6 +36,15 @@ import {
 import { probeTool, type ProbeResult } from './tool-probe.js';
 import { BUILTIN_EN_GB_RULES, type TranslationRule } from './tools-dialect-defaults.js';
 import { parseUnifiedDiff, formatReviewFiles } from './tools-diff.js';
+import {
+    getArcFolder,
+    getArcGranularity,
+    getCharactersFolder,
+    getNotesFolder,
+    getSessionFile,
+    getStoryFolder,
+    type WorkspaceSettings,
+} from '@bindery/core';
 
 // Re-export so the VS Code extension can call this helper through the same
 // `mcp-ts/out/tools` module it already loads for setup/health.
@@ -55,8 +64,13 @@ function readJson<T>(filePath: string): T | null {
     catch { return null; }
 }
 
-interface Settings {
+interface Settings extends WorkspaceSettings {
     storyFolder?: string;
+    notesFolder?: string;
+    arcFolder?: string;
+    charactersFolder?: string;
+    sessionFile?: string;
+    arcGranularity?: 'overall' | 'act' | 'chapter' | 'thread' | 'custom';
     author?: string;
     bookTitle?: string | Record<string, string>;
     languages?: Array<{ code: string; folderName: string; chapterWord: string; actPrefix: string; prologueLabel: string; epilogueLabel: string }>;
@@ -76,7 +90,7 @@ function readSettings(root: string): Settings | null {
 }
 
 function storyFolder(root: string): string {
-    return readSettings(root)?.storyFolder ?? 'Story';
+    return getStoryFolder(readSettings(root));
 }
 
 const ALL_AI_TARGETS: AiTarget[] = ['claude', 'copilot', 'cursor', 'agents'];
@@ -851,6 +865,83 @@ export interface GetNotesArgs {
     name?:     string;
 }
 
+export interface NoteListArgs {
+    category?: string;
+}
+
+export interface NoteGetArgs {
+    path: string;
+}
+
+export interface NoteCreateArgs {
+    path: string;
+    title?: string;
+    content?: string;
+    overwrite?: boolean;
+}
+
+export interface NoteAppendArgs {
+    path: string;
+    content: string;
+    heading?: string;
+}
+
+export interface CharacterListArgs {
+    name?: string;
+}
+
+export interface CharacterGetArgs {
+    name: string;
+}
+
+export interface CharacterCreateArgs {
+    name: string;
+    role?: string;
+    age?: string;
+    origin?: string;
+    skills?: string;
+    strengths?: string;
+    weaknesses?: string;
+    personality?: string;
+    background?: string;
+    narrativeArc?: string;
+    appearanceNotes?: string;
+    relationships?: string;
+    firstAppearance?: string;
+    openQuestions?: string;
+    continuityNotes?: string;
+    indexNotes?: string;
+    overwrite?: boolean;
+}
+
+export interface CharacterUpdateArgs extends CharacterCreateArgs {
+    overwrite?: boolean;
+}
+
+export interface ArcListArgs {
+    kind?: string;
+}
+
+export interface ArcGetArgs {
+    path: string;
+}
+
+export interface ArcCreateArgs {
+    path: string;
+    title?: string;
+    kind?: string;
+    purpose?: string;
+    majorBeats?: string;
+    characterMovement?: string;
+    worldImplications?: string;
+    unresolvedQuestions?: string;
+    continuityRisks?: string;
+    linkedChapters?: string;
+    overwrite?: boolean;
+}
+
+export interface ArcUpdateArgs extends ArcCreateArgs {}
+
 function extractNamedSections(content: string, nameFilter: string): string[] {
     const lowerFilter = nameFilter.toLowerCase();
     return content.split(/^#{1,3}\s+/m)
@@ -859,7 +950,7 @@ function extractNamedSections(content: string, nameFilter: string): string[] {
 }
 
 export function toolGetNotes(root: string, args: GetNotesArgs): string {
-    const notesDir = path.join(root, 'Notes');
+    const notesDir = notesRoot(root);
     const candidates: string[] = [];
 
     if (fs.existsSync(notesDir)) {
@@ -886,12 +977,510 @@ export function toolGetNotes(root: string, args: GetNotesArgs): string {
     return results.join('\n\n---\n\n') || 'No matching notes found.';
 }
 
+export function toolNoteList(root: string, args: NoteListArgs): string {
+    const baseDir = notesRoot(root);
+    const listDir = args.category ? safeNoteDir(root, args.category) : baseDir;
+    if (!listDir) { return `Invalid note category: ${args.category}`; }
+    if (!fs.existsSync(listDir)) { return args.category ? `Note category not found: ${args.category}` : 'No notes folder found.'; }
+
+    const files: string[] = [];
+    collectAllMd(listDir, files);
+    if (files.length === 0) { return args.category ? `No notes found in category: ${args.category}` : 'No notes found.'; }
+
+    return files
+        .sort((a, b) => path.relative(baseDir, a).localeCompare(path.relative(baseDir, b), undefined, { numeric: true }))
+        .map(filePath => {
+            const rel = normalizeSlashes(path.relative(baseDir, filePath));
+            const title = firstH1(filePath);
+            const lineCount = fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).length;
+            return `- ${rel}${title ? ` — ${title}` : ''} (${lineCount} lines)`;
+        })
+        .join('\n');
+}
+
+export function toolNoteGet(root: string, args: NoteGetArgs): string {
+    const filePath = safeNoteFile(root, args.path);
+    if (!filePath) { return `Invalid note path: ${args.path}`; }
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) { return `Note not found: ${normalizeNotePath(args.path)}`; }
+    return fs.readFileSync(filePath, 'utf-8');
+}
+
+export function toolNoteCreate(root: string, args: NoteCreateArgs): string {
+    const filePath = safeNoteFile(root, args.path);
+    if (!filePath) { return `Invalid note path: ${args.path}`; }
+    const rel = normalizeNotePath(args.path);
+    if (fs.existsSync(filePath) && !args.overwrite) {
+        return `Note already exists: ${rel}. Pass overwrite: true to replace it.`;
+    }
+
+    const title = (args.title ?? titleFromNotePath(rel)).trim();
+    const body = (args.content ?? '').trim();
+    const content = `# ${title}\n${body ? `\n${body}\n` : '\n'}`;
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return `${fs.existsSync(filePath) && args.overwrite ? 'Wrote' : 'Created'} note: ${rel}`;
+}
+
+export function toolNoteAppend(root: string, args: NoteAppendArgs): string {
+    const filePath = safeNoteFile(root, args.path);
+    if (!filePath) { return `Invalid note path: ${args.path}`; }
+    const rel = normalizeNotePath(args.path);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+    const existed = fs.existsSync(filePath);
+    if (!existed) {
+        fs.writeFileSync(filePath, `# ${titleFromNotePath(rel)}\n`, 'utf-8');
+    }
+
+    const heading = args.heading?.trim();
+    const addition = `${heading ? `\n## ${heading}\n` : '\n'}${args.content.trim()}\n`;
+    fs.appendFileSync(filePath, addition, 'utf-8');
+
+    const lineCount = fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).length;
+    return `${existed ? 'Appended to' : 'Created and appended to'} note: ${rel} (${lineCount} lines).`;
+}
+
+function notesRoot(root: string): string {
+    return path.join(root, getNotesFolder(readSettings(root) ?? null));
+}
+
+function safeNoteDir(root: string, noteDir: string): string | null {
+    const baseDir = notesRoot(root);
+    const resolved = path.resolve(baseDir, noteDir);
+    const rel = path.relative(baseDir, resolved);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) { return null; }
+    return resolved;
+}
+
+function safeNoteFile(root: string, notePath: string): string | null {
+    const baseDir = notesRoot(root);
+    const normalized = normalizeNotePath(notePath);
+    const resolved = path.resolve(baseDir, normalized);
+    const rel = path.relative(baseDir, resolved);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) { return null; }
+    return resolved;
+}
+
+function normalizeNotePath(notePath: string): string {
+    const normalized = notePath.replace(/\\/g, '/').replace(/^\/+/, '');
+    return normalized.toLowerCase().endsWith('.md') ? normalized : `${normalized}.md`;
+}
+
+function normalizeSlashes(value: string): string {
+    return value.replace(/\\/g, '/');
+}
+
+function titleFromNotePath(notePath: string): string {
+    const base = path.basename(notePath, '.md');
+    return base
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, c => c.toUpperCase()) || 'Untitled Note';
+}
+
 function collectAllMd(dir: string, out: string[]): void {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) { collectAllMd(fullPath, out); }
         else if (entry.isFile() && entry.name.endsWith('.md')) { out.push(fullPath); }
     }
+}
+
+// ─── character_list / character_get / character_create / character_update ───
+
+type CharacterProfile = {
+    name: string;
+    role?: string;
+    age?: string;
+    origin?: string;
+    skills?: string;
+    strengths?: string;
+    weaknesses?: string;
+    personality?: string;
+    background?: string;
+    narrativeArc?: string;
+    appearanceNotes?: string;
+    relationships?: string;
+    firstAppearance?: string;
+    openQuestions?: string;
+    continuityNotes?: string;
+    indexNotes?: string;
+};
+
+const CHARACTER_SECTION_FIELDS: Array<[keyof CharacterProfile, string]> = [
+    ['personality', 'Personality'],
+    ['background', 'Background'],
+    ['narrativeArc', 'Narrative Arc'],
+    ['appearanceNotes', 'Appearance Notes'],
+    ['relationships', 'Relationships'],
+    ['openQuestions', 'Open Questions'],
+    ['continuityNotes', 'Continuity Notes'],
+];
+
+export function toolCharacterList(root: string, args: CharacterListArgs = {}): string {
+    const baseDir = charactersRoot(root);
+    if (!fs.existsSync(baseDir)) { return 'No character folder found.'; }
+
+    const files: string[] = [];
+    collectAllMd(baseDir, files);
+    const filter = args.name?.trim().toLowerCase();
+    const rows = files
+        .filter(filePath => path.basename(filePath).toLowerCase() !== 'index.md')
+        .map(filePath => ({ filePath, profile: parseCharacterProfile(fs.readFileSync(filePath, 'utf-8'), titleFromNotePath(filePath)) }))
+        .filter(({ filePath, profile }) => !filter || profile.name.toLowerCase().includes(filter) || path.basename(filePath).toLowerCase().includes(filter))
+        .sort((a, b) => a.profile.name.localeCompare(b.profile.name))
+        .map(({ filePath, profile }) => {
+            const rel = normalizeSlashes(path.relative(baseDir, filePath));
+            const details = [profile.role, profile.firstAppearance].filter(Boolean).join(' — ');
+            return `- ${profile.name} (${rel})${details ? ` — ${details}` : ''}`;
+        });
+
+    return rows.join('\n') || (filter ? `No characters matched: ${args.name}` : 'No character profiles found.');
+}
+
+export function toolCharacterGet(root: string, args: CharacterGetArgs): string {
+    const filePath = findCharacterFile(root, args.name);
+    if (!filePath) { return `Character not found: ${args.name}`; }
+    return fs.readFileSync(filePath, 'utf-8');
+}
+
+export function toolCharacterCreate(root: string, args: CharacterCreateArgs): string {
+    const name = args.name.trim();
+    if (!name) { return 'Character name is required.'; }
+
+    const baseDir = charactersRoot(root);
+    const filePath = characterFilePath(root, name);
+    const rel = normalizeSlashes(path.relative(baseDir, filePath));
+    if (fs.existsSync(filePath) && !args.overwrite) {
+        return `Character already exists: ${name} (${rel}). Pass overwrite: true to replace it.`;
+    }
+
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    const profile = characterProfileFromArgs(args);
+    fs.writeFileSync(filePath, renderCharacterProfile(profile), 'utf-8');
+    updateCharacterIndex(root, profile, rel);
+    return `${fs.existsSync(filePath) && args.overwrite ? 'Wrote' : 'Created'} character: ${name} (${rel})`;
+}
+
+export function toolCharacterUpdate(root: string, args: CharacterUpdateArgs): string {
+    const filePath = findCharacterFile(root, args.name);
+    if (!filePath) { return `Character not found: ${args.name}. Use character_create first.`; }
+
+    const existing = parseCharacterProfile(fs.readFileSync(filePath, 'utf-8'), args.name);
+    const updated = mergeDefined(existing, characterProfileFromArgs(args));
+    fs.writeFileSync(filePath, renderCharacterProfile(updated), 'utf-8');
+    updateCharacterIndex(root, updated, normalizeSlashes(path.relative(charactersRoot(root), filePath)));
+    return `Updated character: ${updated.name} (${normalizeSlashes(path.relative(charactersRoot(root), filePath))})`;
+}
+
+function charactersRoot(root: string): string {
+    return path.join(root, getCharactersFolder(readSettings(root) ?? null));
+}
+
+function characterSlug(name: string): string {
+    return name.trim()
+        .toLowerCase()
+        .replace(/['"`]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'character';
+}
+
+function characterFilePath(root: string, name: string): string {
+    return path.join(charactersRoot(root), `${characterSlug(name)}.md`);
+}
+
+function findCharacterFile(root: string, name: string): string | null {
+    const baseDir = charactersRoot(root);
+    if (!fs.existsSync(baseDir)) { return null; }
+    const slug = characterSlug(name);
+    const direct = path.join(baseDir, `${slug}.md`);
+    if (fs.existsSync(direct)) { return direct; }
+
+    const files: string[] = [];
+    collectAllMd(baseDir, files);
+    const lowerName = name.trim().toLowerCase();
+    return files.find(filePath => {
+        if (path.basename(filePath).toLowerCase() === 'index.md') { return false; }
+        const profile = parseCharacterProfile(fs.readFileSync(filePath, 'utf-8'), path.basename(filePath, '.md'));
+        return profile.name.toLowerCase() === lowerName || path.basename(filePath, '.md').toLowerCase() === slug;
+    }) ?? null;
+}
+
+function characterProfileFromArgs(args: CharacterCreateArgs): CharacterProfile {
+    return {
+        name: args.name.trim(),
+        role: trimOrUndefined(args.role),
+        age: trimOrUndefined(args.age),
+        origin: trimOrUndefined(args.origin),
+        skills: trimOrUndefined(args.skills),
+        strengths: trimOrUndefined(args.strengths),
+        weaknesses: trimOrUndefined(args.weaknesses),
+        personality: trimOrUndefined(args.personality),
+        background: trimOrUndefined(args.background),
+        narrativeArc: trimOrUndefined(args.narrativeArc),
+        appearanceNotes: trimOrUndefined(args.appearanceNotes),
+        relationships: trimOrUndefined(args.relationships),
+        firstAppearance: trimOrUndefined(args.firstAppearance),
+        openQuestions: trimOrUndefined(args.openQuestions),
+        continuityNotes: trimOrUndefined(args.continuityNotes),
+        indexNotes: trimOrUndefined(args.indexNotes),
+    };
+}
+
+function renderCharacterProfile(profile: CharacterProfile): string {
+    const tableRows = [
+        ['Role', profile.role],
+        ['Age', profile.age],
+        ['Origin', profile.origin],
+        ['Skills', profile.skills],
+        ['Strengths', profile.strengths],
+        ['Weaknesses', profile.weaknesses],
+        ['First appearance', profile.firstAppearance],
+    ].map(([label, value]) => `| ${label} | ${escapeTableCell(value ?? '')} |`);
+
+    const sections = CHARACTER_SECTION_FIELDS.map(([field, heading]) => `## ${heading}\n\n${profile[field] ?? ''}`);
+    return [`# ${profile.name}`, '', '| Field | Value |', '|---|---|', ...tableRows, '', ...sections, ''].join('\n');
+}
+
+function parseCharacterProfile(content: string, fallbackName: string): CharacterProfile {
+    const h1 = /^#\s+(.+)$/m.exec(content)?.[1]?.trim();
+    const table = parseMarkdownTable(content);
+    const sections = parseMarkdownSections(content);
+    return {
+        name: h1 || fallbackName,
+        role: table.get('role'),
+        age: table.get('age'),
+        origin: table.get('origin'),
+        skills: table.get('skills'),
+        strengths: table.get('strengths'),
+        weaknesses: table.get('weaknesses'),
+        firstAppearance: table.get('first appearance'),
+        personality: sections.get('personality'),
+        background: sections.get('background'),
+        narrativeArc: sections.get('narrative arc'),
+        appearanceNotes: sections.get('appearance notes'),
+        relationships: sections.get('relationships'),
+        openQuestions: sections.get('open questions'),
+        continuityNotes: sections.get('continuity notes'),
+    };
+}
+
+function updateCharacterIndex(root: string, profile: CharacterProfile, relPath: string): void {
+    const baseDir = charactersRoot(root);
+    const indexPath = path.join(baseDir, 'index.md');
+    fs.mkdirSync(baseDir, { recursive: true });
+    if (!fs.existsSync(indexPath)) { fs.writeFileSync(indexPath, characterIndexTemplate(), 'utf-8'); }
+
+    const row = `| [${profile.name}](${relPath}) | ${escapeTableCell(profile.role ?? '')} | ${escapeTableCell(profile.firstAppearance ?? '')} | ${escapeTableCell(profile.indexNotes ?? '')} |`;
+    const slug = characterSlug(profile.name);
+    const lines = fs.readFileSync(indexPath, 'utf-8').split(/\r?\n/)
+        .filter(line => !line.toLowerCase().includes(`](${slug}.md)`) && !line.toLowerCase().startsWith(`| ${profile.name.toLowerCase()} |`));
+    const separatorIndex = lines.findIndex(line => /^\|\s*-+\s*\|/.test(line));
+    if (separatorIndex >= 0) {
+        lines.splice(separatorIndex + 1, 0, row);
+    } else {
+        lines.push('', '| Character | Role | First appearance | Notes |', '|---|---|---|---|', row);
+    }
+    fs.writeFileSync(indexPath, lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n', 'utf-8');
+}
+
+function escapeTableCell(value: string): string {
+    return value
+        .replace(/\\/g, '\\\\')
+        .replace(/\|/g, '\\|')
+        .replace(/\r?\n/g, '<br>');
+}
+
+// ─── arc_list / arc_get / arc_create / arc_update ───────────────────────────
+
+type ArcProfile = {
+    title: string;
+    kind?: string;
+    purpose?: string;
+    majorBeats?: string;
+    characterMovement?: string;
+    worldImplications?: string;
+    unresolvedQuestions?: string;
+    continuityRisks?: string;
+    linkedChapters?: string;
+};
+
+const ARC_SECTION_FIELDS: Array<[keyof ArcProfile, string]> = [
+    ['purpose', 'Purpose'],
+    ['majorBeats', 'Major Beats'],
+    ['characterMovement', 'Character Movement'],
+    ['worldImplications', 'World / Setting Implications'],
+    ['unresolvedQuestions', 'Unresolved Questions'],
+    ['continuityRisks', 'Continuity Risks'],
+    ['linkedChapters', 'Linked Chapters'],
+];
+
+export function toolArcList(root: string, args: ArcListArgs = {}): string {
+    const baseDir = arcRoot(root);
+    if (!fs.existsSync(baseDir)) { return 'No arc folder found.'; }
+
+    const files: string[] = [];
+    collectAllMd(baseDir, files);
+    const kindFilter = args.kind?.trim().toLowerCase();
+    const rows = files
+        .map(filePath => ({ filePath, profile: parseArcProfile(fs.readFileSync(filePath, 'utf-8'), titleFromNotePath(filePath)) }))
+        .filter(({ filePath, profile }) => !kindFilter || (profile.kind?.toLowerCase() === kindFilter) || inferredArcKind(baseDir, filePath) === kindFilter)
+        .sort((a, b) => path.relative(baseDir, a.filePath).localeCompare(path.relative(baseDir, b.filePath), undefined, { numeric: true }))
+        .map(({ filePath, profile }) => {
+            const rel = normalizeSlashes(path.relative(baseDir, filePath));
+            const kind = profile.kind ?? inferredArcKind(baseDir, filePath);
+            return `- ${rel} — ${profile.title}${kind ? ` (${kind})` : ''}`;
+        });
+
+    return rows.join('\n') || (kindFilter ? `No arc files matched kind: ${args.kind}` : 'No arc files found.');
+}
+
+export function toolArcGet(root: string, args: ArcGetArgs): string {
+    const filePath = safeArcFile(root, args.path);
+    if (!filePath) { return `Invalid arc path: ${args.path}`; }
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) { return `Arc file not found: ${normalizeMarkdownPath(args.path)}`; }
+    return fs.readFileSync(filePath, 'utf-8');
+}
+
+export function toolArcCreate(root: string, args: ArcCreateArgs): string {
+    const filePath = safeArcFile(root, args.path);
+    if (!filePath) { return `Invalid arc path: ${args.path}`; }
+    const rel = normalizeMarkdownPath(args.path);
+    if (fs.existsSync(filePath) && !args.overwrite) {
+        return `Arc file already exists: ${rel}. Pass overwrite: true to replace it.`;
+    }
+
+    const profile = arcProfileFromArgs(args, titleFromNotePath(rel));
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, renderArcProfile(profile), 'utf-8');
+    updateArcIndex(root, profile, rel);
+    return `${fs.existsSync(filePath) && args.overwrite ? 'Wrote' : 'Created'} arc file: ${rel}`;
+}
+
+export function toolArcUpdate(root: string, args: ArcUpdateArgs): string {
+    const filePath = safeArcFile(root, args.path);
+    if (!filePath) { return `Invalid arc path: ${args.path}`; }
+    if (!fs.existsSync(filePath)) { return `Arc file not found: ${normalizeMarkdownPath(args.path)}. Use arc_create first.`; }
+
+    const existing = parseArcProfile(fs.readFileSync(filePath, 'utf-8'), titleFromNotePath(args.path));
+    const updated = mergeDefined(existing, arcProfileFromArgs(args, existing.title));
+    fs.writeFileSync(filePath, renderArcProfile(updated), 'utf-8');
+    updateArcIndex(root, updated, normalizeSlashes(path.relative(arcRoot(root), filePath)));
+    return `Updated arc file: ${normalizeSlashes(path.relative(arcRoot(root), filePath))}`;
+}
+
+function arcRoot(root: string): string {
+    return path.join(root, getArcFolder(readSettings(root) ?? null));
+}
+
+function safeArcFile(root: string, arcPath: string): string | null {
+    const baseDir = arcRoot(root);
+    const normalized = normalizeMarkdownPath(arcPath);
+    const resolved = path.resolve(baseDir, normalized);
+    const rel = path.relative(baseDir, resolved);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) { return null; }
+    return resolved;
+}
+
+function normalizeMarkdownPath(markdownPath: string): string {
+    const normalized = markdownPath.replace(/\\/g, '/').replace(/^\/+/, '');
+    return normalized.toLowerCase().endsWith('.md') ? normalized : `${normalized}.md`;
+}
+
+function arcProfileFromArgs(args: ArcCreateArgs, fallbackTitle: string): ArcProfile {
+    return {
+        title: trimOrUndefined(args.title) ?? fallbackTitle,
+        kind: trimOrUndefined(args.kind),
+        purpose: trimOrUndefined(args.purpose),
+        majorBeats: trimOrUndefined(args.majorBeats),
+        characterMovement: trimOrUndefined(args.characterMovement),
+        worldImplications: trimOrUndefined(args.worldImplications),
+        unresolvedQuestions: trimOrUndefined(args.unresolvedQuestions),
+        continuityRisks: trimOrUndefined(args.continuityRisks),
+        linkedChapters: trimOrUndefined(args.linkedChapters),
+    };
+}
+
+function renderArcProfile(profile: ArcProfile): string {
+    const meta = profile.kind ? [`Kind: ${profile.kind}`, ''] : [];
+    const sections = ARC_SECTION_FIELDS.map(([field, heading]) => `## ${heading}\n\n${profile[field] ?? ''}`);
+    return [`# ${profile.title}`, '', ...meta, ...sections, ''].join('\n');
+}
+
+function parseArcProfile(content: string, fallbackTitle: string): ArcProfile {
+    const title = /^#\s+(.+)$/m.exec(content)?.[1]?.trim() || fallbackTitle;
+    const kind = /^Kind:\s+(.+)$/mi.exec(content)?.[1]?.trim();
+    const sections = parseMarkdownSections(content);
+    return {
+        title,
+        kind,
+        purpose: sections.get('purpose'),
+        majorBeats: sections.get('major beats'),
+        characterMovement: sections.get('character movement'),
+        worldImplications: sections.get('world / setting implications'),
+        unresolvedQuestions: sections.get('unresolved questions'),
+        continuityRisks: sections.get('continuity risks'),
+        linkedChapters: sections.get('linked chapters'),
+    };
+}
+
+function inferredArcKind(baseDir: string, filePath: string): string | undefined {
+    const rel = normalizeSlashes(path.relative(baseDir, filePath)).toLowerCase();
+    if (rel === 'overall.md') { return 'overall'; }
+    if (rel.startsWith('acts/')) { return 'act'; }
+    if (rel.startsWith('chapters/')) { return 'chapter'; }
+    if (rel.startsWith('threads/')) { return 'thread'; }
+    return undefined;
+}
+
+function updateArcIndex(root: string, profile: ArcProfile, relPath: string): void {
+    const baseDir = arcRoot(root);
+    const indexPath = path.join(baseDir, 'index.md');
+    fs.mkdirSync(baseDir, { recursive: true });
+    if (!fs.existsSync(indexPath)) { fs.writeFileSync(indexPath, arcIndexTemplate(getArcFolder(readSettings(root) ?? null)), 'utf-8'); }
+    if (normalizeSlashes(relPath).toLowerCase() === 'index.md') { return; }
+
+    const row = `- [${profile.title}](${relPath})${profile.kind ? ` — ${profile.kind}` : ''}`;
+    const lines = fs.readFileSync(indexPath, 'utf-8').split(/\r?\n/)
+        .filter(line => !line.includes(`](${relPath})`));
+    lines.push(row);
+    fs.writeFileSync(indexPath, lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n', 'utf-8');
+}
+
+function parseMarkdownTable(content: string): Map<string, string> {
+    const values = new Map<string, string>();
+    for (const line of content.split(/\r?\n/)) {
+        const match = /^\|\s*([^|]+?)\s*\|\s*(.*?)\s*\|$/.exec(line);
+        if (!match) { continue; }
+        const key = match[1].trim().toLowerCase();
+        const value = match[2].replace(/<br>/g, '\n').replace(/\\\|/g, '|').trim();
+        if (key && key !== 'field' && !/^-+$/.test(key)) { values.set(key, value || undefined as never); }
+    }
+    return values;
+}
+
+function parseMarkdownSections(content: string): Map<string, string> {
+    const sections = new Map<string, string>();
+    const matches = [...content.matchAll(/^##\s+(.+)$/gm)];
+    for (let index = 0; index < matches.length; index++) {
+        const match = matches[index];
+        const next = matches[index + 1];
+        if (match.index === undefined) { continue; }
+        const start = match.index + match[0].length;
+        const end = next?.index ?? content.length;
+        const body = content.slice(start, end).trim();
+        sections.set(match[1].trim().toLowerCase(), body || undefined as never);
+    }
+    return sections;
+}
+
+function mergeDefined<T extends Record<string, unknown>>(base: T, patch: T): T {
+    const merged: Record<string, unknown> = { ...base };
+    for (const [key, value] of Object.entries(patch)) {
+        if (value !== undefined && value !== '') { merged[key] = value; }
+    }
+    return merged as T;
 }
 
 // ─── search ───────────────────────────────────────────────────────────────────
@@ -1590,9 +2179,12 @@ function detectWorkspaceLangs(
             }
         }
     }
+    if (detected.length === 0 && existingLangs.length > 0) {
+        return existingLangs;
+    }
     const base = detected.length > 0
         ? detected
-        : [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' }];
+        : [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue', isDefault: true }];
     return base.map(dl => {
         const el = existingLangs.find(l => (l['code'] as string | undefined)?.toUpperCase() === dl.code);
         return el ? { ...el, code: dl.code, folderName: dl.folderName } : (dl);
@@ -1617,6 +2209,184 @@ function seedTranslations(translationsPath: string, languages: Array<Record<stri
     return true;
 }
 
+function writeScaffoldFile(root: string, relPath: string, content: string): boolean {
+    const filePath = path.join(root, ...relPath.split('/'));
+    if (fs.existsSync(filePath)) { return false; }
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return true;
+}
+
+function ensureScaffoldDir(root: string, relPath: string): boolean {
+    const dirPath = path.join(root, ...relPath.split('/'));
+    const existed = fs.existsSync(dirPath);
+    fs.mkdirSync(dirPath, { recursive: true });
+    return !existed;
+}
+
+function titleAsString(value: unknown, fallback: string): string {
+    if (typeof value === 'string' && value.trim()) { return value.trim(); }
+    if (value && typeof value === 'object') {
+        const titles = value as Record<string, unknown>;
+        const en = titles['en'];
+        if (typeof en === 'string' && en.trim()) { return en.trim(); }
+        const first = Object.values(titles).find(v => typeof v === 'string' && v.trim());
+        if (typeof first === 'string') { return first.trim(); }
+    }
+    return fallback;
+}
+
+function cowriteSessionFile(settings: Record<string, unknown>, _languages: Array<Record<string, unknown>>): string {
+    const title = titleAsString(settings['bookTitle'], 'Untitled');
+    return `# Session
+
+Book: ${title}
+
+This file is intentionally user-owned. Bindery creates it so authors and agents have a shared place for current focus and handoff notes, but personal workflow rules and collaboration preferences belong here only if the author chooses to add them.
+
+## Current Focus
+
+
+## Next Actions
+
+
+## Open Questions
+
+
+## Handoff Notes
+
+
+## Personal Working Notes
+
+`;
+}
+
+function arcIndexTemplate(arcFolderName: string): string {
+    return `# Arc Index
+
+Use this folder for story architecture: premise, structure, act beats, chapter placement, and thread tracking.
+
+## Core files
+
+- [Overall](Overall.md) - whole-book arc, central promise, ending direction, and major turns.
+- [Acts](Acts/) - act-level planning files. This is the default Bindery recommendation for novels.
+
+## Optional structures
+
+- \`${arcFolderName}/Chapters/\` - chapter-level planning for detailed outliners.
+- \`${arcFolderName}/Threads/\` - theme, mystery, relationship, faction, or world-plot threads.
+`;
+}
+
+function overallArcTemplate(): string {
+    return `# Overall Arc
+
+## Premise
+
+
+## Story Promise
+
+
+## Major Turns
+
+- Opening:
+- First major turn:
+- Midpoint:
+- Crisis:
+- Climax:
+- Resolution:
+
+## Character Movement
+
+
+## World / Setting Movement
+
+
+## Open Questions
+
+
+## Continuity Risks
+
+`;
+}
+
+function characterIndexTemplate(): string {
+    return `# Character Index
+
+Use one file per character in this folder. Keep this index for quick cast navigation and role summaries.
+
+| Character | Role | First appearance | Notes |
+|---|---|---|---|
+`;
+}
+
+function noteIndexTemplate(title: string, purpose: string): string {
+    return `# ${title}
+
+${purpose}
+`;
+}
+
+function memoryTemplate(title: string): string {
+    return `# Global Memory - ${title}
+
+Use this file for durable cross-chapter decisions, recurring constraints, and story rules that should survive across sessions.
+`;
+}
+
+function chapterStatusTemplate(): string {
+    return JSON.stringify({ schemaVersion: 1, updatedAt: new Date().toISOString().slice(0, 10), chapters: [] }, null, 2) + '\n';
+}
+
+function scaffoldOpinionatedWorkspace(root: string, settings: Record<string, unknown>, languages: Array<Record<string, unknown>>): string[] {
+    const created: string[] = [];
+    const typedSettings = settings as WorkspaceSettings;
+    const storyFolderName = getStoryFolder(typedSettings);
+    const notesFolderName = getNotesFolder(typedSettings);
+    const arcFolderName = getArcFolder(typedSettings);
+    const charactersFolderName = getCharactersFolder(typedSettings);
+    const sessionFileName = getSessionFile(typedSettings);
+    const title = titleAsString(settings['bookTitle'], path.basename(root));
+
+    for (const lang of languages) {
+        const folderName = typeof lang['folderName'] === 'string' ? lang['folderName'] : lang['code'];
+        if (typeof folderName === 'string' && folderName.trim()) {
+            const rel = `${storyFolderName}/${folderName.trim()}`;
+            if (ensureScaffoldDir(root, rel)) { created.push(`${rel}/`); }
+        }
+    }
+
+    const dirs = [
+        `${arcFolderName}/Acts`,
+        `${notesFolderName}/World`,
+        `${notesFolderName}/Scenes`,
+        `${notesFolderName}/Research`,
+        charactersFolderName,
+        '.bindery/memories/archive',
+    ];
+    for (const dir of dirs) {
+        if (ensureScaffoldDir(root, dir)) { created.push(`${dir}/`); }
+    }
+
+    const files: Array<[string, string]> = [
+        [sessionFileName, cowriteSessionFile(settings, languages)],
+        [`${arcFolderName}/index.md`, arcIndexTemplate(arcFolderName)],
+        [`${arcFolderName}/Overall.md`, overallArcTemplate()],
+        [`${notesFolderName}/Inbox.md`, noteIndexTemplate('Inbox', 'Drop loose ideas, pasted mobile chats, and unsorted notes here. Process them into structured notes when ready.')],
+        [`${notesFolderName}/World/index.md`, noteIndexTemplate('World Notes', 'World rules, setting facts, magic/technology constraints, and culture notes.')],
+        [`${notesFolderName}/Scenes/index.md`, noteIndexTemplate('Scene Notes', 'Loose scene ideas, set pieces, fragments, and placement candidates.')],
+        [`${notesFolderName}/Research/index.md`, noteIndexTemplate('Research Notes', 'Research references, factual checks, and source links.')],
+        [`${charactersFolderName}/index.md`, characterIndexTemplate()],
+        ['.bindery/memories/global.md', memoryTemplate(title)],
+        ['.bindery/chapter-status.json', chapterStatusTemplate()],
+    ];
+    for (const [relPath, content] of files) {
+        if (writeScaffoldFile(root, relPath, content)) { created.push(relPath); }
+    }
+
+    return created;
+}
+
 export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string {
     const settingsPath     = path.join(root, '.bindery', 'settings.json');
     const translationsPath = path.join(root, '.bindery', 'translations.json');
@@ -1629,11 +2399,21 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
     }
 
     const storyFolderName = args.storyFolder ?? (existing['storyFolder'] as string | undefined) ?? 'Story';
-    const bookTitle       = args.bookTitle   ?? (existing['bookTitle']   as string | undefined) ?? path.basename(root);
+    const bookTitle       = args.bookTitle   ?? existing['bookTitle'] ?? path.basename(root);
     const existingLangs   = ((existing['languages'] as unknown[] | undefined) ?? []) as Array<Record<string, unknown>>;
     const languages       = detectWorkspaceLangs(path.join(root, storyFolderName), existingLangs);
 
-    const slug = bookTitle.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/g, '') || 'Book';
+    const settingsForDefaults: WorkspaceSettings = {
+        storyFolder:       storyFolderName,
+        notesFolder:       existing['notesFolder'] as string | undefined,
+        arcFolder:         existing['arcFolder'] as string | undefined,
+        charactersFolder:  existing['charactersFolder'] as string | undefined,
+        sessionFile:       existing['sessionFile'] as string | undefined,
+        arcGranularity:    existing['arcGranularity'] as WorkspaceSettings['arcGranularity'],
+    };
+
+    const slugSource = titleAsString(bookTitle, path.basename(root));
+    const slug = slugSource.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/g, '') || 'Book';
     const settings: Record<string, unknown> = {
         ...existing,
         bookTitle,
@@ -1642,6 +2422,11 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         ...(args.description    ? { description: args.description }      : {}),
         ...(args.targetAudience ? { targetAudience: args.targetAudience }: {}),
         storyFolder:     storyFolderName,
+        notesFolder:     existing['notesFolder']      ?? getNotesFolder(settingsForDefaults),
+        arcFolder:       existing['arcFolder']        ?? getArcFolder(settingsForDefaults),
+        charactersFolder: existing['charactersFolder'] ?? getCharactersFolder(settingsForDefaults),
+        sessionFile:     existing['sessionFile']      ?? getSessionFile(settingsForDefaults),
+        arcGranularity:  existing['arcGranularity']   ?? getArcGranularity(settingsForDefaults),
         mergedOutputDir: (existing['mergedOutputDir'])  ?? 'Merged',
         mergeFilePrefix: (existing['mergeFilePrefix'])  ?? slug,
         formatOnSave:    (existing['formatOnSave']) ?? false,
@@ -1662,6 +2447,9 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
 
     const engbSeeded = seedTranslations(translationsPath, languages);
 
+    const scaffoldCreated = scaffoldOpinionatedWorkspace(root, settings, languages);
+    created.push(...scaffoldCreated);
+
     // Always (re)write the capabilities README so agents have a single canonical
     // "what can Bindery do?" reference from the moment a workspace is initialized.
     try { writeBinderyCapabilitiesReadme(root); created.push('.bindery/README.md'); }
@@ -1673,7 +2461,7 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         ? '\n\nTip: AI instruction files (CLAUDE.md, skills, copilot-instructions.md) are not yet set up. Run setup_ai_files to generate them, or use "Bindery: Set Up AI Files" in VS Code.'
         : '';
     const engbNote = engbSeeded ? ' en-gb dialect seeded (75 rules).' : '';
-    return `${action}: ${created.join(', ')}. Book: "${bookTitle}", story folder: ${storyFolderName}/, languages: ${langNote}.${engbNote}${hint}`;
+    return `${action}: ${created.join(', ')}. Book: "${slugSource}", story folder: ${storyFolderName}/, languages: ${langNote}.${engbNote}${hint}`;
 }
 
 // ─── settings_update ───────────────────────────────────────────────────────

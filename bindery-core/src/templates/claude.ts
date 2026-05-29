@@ -2,13 +2,13 @@ import { audienceNote, languageSection, type TemplateContext, type TemplateMeta 
 
 export const meta: TemplateMeta = {
     file:    'CLAUDE.md',
-    version: 12,
+    version: 13,
     label:   'project instructions',
     zip:     null,
 };
 
 export function render(ctx: TemplateContext): string {
-    const { title, author, description, genre, storyFolder, notesFolder, arcFolder } = ctx;
+    const { title, author, description, genre, storyFolder, notesFolder, arcFolder, charactersFolder, sessionFile, arcGranularity } = ctx;
     const lines: string[] = [
         `# Claude — ${title}`,
         '',
@@ -24,7 +24,7 @@ export function render(ctx: TemplateContext): string {
         '1. Use /read-in at the start of a session to load context and get your bearings.',
         '2. Run `health` from the Bindery MCP and check `ai_versions_outdated`.',
         '3. If `ai_versions_outdated` has entries, run `setup_ai_files` and present the returned `skill_zips.reupload_required` list to the user for Claude Desktop.',
-        '4. If the skill or MCP server is not available, read at least COWORK.md (if present) for current focus and context.',
+        `4. If the skill or MCP server is not available, read at least ${sessionFile} (if present) for user-owned current focus and handoff context.`,
         '',
         '## Memory system',
         '1. When concluding a discussion, or after you give a meaningful, preservation-worthy response: use /memory to store it.',
@@ -32,8 +32,13 @@ export function render(ctx: TemplateContext): string {
         '',
         '## Repo layout',
         '```',
-        `${arcFolder}/  ← story arc files`,
-        `${notesFolder}/  ← story notes (characters, world)`,
+        `${arcFolder}/  ← story architecture (${arcGranularity}-level arc planning by default)`,
+        `  index.md  ← arc map`,
+        `  Overall.md  ← whole-book arc`,
+        `  Acts/  ← act-level arc files`,
+        `${notesFolder}/  ← story notes`,
+        `${charactersFolder}/  ← character index and one profile per character`,
+        `${sessionFile}  ← user-owned current focus / handoff notes`,
         `${storyFolder}/`,
         ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters (one .md per chapter)`),
         '```',
@@ -53,7 +58,9 @@ export function render(ctx: TemplateContext): string {
         '| Command | Purpose |',
         '|---|---|',
         '| `/review` | Review a chapter for language, arc consistency, and age-appropriateness |',
-        '| `/brainstorm` | Generate plot/character/scene ideas |',
+        '| `/brainstorm` | Guided story ideation when the author is stuck |',
+        '| `/plan-beats` | Create, expand, or refine chapter and scene beatmaps |',
+        '| `/character-setup` | Create or refine structured character profiles |',
         '| `/memory` | Update memory files and compact if needed |',
         '| `/translate` | Assist with chapter translation |',
         '| `/translation-review` | Review a hand-crafted translation against the source |',
@@ -73,7 +80,7 @@ export function render(ctx: TemplateContext): string {
         '| `list_books` | List all configured book names |',
         '| `identify_book` | Match a working directory to a book name |',
         '| `health` | Server status: settings, index, embedding backend |',
-        '| `init_workspace` | Create or update `.bindery/settings.json` and `translations.json` |',
+        '| `init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / COWORK / memory / status scaffold |',
         '| `setup_ai_files` | Regenerate AI instruction files, rebuild Claude skill zip files, and return a change manifest |',
         '| `index_build` | Build or rebuild the full-text search index |',
         '| `index_status` | Show index chunk count and build time |',
@@ -82,6 +89,12 @@ export function render(ctx: TemplateContext): string {
         '| `get_book_until` | Fetch chapters from 1..N (or start..N) in one call, concatenated in reading order |',
         '| `get_overview` | Chapter structure — acts, chapters, titles |',
         '| `get_notes` | Notes/ files, filterable by category or name |',
+        '| `note_list` / `note_get` | List or read canonical story notes under Notes/ |',
+        '| `note_create` / `note_append` | Create or append canonical story notes under Notes/ |',
+        '| `character_list` / `character_get` | List or read structured character profiles |',
+        '| `character_create` / `character_update` | Create or update structured character profiles and the cast index |',
+        '| `arc_list` / `arc_get` | List or read structured arc files |',
+        '| `arc_create` / `arc_update` | Create or update structured arc files and the arc index |',
         '| `search` | BM25 full-text search with ranked snippets, optional semantic ranking |',
         '| `format` | Apply typography formatting to a file or folder |',
         '| `get_review_text` | Structured git diff with review-marker regions and optional auto-staging that consumes markers |',

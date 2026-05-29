@@ -33,6 +33,8 @@ export interface DialectConfig {
     label?: string;
 }
 
+export type ArcGranularity = 'overall' | 'act' | 'chapter' | 'thread' | 'custom';
+
 // ─── Settings Schema ──────────────────────────────────────────────────────
 
 /**
@@ -56,6 +58,16 @@ export interface WorkspaceSettings {
     /** Claude skills previously chosen when running Set Up AI Files. */
     aiSkills?: string[];
     storyFolder?:     string;
+    /** Story notes folder relative to the book root. */
+    notesFolder?:     string;
+    /** Story architecture folder relative to the book root. */
+    arcFolder?:       string;
+    /** Character profile folder relative to the book root. */
+    charactersFolder?: string;
+    /** Current-focus/session file relative to the book root. */
+    sessionFile?:     string;
+    /** Preferred arc planning granularity. */
+    arcGranularity?:  ArcGranularity;
     mergedOutputDir?:  string;
     mergeFilePrefix?: string;
     formatOnSave?:   boolean;
@@ -75,6 +87,13 @@ export const BINDERY_FOLDER        = '.bindery';
 export const SETTINGS_FILENAME     = 'settings.json';
 export const TRANSLATIONS_FILENAME = 'translations.json';
 
+export const DEFAULT_STORY_FOLDER       = 'Story';
+export const DEFAULT_NOTES_FOLDER       = 'Notes';
+export const DEFAULT_ARC_FOLDER         = 'Arc';
+export const DEFAULT_CHARACTERS_FOLDER  = 'Notes/Characters';
+export const DEFAULT_SESSION_FILE       = 'COWORK.md';
+export const DEFAULT_ARC_GRANULARITY: ArcGranularity = 'act';
+
 // ─── Path helpers ─────────────────────────────────────────────────────────────
 
 export function getBinderyFolder(root: string): string {
@@ -87,6 +106,36 @@ export function getSettingsPath(root: string): string {
 
 export function getTranslationsPath(root: string): string {
     return path.join(root, BINDERY_FOLDER, TRANSLATIONS_FILENAME);
+}
+
+// ─── Authoring Path Defaults ─────────────────────────────────────────────────
+
+type AuthoringPathSettings = Pick<WorkspaceSettings,
+    'storyFolder' | 'notesFolder' | 'arcFolder' | 'charactersFolder' | 'sessionFile' | 'arcGranularity'
+>;
+
+export function getStoryFolder(settings: AuthoringPathSettings | null): string {
+    return settings?.storyFolder ?? DEFAULT_STORY_FOLDER;
+}
+
+export function getNotesFolder(settings: AuthoringPathSettings | null): string {
+    return settings?.notesFolder ?? DEFAULT_NOTES_FOLDER;
+}
+
+export function getArcFolder(settings: AuthoringPathSettings | null): string {
+    return settings?.arcFolder ?? DEFAULT_ARC_FOLDER;
+}
+
+export function getCharactersFolder(settings: AuthoringPathSettings | null): string {
+    return settings?.charactersFolder ?? path.posix.join(getNotesFolder(settings), 'Characters');
+}
+
+export function getSessionFile(settings: AuthoringPathSettings | null): string {
+    return settings?.sessionFile ?? DEFAULT_SESSION_FILE;
+}
+
+export function getArcGranularity(settings: AuthoringPathSettings | null): ArcGranularity {
+    return settings?.arcGranularity ?? DEFAULT_ARC_GRANULARITY;
 }
 
 // ─── Readers ─────────────────────────────────────────────────────────────────
