@@ -14,7 +14,7 @@
 import * as vscode from 'vscode';
 import * as fs     from 'node:fs';
 import * as path   from 'node:path'
-import { execSync } from 'node:child_process'
+import { execSync, spawnSync } from 'node:child_process'
 import { updateTypography }                    from './format';
 import {
     mergeBook, checkPandoc, getBuiltInUkReplacements,
@@ -22,7 +22,7 @@ import {
 } from './merge';
 import {
     readWorkspaceSettings, readTranslations,
-    getBinderyFolder, getSettingsPath, getTranslationsPath,
+    getSettingsPath, getTranslationsPath,
     getBookTitleForLang, getSubstitutionRules, getIgnoredWords,
     upsertSubstitutionRule, upsertGlossaryRule, addIgnoredWords,
     getDefaultLanguage, getDialectsForLanguage,
@@ -63,6 +63,7 @@ function getWorkspaceRoot(): string | undefined {
 
 interface McpToolsForAi {
     toolHealth: (_root: string) => string;
+    toolInitWorkspace: (_root: string, _args: { bookTitle?: string; author?: string; storyFolder?: string; targetAudience?: string }) => string;
     toolSetupAiFiles: (_root: string, _args: { targets?: string[]; skills?: string[]; overwrite?: boolean }) => string;
     writeBinderyCapabilitiesReadme: (_root: string) => void;
     toolNoteList: (_root: string, _args: { category?: string }) => string;
@@ -342,50 +343,78 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
     );
     if (!formatOption) { return; }
 
-    // Detect existing language folders to pre-populate languages array
     const detectedLangs = detectLanguageFolders(path.join(root, storyFolder));
-    const languages     = detectedLangs.length > 0 ? detectedLangs : [DEFAULT_LANGUAGE];
+    const translationsPath = getTranslationsPath(root);
 
-    const slug: string = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/g, '') || 'Book';
+    if (!context) {
+        vscode.window.showErrorMessage('Bindery initializer unavailable.');
+        return;
+    }
 
-    const settings: WorkspaceSettings = {
-        ...(title    ? { bookTitle: title }             : {}),
-        ...(author   ? { author }                       : {}),
-        ...(audience ? { targetAudience: audience }     : {}),
-        storyFolder,
-        mergedOutputDir: 'Merged',
-        mergeFilePrefix: slug,
-        formatOnSave:    formatOption.value,
-        languages,
-    };
-
-    const binderyFolder = getBinderyFolder(root);
-    fs.mkdirSync(binderyFolder, { recursive: true });
+    let settings: WorkspaceSettings;
+    try {
+        const tools = loadMcpToolsForAi(context.extensionPath);
+        tools.toolInitWorkspace(root, {
+            ...(title    ? { bookTitle: title }         : {}),
+            ...(author   ? { author }                   : {}),
+            ...(audience ? { targetAudience: audience } : {}),
+            storyFolder,
+        });
+        settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as WorkspaceSettings;
+    } catch {
+        const binderyFolder = path.join(root, '.bindery');
+        const languages = detectedLangs.length > 0 ? detectedLangs : [DEFAULT_LANGUAGE];
+        const slug = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/g, '') || 'Book';
+        settings = {
+            ...(title    ? { bookTitle: title }         : {}),
+            ...(author   ? { author }                   : {}),
+            ...(audience ? { targetAudience: audience } : {}),
+            storyFolder,
+            notesFolder: 'Notes',
+            arcFolder: 'Arc',
+            charactersFolder: 'Notes/Characters',
+            sessionFile: 'SESSION.md',
+            preferencesFile: 'PREFERENCES.md',
+            mergedOutputDir: 'Merged',
+            mergeFilePrefix: slug,
+            formatOnSave: false,
+            languages,
+        };
+        const writeIfMissing = (filePath: string, content: string): void => {
+            if (fs.existsSync(filePath)) { return; }
+            fs.mkdirSync(path.dirname(filePath), { recursive: true });
+            fs.writeFileSync(filePath, content, 'utf-8');
+        };
+        fs.mkdirSync(binderyFolder, { recursive: true });
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+        writeIfMissing(translationsPath, JSON.stringify({ 'en-gb': { label: 'British English', type: 'substitution', sourceLanguage: 'en', rules: [], ignoredWords: [] } }, null, 2) + '\n');
+        fs.mkdirSync(path.join(root, storyFolder, 'EN'), { recursive: true });
+        fs.mkdirSync(path.join(root, 'Arc', 'Acts'), { recursive: true });
+        fs.mkdirSync(path.join(root, 'Notes', 'Characters'), { recursive: true });
+        fs.mkdirSync(path.join(root, '.bindery', 'memories', 'archive'), { recursive: true });
+        writeIfMissing(path.join(root, 'SESSION.md'), `# Session — ${title || path.basename(root)}\n\n## Current Focus\n\n\n## Next Actions\n\n\n## Open Questions\n\n\n## Handoff Notes\n\n`);
+        writeIfMissing(path.join(root, 'PREFERENCES.md'), `# Preferences — ${title || path.basename(root)}\n\n## Working Style\n\n\n## Writing Conventions\n\n\n## Review Preferences\n\n\n## Collaboration Notes\n\n`);
+        writeIfMissing(path.join(root, 'Arc', 'Overall.md'), '# Overall Arc\n');
+        writeIfMissing(path.join(root, 'Notes', 'Inbox.md'), '# Inbox\n');
+        writeIfMissing(path.join(root, 'Notes', 'Characters', 'index.md'), '# Character Index\n');
+        writeIfMissing(path.join(root, '.bindery', 'memories', 'global.md'), `# Global Memory - ${title || path.basename(root)}\n`);
+        writeIfMissing(path.join(root, '.bindery', 'chapter-status.json'), JSON.stringify({ schemaVersion: 1, updatedAt: new Date().toISOString().slice(0, 10), chapters: [] }, null, 2) + '\n');
+    }
+    settings.formatOnSave = formatOption.value;
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
 
-    // Create translations.json only if it does not yet exist
-    const translationsPath = getTranslationsPath(root);
-    if (!fs.existsSync(translationsPath)) {
-        const translations = {
-            'en-gb': {
-                label:          'British English',
-                type:           'substitution',
-                sourceLanguage: 'en',
-                rules:          [],
-                ignoredWords:   [],
-            },
-        };
-        fs.writeFileSync(translationsPath, JSON.stringify(translations, null, 2) + '\n', 'utf-8');
-    }
-
-    // Write .bindery/README.md (capabilities reference) so agents have a single
-    // canonical answer to "what can Bindery do?" from the moment of init.
-    if (context) {
-        try {
-            loadMcpToolsForAi(context.extensionPath).writeBinderyCapabilitiesReadme(root);
-        } catch { /* non-fatal — Setup AI will refresh it later */ }
-    }
-
+    const sessionFile = typeof settings.sessionFile === 'string' ? settings.sessionFile : 'SESSION.md';
+    const preferencesFile = typeof settings.preferencesFile === 'string' ? settings.preferencesFile : 'PREFERENCES.md';
+    const gitAddCandidates = [
+        '.bindery/',
+        '.gitignore',
+        sessionFile,
+        preferencesFile,
+        settings.storyFolder ?? 'Story',
+        settings.arcFolder ?? 'Arc',
+        settings.notesFolder ?? 'Notes',
+        settings.charactersFolder ?? 'Notes/Characters',
+    ];
     // Ensure git repo exists for version tracking
     let gitNote = '';
     if (!fs.existsSync(path.join(root, '.git'))) {
@@ -408,7 +437,10 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
                 ].join('\n'), 'utf-8');
             }
 
-            execSync('git add .bindery/ .gitignore', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
+            const gitAddPaths = gitAddCandidates.filter(rel => fs.existsSync(path.join(root, rel)));
+            const gitAddResult = spawnSync('git', ['add', '--', ...gitAddPaths], { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
+            if (gitAddResult.error) { throw gitAddResult.error; }
+            if (gitAddResult.status !== 0) { throw new Error(gitAddResult.stderr || gitAddResult.stdout || 'git add failed'); }
             execSync('git commit -m "Bindery: initial setup"', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
             gitNote = ' Git repository initialized.';
         } catch {

@@ -118,6 +118,7 @@ interface AuthoringChapterStatusEntry {
 }
 
 interface AuthoringTools {
+    toolInitWorkspace: (_root: string, _args: { bookTitle?: string; author?: string; storyFolder?: string }) => string;
     toolNoteList: (_root: string, _args: { category?: string }) => string;
     toolNoteGet: (_root: string, _args: { path: string }) => string;
     toolNoteCreate: (_root: string, _args: { path: string; title?: string; content?: string; overwrite?: boolean }) => string;
@@ -935,20 +936,50 @@ export default class BinderyPlugin extends Plugin {
             return; // already initialised
         }
 
-        fs.mkdirSync(binderyFolder, { recursive: true });
         // Derive the default book title from the folder name (or vault name for root mode)
         const vaultName = trimmedBookRoot
             ? path.basename(bookPath)
             : this.app.vault.getName();
-        const defaultSettings = {
-            bookTitle:   vaultName,
-            author:      '',
-            storyFolder: 'Story',
-            mergedOutputDir: 'Merged',
-            mergeFilePrefix: 'Book',
-            formatOnSave: false,
-        };
-        fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2) + '\n', 'utf-8');
+        try {
+            loadAuthoringTools().toolInitWorkspace(bookPath, {
+                bookTitle: vaultName,
+                author: '',
+                storyFolder: 'Story',
+            });
+        } catch {
+            fs.mkdirSync(binderyFolder, { recursive: true });
+            const defaultSettings = {
+                bookTitle:   vaultName,
+                author:      '',
+                storyFolder: 'Story',
+                notesFolder: 'Notes',
+                arcFolder: 'Arc',
+                charactersFolder: 'Notes/Characters',
+                sessionFile: 'SESSION.md',
+                preferencesFile: 'PREFERENCES.md',
+                mergedOutputDir: 'Merged',
+                mergeFilePrefix: 'Book',
+                formatOnSave: false,
+            };
+            fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2) + '\n', 'utf-8');
+            const writeIfMissing = (filePath: string, content: string): void => {
+                if (fs.existsSync(filePath)) { return; }
+                fs.mkdirSync(path.dirname(filePath), { recursive: true });
+                fs.writeFileSync(filePath, content, 'utf-8');
+            };
+            writeIfMissing(path.join(binderyFolder, 'translations.json'), JSON.stringify({ 'en-gb': { label: 'British English', type: 'substitution', sourceLanguage: 'en', rules: [], ignoredWords: [] } }, null, 2) + '\n');
+            fs.mkdirSync(path.join(bookPath, 'Story', 'EN'), { recursive: true });
+            fs.mkdirSync(path.join(bookPath, 'Arc', 'Acts'), { recursive: true });
+            fs.mkdirSync(path.join(bookPath, 'Notes', 'Characters'), { recursive: true });
+            fs.mkdirSync(path.join(bookPath, '.bindery', 'memories', 'archive'), { recursive: true });
+            writeIfMissing(path.join(bookPath, 'SESSION.md'), `# Session — ${vaultName}\n\n## Current Focus\n\n\n## Next Actions\n\n\n## Open Questions\n\n\n## Handoff Notes\n\n`);
+            writeIfMissing(path.join(bookPath, 'PREFERENCES.md'), `# Preferences — ${vaultName}\n\n## Working Style\n\n\n## Writing Conventions\n\n\n## Review Preferences\n\n\n## Collaboration Notes\n\n`);
+            writeIfMissing(path.join(bookPath, 'Arc', 'Overall.md'), '# Overall Arc\n');
+            writeIfMissing(path.join(bookPath, 'Notes', 'Inbox.md'), '# Inbox\n');
+            writeIfMissing(path.join(bookPath, 'Notes', 'Characters', 'index.md'), '# Character Index\n');
+            writeIfMissing(path.join(bookPath, '.bindery', 'memories', 'global.md'), `# Global Memory - ${vaultName}\n`);
+            writeIfMissing(path.join(bookPath, '.bindery', 'chapter-status.json'), JSON.stringify({ schemaVersion: 1, updatedAt: new Date().toISOString().slice(0, 10), chapters: [] }, null, 2) + '\n');
+        }
     }
 
     private async copyMcpSnippet(): Promise<void> {
