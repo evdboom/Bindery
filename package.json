@@ -19,5 +19,8 @@
   },
   "devDependencies": {
     "eslint-plugin-obsidianmd": "^0.2.9"
+  },
+  "overrides": {
+    "qs": "^6.15.2"
   }
 }
