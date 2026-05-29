@@ -181,6 +181,11 @@ describe('initWorkspace (via onload side-effect)', () => {
         expect(fs.existsSync(settingsPath)).toBe(true);
         const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as { bookTitle: string };
         expect(settings.bookTitle).toBe('NewBook');
+        expect(fs.existsSync(path.join(tmpRoot, 'SESSION.md'))).toBe(true);
+        expect(fs.existsSync(path.join(tmpRoot, 'PREFERENCES.md'))).toBe(true);
+        expect(fs.existsSync(path.join(tmpRoot, 'Story', 'EN'))).toBe(true);
+        expect(fs.existsSync(path.join(tmpRoot, 'Notes', 'Inbox.md'))).toBe(true);
+        expect(fs.existsSync(path.join(tmpRoot, 'Arc', 'Overall.md'))).toBe(true);
     });
 
     it('does not overwrite existing settings.json', async () => {
@@ -213,6 +218,9 @@ describe('initWorkspace (via onload side-effect)', () => {
         const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as { bookTitle: string };
         // Title should be derived from folder name, not vault name
         expect(parsed.bookTitle).toBe('MyNovel');
+        expect(fs.existsSync(path.join(tmpRoot, 'MyNovel', 'SESSION.md'))).toBe(true);
+        expect(fs.existsSync(path.join(tmpRoot, 'MyNovel', 'PREFERENCES.md'))).toBe(true);
+        expect(fs.existsSync(path.join(tmpRoot, 'MyNovel', 'Story', 'EN'))).toBe(true);
     });
 });
 
