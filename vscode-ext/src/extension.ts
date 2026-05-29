@@ -14,7 +14,7 @@
 import * as vscode from 'vscode';
 import * as fs     from 'node:fs';
 import * as path   from 'node:path'
-import { execSync } from 'node:child_process'
+import { execSync, spawnSync } from 'node:child_process'
 import { updateTypography }                    from './format';
 import {
     mergeBook, checkPandoc, getBuiltInUkReplacements,
@@ -415,8 +415,6 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
         settings.notesFolder ?? 'Notes',
         settings.charactersFolder ?? 'Notes/Characters',
     ];
-    const quoteGitPath = (rel: string) => `'${rel.replaceAll("'", "'\\''")}'`;
-
     // Ensure git repo exists for version tracking
     let gitNote = '';
     if (!fs.existsSync(path.join(root, '.git'))) {
@@ -440,7 +438,9 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
             }
 
             const gitAddPaths = gitAddCandidates.filter(rel => fs.existsSync(path.join(root, rel)));
-            execSync(`git add -- ${gitAddPaths.map(quoteGitPath).join(' ')}`, { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
+            const gitAddResult = spawnSync('git', ['add', '--', ...gitAddPaths], { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
+            if (gitAddResult.error) { throw gitAddResult.error; }
+            if (gitAddResult.status !== 0) { throw new Error(gitAddResult.stderr || gitAddResult.stdout || 'git add failed'); }
             execSync('git commit -m "Bindery: initial setup"', { cwd: root, encoding: 'utf-8', stdio: 'pipe' });
             gitNote = ' Git repository initialized.';
         } catch {
