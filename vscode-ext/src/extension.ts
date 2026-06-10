@@ -373,19 +373,20 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
         const languages = detectedLangs.length > 0 ? detectedLangs : [DEFAULT_LANGUAGE];
         const slug = title.replaceAll(/[^a-zA-Z0-9]+/g, '_').replaceAll(/^_|_$/g, '') || 'Book';
         settings = {
+            ...existingSettings,
             ...(title    ? { bookTitle: title }         : {}),
             ...(author   ? { author }                   : {}),
             ...(audience ? { targetAudience: audience } : {}),
             storyFolder,
-            notesFolder: 'Notes',
-            arcFolder: 'Arc',
-            charactersFolder: 'Notes/Characters',
-            sessionFile: 'SESSION.md',
-            preferencesFile: 'PREFERENCES.md',
-            mergedOutputDir: 'Merged',
-            mergeFilePrefix: slug,
-            formatOnSave: false,
-            languages,
+            notesFolder: existingSettings?.notesFolder ?? 'Notes',
+            arcFolder: existingSettings?.arcFolder ?? 'Arc',
+            charactersFolder: existingSettings?.charactersFolder ?? 'Notes/Characters',
+            sessionFile: existingSettings?.sessionFile ?? 'SESSION.md',
+            preferencesFile: existingSettings?.preferencesFile ?? 'PREFERENCES.md',
+            mergedOutputDir: existingSettings?.mergedOutputDir ?? 'Merged',
+            mergeFilePrefix: existingSettings?.mergeFilePrefix ?? slug,
+            formatOnSave: existingSettings?.formatOnSave ?? false,
+            languages: existingSettings?.languages?.length ? existingSettings.languages : languages,
         };
         const writeIfMissing = (filePath: string, content: string): void => {
             if (fs.existsSync(filePath)) { return; }
