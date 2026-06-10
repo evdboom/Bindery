@@ -932,21 +932,20 @@ export default class BinderyPlugin extends Plugin {
         const binderyFolder = path.join(bookPath, BINDERY_FOLDER);
         const settingsPath  = path.join(binderyFolder, SETTINGS_FILENAME);
 
-        if (fs.existsSync(settingsPath)) {
-            return; // already initialised
-        }
+        const isNew = !fs.existsSync(settingsPath);
 
         // Derive the default book title from the folder name (or vault name for root mode)
         const vaultName = trimmedBookRoot
             ? path.basename(bookPath)
             : this.app.vault.getName();
         try {
-            loadAuthoringTools().toolInitWorkspace(bookPath, {
+            loadAuthoringTools().toolInitWorkspace(bookPath, isNew ? {
                 bookTitle: vaultName,
                 author: '',
                 storyFolder: 'Story',
-            });
+            } : {});
         } catch {
+            if (!isNew) { return; } // already initialised — skip fallback for re-init
             fs.mkdirSync(binderyFolder, { recursive: true });
             const defaultSettings = {
                 bookTitle:   vaultName,
