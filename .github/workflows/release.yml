@@ -38,7 +38,7 @@ jobs:
       RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
@@ -100,7 +100,7 @@ jobs:
       RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
@@ -166,7 +166,7 @@ jobs:
       RELEASE_VERSION: ${{ needs.validate-release-version.outputs.release_version }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
