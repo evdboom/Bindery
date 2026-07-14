@@ -2,7 +2,7 @@ import { audienceNote, languageSection, type TemplateContext, type TemplateMeta 
 
 export const meta: TemplateMeta = {
     file:    'CLAUDE.md',
-    version: 15,
+    version: 17,
     label:   'project instructions',
     zip:     null,
 };
@@ -23,7 +23,7 @@ export function render(ctx: TemplateContext): string {
         '## Start of session',
         '1. Use /read-in at the start of a session to load context and get your bearings.',
         '2. Run `health` from the Bindery MCP and check `ai_versions_outdated`.',
-        '3. If `ai_versions_outdated` has entries, run `setup_ai_files` and present the returned `skill_zips.reupload_required` list to the user for Claude Desktop.',
+        '3. If `ai_versions_outdated` has entries, run `setup_ai_files`; if `skill_files.reupload_required` has entries, ask the user to re-upload those SKILL.md files in Claude Desktop Skills (no zip needed).',
         `4. If the skill or MCP server is not available, read at least ${sessionFile} (if present) for current focus and handoff context, and ${preferencesFile} for the author's durable working preferences.`,
         '',
         '## Memory system',
@@ -82,7 +82,7 @@ export function render(ctx: TemplateContext): string {
         '| `identify_book` | Match a working directory to a book name |',
         '| `health` | Server status: settings, index, embedding backend |',
         '| `init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |',
-        '| `setup_ai_files` | Regenerate AI instruction files, rebuild Claude skill zip files, and return a change manifest |',
+        '| `setup_ai_files` | Regenerate AI instruction files and return a change manifest |',
         '| `index_build` | Build or rebuild the full-text search index |',
         '| `index_status` | Show index chunk count and build time |',
         '| `get_text` | Read any file by relative path, with optional line range |',

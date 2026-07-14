@@ -12,7 +12,6 @@
 
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
-import { zipSync, strToU8 } from 'fflate';
 import {
     renderTemplate,
     FILE_VERSION_INFO,
@@ -161,7 +160,6 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
                     const skillMd = path.join('.claude', 'skills', skill, 'SKILL.md');
                     writeFile(root, skillMd, renderTemplate(skill, ctx), overwrite, versionFile, result);
                 }
-                rebuildSkillZips(root, skills, result);
                 break;
             case 'copilot':
                 writeFile(root, path.join('.github', 'copilot-instructions.md'), renderTemplate('copilot', ctx), overwrite, versionFile, result);
@@ -279,60 +277,6 @@ function stampAiVersionFile(root: string, versionFile: AiVersionFile): void {
     );
 }
 
-function rebuildSkillZips(root: string, skills: SkillTemplate[], result: AiSetupResult): void {
-    for (const skill of skills) {
-        const skillDir = path.join(root, '.claude', 'skills', skill);
-        const skillMd = path.join(skillDir, 'SKILL.md');
-        if (!fs.existsSync(skillMd)) { continue; }
-
-        const zipRel = `.claude/skills/${skill}.zip`;
-        const zipAbs = path.join(root, zipRel);
-
-        const zipExists = fs.existsSync(zipAbs);
-        const upToDate = zipExists
-            && fs.statSync(zipAbs).mtimeMs >= fs.statSync(skillMd).mtimeMs;
-
-        if (upToDate) {
-            result.skillZipManifest.skipped.push(zipRel);
-            continue;
-        }
-
-        if (!zipSkillFolder(root, skill, zipAbs)) {
-            result.skillZipManifest.failed.push(zipRel);
-            continue;
-        }
-
-        if (zipExists) {
-            result.skillZipManifest.rebuilt.push(zipRel);
-        } else {
-            result.skillZipManifest.created.push(zipRel);
-        }
-    }
-}
-
 function toKey(relPath: string): string {
     return relPath.replaceAll('\\', '/');
-}
-
-function zipSkillFolder(root: string, skill: SkillTemplate, zipAbs: string): boolean {
-    const skillMd = path.join(root, '.claude', 'skills', skill, 'SKILL.md');
-    if (!fs.existsSync(skillMd)) { return false; }
-
-    try {
-        const skillContent = fs.readFileSync(skillMd, 'utf-8');
-        const zipBytes = zipSync({
-            [`${skill}/SKILL.md`]: strToU8(skillContent),
-        });
-
-        fs.mkdirSync(path.dirname(zipAbs), { recursive: true });
-        const copyPath = zipAbs + '.tmp';
-        fs.writeFileSync(copyPath, Buffer.from(zipBytes));
-        if (fs.existsSync(zipAbs)) {
-            fs.unlinkSync(zipAbs);
-        }
-        fs.renameSync(copyPath, zipAbs);
-        return true;
-    } catch {
-        return false;
-    }
 }

@@ -66,7 +66,7 @@ Bindery includes a bundled MCP server that makes your book's chapters, arc files
 |------|-------------|
 | `bindery_health` | Check workspace status: settings, search index, and embedding backend |
 | `bindery_init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |
-| `bindery_setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, etc.), Claude skills, skill zips, and refresh generated `.bindery/README.md` |
+| `bindery_setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, etc.), Claude skills, and refresh generated `.bindery/README.md` |
 | `bindery_settings_update` | Merge a partial patch into `.bindery/settings.json` |
 | `bindery_index_build` | Build or rebuild the search index (lexical + optional semantic) |
 | `bindery_index_status` | Show index metadata and stale-status hints |
@@ -138,7 +138,7 @@ All commands are available from the Command Palette (`Ctrl+Shift+P`) under the *
 | Command | Description |
 |---------|-------------|
 | `Initialize Workspace` | Create `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |
-| `Setup AI Assistant Files` | Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md, Claude skills, skill zips, and refresh generated `.bindery/README.md` |
+| `Setup AI Assistant Files` | Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md, Claude skills, and refresh generated `.bindery/README.md` |
 | `Register MCP Server` | Write `.vscode/mcp.json` for Claude / Codex MCP discovery |
 | `Format Typography` | Apply typography formatting to the active markdown file (`Ctrl+K Ctrl+B`) |
 | `Format All Markdown in Folder` | Apply typography to all `.md` files in a folder |

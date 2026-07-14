@@ -4,7 +4,7 @@ export const meta: TemplateMeta = {
     file:    '.claude/skills/continuity/SKILL.md',
     version: 14,
     label:   'continuity skill',
-    zip:     '.claude/skills/continuity.zip',
+    zip:     null,
 };
 
 const CONTENT = [

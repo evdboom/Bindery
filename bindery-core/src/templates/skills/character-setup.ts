@@ -4,7 +4,7 @@ export const meta: TemplateMeta = {
     file:    '.claude/skills/character-setup/SKILL.md',
     version: 1,
     label:   'character-setup skill',
-    zip:     '.claude/skills/character-setup.zip',
+    zip:     null,
 };
 
 const CONTENT = [

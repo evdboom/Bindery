@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-    version: 9,
+    version: 10,
     label:   'bindery capabilities',
     zip:     null,
 };
@@ -121,7 +121,7 @@ tagged **(writes)** modify files or git state.
 ### Tool Workflow Shortcuts
 
 - Use \`init_workspace\` first for a new book. It creates the settings, translation file, generated capability README, and the default authoring scaffold.
-- Use \`setup_ai_files\` after init or when \`health\` reports outdated AI files. It refreshes CLAUDE.md, Copilot instructions, Cursor rules, AGENTS.md, Claude skills, skill zips, and this capability README.
+- Use \`setup_ai_files\` after init or when \`health\` reports outdated AI files. It refreshes CLAUDE.md, Copilot instructions, Cursor rules, AGENTS.md, Claude skills, and this capability README.
 - Use \`arc_*\` for story architecture under \`${arcFolder}/\`.
 - Use \`character_*\` for cast profiles under \`${charactersFolder}/\`.
 - Use \`note_*\` for canonical story notes under \`${notesFolder}/\`.

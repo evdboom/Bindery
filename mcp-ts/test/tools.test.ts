@@ -343,6 +343,7 @@ describe('mcp tools', () => {
       regenerated_files?: string[];
       skipped_files?: string[];
       skill_zips?: { created?: string[]; rebuilt?: string[]; skipped?: string[]; failed?: string[]; reupload_required?: string[] };
+      skill_files?: { reupload_required?: string[] };
       ai_versions?: { versions?: Record<string, { version: number; label: string; zip: string | null }> };
     };
 
@@ -353,10 +354,12 @@ describe('mcp tools', () => {
     expect(Array.isArray(parsed.skill_zips?.skipped)).toBe(true);
     expect(Array.isArray(parsed.skill_zips?.failed)).toBe(true);
     expect(Array.isArray(parsed.skill_zips?.reupload_required)).toBe(true);
+    expect(Array.isArray(parsed.skill_files?.reupload_required)).toBe(true);
+    expect(parsed.skill_files?.reupload_required).toContain('.claude/skills/review/SKILL.md');
     expect(parsed.ai_versions?.versions?.['.claude/skills/review/SKILL.md']?.label).toBe('review skill');
   });
 
-  it('builds skill zips with normalized forward-slash entry paths', () => {
+  it('does not build skill zip artifacts', () => {
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
       bookTitle: 'Test Book',
@@ -364,14 +367,19 @@ describe('mcp tools', () => {
       languages: [{ code: 'EN', folderName: 'EN' }],
     }, null, 2) + '\n');
 
-    toolSetupAiFiles(root, { targets: ['claude'], skills: ['read-aloud'], overwrite: true });
+    const raw = toolSetupAiFiles(root, { targets: ['claude'], skills: ['read-aloud'], overwrite: true });
+    const parsed = JSON.parse(raw) as {
+      skill_zips?: { created?: string[]; rebuilt?: string[]; failed?: string[]; reupload_required?: string[] };
+      skill_files?: { reupload_required?: string[] };
+    };
 
     const zipPath = path.join(root, '.claude', 'skills', 'read-aloud.zip');
-    expect(fs.existsSync(zipPath)).toBe(true);
-
-    const zipText = fs.readFileSync(zipPath).toString('latin1');
-    expect(zipText).toContain('read-aloud/SKILL.md');
-    expect(zipText).not.toContain(String.raw`read-aloud\SKILL.md`);
+    expect(fs.existsSync(zipPath)).toBe(false);
+    expect(parsed.skill_zips?.created).toEqual([]);
+    expect(parsed.skill_zips?.rebuilt).toEqual([]);
+    expect(parsed.skill_zips?.failed).toEqual([]);
+    expect(parsed.skill_zips?.reupload_required).toEqual([]);
+    expect(parsed.skill_files?.reupload_required).toEqual(['.claude/skills/read-aloud/SKILL.md']);
   });
 
   it('health skips claude files when aiTargets excludes claude', () => {

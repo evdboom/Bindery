@@ -518,7 +518,7 @@ export function toolHealth(root: string): string {
         ai_version_outdated: aiVersionsOutdated.length > 0,
         ai_versions_outdated: aiVersionsOutdated,
         message: aiVersionsOutdated.length > 0
-            ? 'AI instruction files are out of date. Run setup_ai_files, then re-upload any listed skill zip files in Claude Desktop.'
+            ? 'AI instruction files are out of date. Run setup_ai_files to regenerate them. If you use Claude Desktop skills, re-upload updated SKILL.md files.'
             : 'AI instruction files are up to date.',
     };
 
@@ -2621,10 +2621,7 @@ export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
         }
     } catch { /* non-fatal */ }
 
-    const zipToUpload = [
-        ...result.skillZipManifest.created,
-        ...result.skillZipManifest.rebuilt,
-    ];
+    const skillFilesToReupload = result.regenerated.filter(file => /^\.claude\/skills\/[^/]+\/SKILL\.md$/.test(file));
 
     const response = {
         regenerated_files: result.regenerated,
@@ -2634,12 +2631,15 @@ export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
             rebuilt: result.skillZipManifest.rebuilt,
             skipped: result.skillZipManifest.skipped,
             failed: result.skillZipManifest.failed,
-            reupload_required: zipToUpload,
+            reupload_required: [],
+        },
+        skill_files: {
+            reupload_required: skillFilesToReupload,
         },
         ai_versions: result.versionStamp,
-        message:
-            'If you are using Claude Desktop as AI assistant, re-upload these skill zips via Customize -> Skills: ' +
-            (zipToUpload.length > 0 ? zipToUpload.join(', ') : 'none'),
+        message: skillFilesToReupload.length > 0
+            ? 'AI instruction files were generated. If you use Claude Desktop skills, re-upload these SKILL.md files in Claude Desktop (zipping not required): ' + skillFilesToReupload.join(', ')
+            : 'AI instruction files were generated. Skill zip files are no longer produced by setup_ai_files.',
     };
 
     return JSON.stringify(response, null, 2);

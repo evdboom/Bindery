@@ -1163,12 +1163,12 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
         const parsed = JSON.parse(raw) as {
             regenerated_files?: string[];
             skipped_files?: string[];
-            skill_zips?: { reupload_required?: string[] };
+            skill_files?: { reupload_required?: string[] };
         };
 
         const regenerated = parsed.regenerated_files ?? [];
         const skipped = parsed.skipped_files ?? [];
-        const reupload = parsed.skill_zips?.reupload_required ?? [];
+        const reuploadSkillFiles = parsed.skill_files?.reupload_required ?? [];
 
         const summary: string[] = [];
         if (regenerated.length > 0) {
@@ -1179,8 +1179,8 @@ async function setupAiCommand(context?: vscode.ExtensionContext) {
         }
 
         const base = summary.length > 0 ? summary.join(' | ') : 'No files changed.';
-        const suffix = reupload.length > 0
-            ? ` If you use Claude Desktop: open Customize > Skills and re-upload ${reupload.join(', ')}.`
+        const suffix = reuploadSkillFiles.length > 0
+            ? ` If you use Claude Desktop skills, re-upload these SKILL.md files: ${reuploadSkillFiles.join(', ')}.`
             : '';
         vscode.window.showInformationMessage(base + suffix);
     } catch {
