@@ -34,5 +34,5 @@ This package contains:
 
 - Keep the unzipped folder in place after configuring the MCP server.
 - If Node is not on PATH, use the absolute path to the Node executable as Command.
-- If Node is not installed at all you can get it from *https://nodejs.org/*
+- If Node is not installed at all you can get it from https://nodejs.org/
 - This package is suitable for any MCP client that supports executable command + arguments + environment variables (for example ChatGPT Work or LM Studio).

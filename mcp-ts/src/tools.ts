@@ -2638,8 +2638,8 @@ export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
         },
         ai_versions: result.versionStamp,
         message: skillFilesToReupload.length > 0
-            ? 'AI instruction files were generated. If you use Claude Desktop skills, re-upload these SKILL.md files in Claude Desktop (zipping not required): ' + skillFilesToReupload.join(', ')
-            : 'AI instruction files were generated. Skill zip files are no longer produced by setup_ai_files.',
+            ? 'AI instruction files were generated. If you use Claude Desktop skills, re-upload these SKILL.md files in Claude Desktop: ' + skillFilesToReupload.join(', ')
+            : 'AI instruction files were generated. If you use Claude Desktop skills, upload the generated SKILL.md files in Claude Desktop',
     };
 
     return JSON.stringify(response, null, 2);
