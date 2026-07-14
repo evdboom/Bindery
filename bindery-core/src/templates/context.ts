@@ -24,7 +24,7 @@ export interface TemplateContext {
     hasMultiLang:   boolean;
 }
 
-/** Per-template metadata. `zip` is non-null only for skills (which ship as zips). */
+/** Per-template metadata used by AI file version reporting. */
 export interface TemplateMeta {
     /** Output path relative to the workspace root. Used as the FILE_VERSION_INFO key. */
     file:    string;
@@ -32,7 +32,7 @@ export interface TemplateMeta {
     version: number;
     /** Short, human-readable label used by health reporting. */
     label:   string;
-    /** Companion zip path (skills only) or null. */
+    /** Legacy companion zip path or null. */
     zip:     string | null;
 }
 

@@ -126,7 +126,7 @@ describe('AI Setup', () => {
         expect(original).not.toBe(updated);
     });
 
-    it('should create skill zips for requested skills', async () => {
+    it('should create skill markdown files for requested skills', async () => {
         const settingsPath = path.join(tempRoot, '.bindery', 'settings.json');
         fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
         fs.writeFileSync(settingsPath, JSON.stringify({

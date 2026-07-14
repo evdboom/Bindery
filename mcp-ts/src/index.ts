@@ -616,7 +616,7 @@ server.registerTool('setup_ai_files', {
     title: 'Setup AI Files',
     description:
         'Generate AI assistant instruction files (CLAUDE.md, .github/copilot-instructions.md, ' +
-        '.cursor/rules, AGENTS.md), Claude skill templates, skill zips, and the generated .bindery/README.md capability reference from .bindery/settings.json. ' +
+        '.cursor/rules, AGENTS.md), Claude skill templates, and the generated .bindery/README.md capability reference from .bindery/settings.json. ' +
         'Run init_workspace first. Safe to run multiple times — skips existing files unless overwrite is true.',
     inputSchema: {
         book:      bookSchema,

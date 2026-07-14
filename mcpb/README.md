@@ -1,4 +1,4 @@
-# Bindery MCP — Desktop Extension (.mcpb)
+# Bindery MCP — Desktop Packages
 
 Book authoring tools for Claude Desktop: chapter navigation, full-text search,
 translation management, session memory, typography formatting, and version snapshots.
@@ -20,7 +20,7 @@ Works with any Markdown book project structured with the Bindery VS Code extensi
 - **Version snapshots** — git-based save points after writing sessions
 - **Review diffs** — structured git diff of uncommitted changes
 
-## Manual Installation
+## Manual Installation (Claude Desktop)
 
 To install manually without using published Claude Connectors
 
@@ -28,6 +28,21 @@ To install manually without using published Claude Connectors
 2. Open Claude Desktop → **Settings** → **Extensions**
 3. Click **Install from file** (or drag-drop the `.mcpb` file)
 4. Fill in the **Books** field (see Configuration below)
+
+## Manual Installation (Standalone MCP clients)
+
+1. Download the `bindery-mcp-server-*.zip` file from the latest release
+2. Unzip it to a stable folder
+3. In your MCP client, add a new MCP server.
+   - eg. in ChatGPT Work -> **Settings** -> **Plug-ins** -> **MCP's** tab
+4. With:
+   - Command: `node`
+   - Args: absolute path to `server/index.js` from the unzipped folder
+5. Add environment variables:
+   - `BINDERY_BOOKS` (required): semicolon-separated `Name=path` pairs
+   - `BINDERY_OLLAMA_URL` (optional): Ollama endpoint for semantic features
+   - `BINDERY_ENABLE_SEMANTIC_INDEX` (optional): `true` to enable full semantic index builds
+   - `BINDERY_DEFAULT_SEARCH_MODE` (optional): `lexical`, `semantic_rerank`, or `full_semantic`
 
 ## Configuration
 
@@ -165,7 +180,7 @@ table with issue type, location, and the reference that contradicts it.
 | `identify_book` | Match a working directory to a book name |
 | `health` | Server status: settings, index, embedding backend |
 | `init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |
-| `setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, skill zips, and refresh generated `.bindery/README.md` |
+| `setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, and refresh generated `.bindery/README.md` |
 | `index_build` | Build or rebuild the lexical index and, when enabled, the semantic embedding index |
 | `index_status` | Show lexical and semantic index status, build times, and stale hints |
 | `get_text` | Read any file by relative path, with optional line range |
@@ -229,6 +244,8 @@ mcpb pack
 ```
 
 This produces `bindery-mcp-<version>.mcpb`.
+
+For standalone MCP clients, release CI also produces `bindery-mcp-server-<version>.zip` containing `server/index.js` and setup instructions.
 
 ## Files
 

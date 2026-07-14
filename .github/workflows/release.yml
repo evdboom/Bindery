@@ -25,9 +25,9 @@ jobs:
           fi
           echo "release_version=$VERSION" >> "$GITHUB_OUTPUT"
 
-  # ── Job 1: Build .mcpb for Claude Desktop ───────────────────────────────────
+  # ── Job 1: Build .mcpb for Claude Desktop + standalone MCP zip ─────────────
   build-mcpb:
-    name: Build .mcpb
+    name: Build MCP Packages
     needs: validate-release-version
     runs-on: ubuntu-latest
     permissions:
@@ -76,15 +76,38 @@ jobs:
             mv "$f" "bindery-${VERSION}.mcpb" 2>/dev/null || true
           done
 
+      - name: Package standalone MCP server zip
+        run: |
+          VERSION="$RELEASE_VERSION"
+          mkdir -p mcpb/standalone-mcp/server
+          cp mcpb/server/index.js mcpb/standalone-mcp/server/index.js
+          cp mcpb/standalone-mcp-README.md mcpb/standalone-mcp/README.md
+          cd mcpb/standalone-mcp
+          zip "../../bindery-mcp-server-${VERSION}.zip" README.md server/index.js
+
+      - name: Render standardized release notes
+        run: |
+          VERSION="$RELEASE_VERSION"
+          sed "s/{{VERSION}}/${VERSION}/g" .github/release-notes-template.md > .github/release-notes.generated.md
+
       - name: Attest .mcpb build provenance
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: mcpb/*.mcpb
 
+      - name: Attest standalone MCP zip provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: bindery-mcp-server-*.zip
+
       - name: Upload .mcpb to release
         uses: softprops/action-gh-release@v3
         with:
-          files: mcpb/*.mcpb
+          files: |
+            mcpb/*.mcpb
+            bindery-mcp-server-*.zip
+          body_path: .github/release-notes.generated.md
+          generate_release_notes: true
           fail_on_unmatched_files: true
 
   # ── Job 2: Package VS Code extension + attach VSIX to release ───────────────

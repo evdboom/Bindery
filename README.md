@@ -85,7 +85,10 @@ Then in Obsidian: Settings → Community plugins (if not restricted) → Install
 
 ### [mcpb/](mcpb/) — Claude Desktop Extension
 
-Packages the MCP server as a `.mcpb` file for one-click installation in Claude Desktop or Cowork.
+Release assets now include two MCP package formats:
+
+- `bindery-<version>.mcpb` for Claude Desktop / Cowork
+- `bindery-mcp-server-<version>.zip` as a standalone MCP package for clients that support command + args + env setup (for example ChatGPT Work or LM Studio)
 
 **Download the latest release** from [Releases](../../releases) — no build step needed.
 
@@ -109,6 +112,21 @@ Packages the MCP server as a `.mcpb` file for one-click installation in Claude D
 5. Optionally enable the semantic index and choose a default search mode if you want `full_semantic` search with rebuild warnings when the embedding index becomes stale.
    - **Note:** full embedding can be a heavy operation, depending on your hardware, when running a local Ollama instance.
 6. Tools are now available — the agent calls `list_books` to discover book names
+
+### Standalone MCP Clients (ChatGPT Work, LM Studio, etc.)
+
+1. Download `bindery-mcp-server-*.zip` from the [latest release](../../releases/latest)
+2. Unzip it to a stable folder
+3. In your MCP client, add an MCP server with:
+  - eg. in ChatGPT Work -> **Settings** -> **Plug-ins** -> **MCP's** tab
+  - Command: `node`
+  - Args: absolute path to `server/index.js` from the unzipped folder
+4. Set environment variables:
+  - `BINDERY_BOOKS` (required): semicolon-separated `Name=path` pairs
+  - `BINDERY_OLLAMA_URL` (optional): Ollama endpoint for semantic features
+  - `BINDERY_ENABLE_SEMANTIC_INDEX` (optional): `true` to enable full semantic index builds
+  - `BINDERY_DEFAULT_SEARCH_MODE` (optional): `lexical`, `semantic_rerank`, or `full_semantic`
+5. Save and reconnect the MCP server
 
 ## Architecture Overview
 

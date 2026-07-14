@@ -1057,7 +1057,7 @@
         "displayName": "Bindery: Setup AI Files",
         "toolReferenceName": "binderySetupAiFiles",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Generate AI assistant instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, skill zips, and the generated .bindery/README.md capability reference from .bindery/settings.json. Run init_workspace first. Skips existing files unless overwrite is true.",
+        "modelDescription": "Generate AI assistant instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, and the generated .bindery/README.md capability reference from .bindery/settings.json. Run init_workspace first. Skips existing files unless overwrite is true.",
         "inputSchema": {
           "type": "object",
           "properties": {
