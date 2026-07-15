@@ -34,7 +34,7 @@ export function pushSessionStart(lines: string[], ctx: TemplateContext, agent: A
     if (agent.hasSkills) {
     lines.push(
         '3. Use /read-in at the start of a session to load context and get your bearings.',
-        `If the skill or MCP server is not available, read at least ${ctx.sessionFile} (if present, use \`session_focus_get\`) for current focus and handoff context, and ${ctx.preferencesFile} for the author's durable working preferences.`,
+        `4. If the skill is not available, read at least ${ctx.sessionFile} (if present, use \`session_focus_get\`) for current focus and handoff context, and ${ctx.preferencesFile} for the author's durable working preferences.`,
     );
     } else { 
     lines.push(

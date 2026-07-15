@@ -71,6 +71,9 @@ export interface AiVersionFile {
     versions: Record<string, AiVersionEntry>;
 }
 
+const SKILL_ROOTS = ['.claude', '.agents'] as const;
+const SKILL_PATH_RE = /^\.(claude|agents)\/skills\/([^/]+)\/SKILL\.md$/;
+
 // ─── Settings types ───────────────────────────────────────────────────────────
 
 interface Settings extends Omit<WorkspaceSettings, 'languages'> {
@@ -197,7 +200,10 @@ export function readAiVersionFile(root: string): AiVersionFile {
 export function expectedAiVersionEntries(): Record<string, AiVersionEntry> {
     const out: Record<string, AiVersionEntry> = {};
     for (const [file, info] of Object.entries(FILE_VERSION_INFO)) {
-        out[file] = { version: info.version, label: info.label};
+        const entry = { version: info.version, label: info.label };
+        for (const variant of versionPathVariants(file)) {
+            out[variant] = entry;
+        }
     }
     return out;
 }
@@ -237,7 +243,7 @@ function writeFile(
 ): void {
     const full = path.join(root, relPath);
     const key = toKey(relPath);
-    const expected = FILE_VERSION_INFO[key];
+    const expected = expectedVersionInfoForKey(key);
     const existingVersion = versionFile.versions[key]?.version ?? 0;
     const isUpToDate = expected ? existingVersion >= expected.version : true;
 
@@ -254,12 +260,27 @@ function writeFile(
 }
 
 function stampVersionEntry(versionFile: AiVersionFile, relPath: string): void {
-    const expected = FILE_VERSION_INFO[relPath];
+    const expected = expectedVersionInfoForKey(relPath);
     if (!expected) { return; }
     versionFile.versions[relPath] = {
         version: expected.version,
         label: expected.label
     };
+}
+
+function expectedVersionInfoForKey(key: string): { version: number; label: string } | undefined {
+    for (const variant of versionPathVariants(key)) {
+        const expected = FILE_VERSION_INFO[variant];
+        if (expected) { return expected; }
+    }
+    return undefined;
+}
+
+function versionPathVariants(relPath: string): string[] {
+    const skillMatch = SKILL_PATH_RE.exec(relPath);
+    if (!skillMatch) { return [relPath]; }
+    const skillName = skillMatch[2];
+    return SKILL_ROOTS.map(root => `${root}/skills/${skillName}/SKILL.md`);
 }
 
 function stampAiVersionFile(root: string, versionFile: AiVersionFile): void {
