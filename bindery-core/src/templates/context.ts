@@ -32,15 +32,10 @@ export interface TemplateMeta {
     version: number;
     /** Short, human-readable label used by health reporting. */
     label:   string;
-    /** Legacy companion zip path or null. */
-    zip:     string | null;
 }
 
-export function audienceNote(ctx: TemplateContext): string {
-    return ctx.audience ? `Target audience: ${ctx.audience}.` : '';
-}
-
-export function languageSection(ctx: TemplateContext): string {
-    if (!ctx.hasMultiLang) { return ''; }
-    return `\nLanguages: ${ctx.langList}.\n`;
+export interface AgentTemplate {
+    hasSkills: boolean;
+    requiresSkillUpload: boolean;
+    name: string;
 }

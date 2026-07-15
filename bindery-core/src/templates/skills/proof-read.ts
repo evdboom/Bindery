@@ -4,7 +4,6 @@ export const meta: TemplateMeta = {
     file:    '.claude/skills/proof-read/SKILL.md',
     version: 6,
     label:   'proof-read skill',
-    zip:     null,
 };
 
 const CONTENT = [

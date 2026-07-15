@@ -4,7 +4,6 @@ export const meta: TemplateMeta = {
     file:    '.claude/skills/plan-beats/SKILL.md',
     version: 3,
     label:   'plan-beats skill',
-    zip:     null,
 };
 
 const CONTENT = [

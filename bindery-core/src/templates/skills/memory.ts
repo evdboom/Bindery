@@ -4,7 +4,6 @@ export const meta: TemplateMeta = {
     file:    '.claude/skills/memory/SKILL.md',
     version: 14,
     label:   'memory skill',
-    zip:     null,
 };
 
 const CONTENT = [

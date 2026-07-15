@@ -64,10 +64,9 @@ describe('renderTemplate — claude', () => {
     expect(result).toContain('## Project');
     expect(result).toContain('## Start of session');
     expect(result).toContain('## Memory system');
-    expect(result).toContain('## Repo layout');
+    expect(result).toContain('## Repository layout');
     expect(result).toContain('## Writing rules');
-    expect(result).toContain('## Available skills');
-    expect(result).toContain('## MCP server (bindery-mcp)');
+    expect(result).toContain('## Capabilities source');
   });
 
   it('includes genre, description, audience, and author', () => {
@@ -113,8 +112,12 @@ describe('renderTemplate — copilot', () => {
   it('contains required sections', () => {
     const result = renderTemplate('copilot', makeCtx());
     expect(result).toContain('# GitHub Copilot — Test Book');
-    expect(result).toContain('## Repo layout');
-    expect(result).toContain('## Writing guidelines');
+    expect(result).toContain('## Project');
+    expect(result).toContain('## Start of session');
+    expect(result).toContain('## Memory system');
+    expect(result).toContain('## Repository layout');
+    expect(result).toContain('## Writing rules');
+    expect(result).toContain('## Capabilities source');
   });
 
   it('includes genre and description when set', () => {
@@ -123,9 +126,12 @@ describe('renderTemplate — copilot', () => {
     expect(result).toContain('A tale of adventure.');
   });
 
-  it('omits project section entirely when all optional fields are empty', () => {
+  it('keeps project section even when optional project fields are empty', () => {
     const result = renderTemplate('copilot', makeMinimalCtx());
-    expect(result).not.toContain('## Project');
+    expect(result).toContain('## Project');
+    expect(result).not.toContain('Genre:');
+    expect(result).not.toContain('Author:');
+    expect(result).not.toContain('Target audience:');
   });
 
   it('includes audience writing guideline when audience is set', () => {
@@ -133,13 +139,10 @@ describe('renderTemplate — copilot', () => {
     expect(result).toContain('middle-grade');
   });
 
-  it('mentions shared workspace skills from the .claude folder', () => {
+  it('uses read-in startup guidance and no explicit skill catalog', () => {
     const result = renderTemplate('copilot', makeCtx());
-    expect(result).toContain('.claude/skills/');
-    expect(result).toContain('/translation-review');
     expect(result).toContain('/read-in');
-    expect(result).toContain('/plan-beats');
-    expect(result).toContain('/character-setup');
+    expect(result).not.toContain('.claude/skills/');
   });
 
   it('ends with a newline', () => {
@@ -150,14 +153,19 @@ describe('renderTemplate — copilot', () => {
 describe('renderTemplate — cursor', () => {
   it('contains required sections', () => {
     const result = renderTemplate('cursor', makeCtx());
-    expect(result).toContain('# Cursor rules — Test Book');
-    expect(result).toContain('## Context files to read');
-    expect(result).toContain('## Rules');
+    expect(result).toContain('# Cursor — Test Book');
+    expect(result).toContain('## Project');
+    expect(result).toContain('## Start of session');
+    expect(result).toContain('## Memory system');
+    expect(result).toContain('## Repository layout');
+    expect(result).toContain('## Writing rules');
+    expect(result).toContain('## Capabilities source');
   });
 
-  it('references memory and arc folder paths', () => {
+  it('references arc folder and memory tools', () => {
     const result = renderTemplate('cursor', makeCtx());
-    expect(result).toContain('.bindery/memories');
+    expect(result).toContain('memory_append');
+    expect(result).toContain('memory_compact');
     expect(result).toContain('Arc/');
   });
 
@@ -166,13 +174,11 @@ describe('renderTemplate — cursor', () => {
     expect(result).toContain('middle-grade');
   });
 
-  it('mentions shared workspace skills from the .claude folder', () => {
+  it('uses non-skill startup guidance for runtimes without skill support', () => {
     const result = renderTemplate('cursor', makeCtx());
-    expect(result).toContain('.claude/skills/');
-    expect(result).toContain('/translation-review');
-    expect(result).toContain('/proof-read');
-    expect(result).toContain('/plan-beats');
-    expect(result).toContain('/character-setup');
+    expect(result).toContain('Read SESSION.md');
+    expect(result).toContain('get_chapter(chapterNumber)');
+    expect(result).not.toContain('/read-in');
   });
 
   it('ends with a newline', () => {
@@ -184,11 +190,12 @@ describe('renderTemplate — agents', () => {
   it('contains required sections', () => {
     const result = renderTemplate('agents', makeCtx());
     expect(result).toContain('# Agent Instructions — Test Book');
-    expect(result).toContain('## Project overview');
+    expect(result).toContain('## Project');
     expect(result).toContain('## Start of session');
-    expect(result).toContain('## Story files');
-    expect(result).toContain('## Writing guidelines');
-    expect(result).toContain('## Key reference files');
+    expect(result).toContain('## Memory system');
+    expect(result).toContain('## Repository layout');
+    expect(result).toContain('## Writing rules');
+    expect(result).toContain('## Capabilities source');
   });
 
   it('includes genre, description, audience, and author', () => {
@@ -199,19 +206,21 @@ describe('renderTemplate — agents', () => {
     expect(result).toContain('Jane Doe');
   });
 
-  it('references memories and arc folders', () => {
+  it('references repository structure and arc folders', () => {
     const result = renderTemplate('agents', makeCtx());
-    expect(result).toContain('.bindery/memories');
+    expect(result).toContain('Repository layout');
     expect(result).toContain('Arc/');
   });
 
-  it('mentions shared workspace skills from the .claude folder', () => {
+  it('uses read-in startup guidance and no explicit shared-skill inventory section', () => {
     const result = renderTemplate('agents', makeCtx());
-    expect(result).toContain('.claude/skills/');
-    expect(result).toContain('/translation-review');
-    expect(result).toContain('/review');
-    expect(result).toContain('/plan-beats');
-    expect(result).toContain('/character-setup');
+    expect(result).toContain('/read-in');
+    expect(result).not.toContain('## Shared skill workflows');
+  });
+
+  it('uses skill-first startup guidance with read-in', () => {
+    const result = renderTemplate('agents', makeCtx());
+    expect(result).toContain('Use /read-in at the start of a session');
   });
 
   it('ends with a newline', () => {

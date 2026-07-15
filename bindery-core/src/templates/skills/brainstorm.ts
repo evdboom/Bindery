@@ -4,7 +4,6 @@ export const meta: TemplateMeta = {
     file:    '.claude/skills/brainstorm/SKILL.md',
     version: 12,
     label:   'brainstorm skill',
-    zip:     null,
 };
 
 const CONTENT = [

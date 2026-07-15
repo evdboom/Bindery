@@ -4,7 +4,6 @@ export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
     version: 10,
     label:   'bindery capabilities',
-    zip:     null,
 };
 
 export function render(ctx: TemplateContext): string {
@@ -27,7 +26,7 @@ may fetch it for context; otherwise, treat this file as the complete answer.
 Bindery is a markdown book authoring toolkit with three surfaces:
 
 1. **VS Code / Obsidian extension** — commands, format-on-save, export to DOCX/EPUB/PDF.
-2. **MCP server** — programmatic tools for AI assistants (Claude, Copilot, Codex, Cursor).
+2. **MCP server** — programmatic tools for AI assistants (Claude, Copilot, ChatGPT, Cursor).
 3. **Skill workflows** — opinionated slash-commands like \`/review\`, \`/translate\`, \`/memory\`.
 
 All three operate on the same workspace state: \`.bindery/settings.json\`,
@@ -121,7 +120,7 @@ tagged **(writes)** modify files or git state.
 ### Tool Workflow Shortcuts
 
 - Use \`init_workspace\` first for a new book. It creates the settings, translation file, generated capability README, and the default authoring scaffold.
-- Use \`setup_ai_files\` after init or when \`health\` reports outdated AI files. It refreshes CLAUDE.md, Copilot instructions, Cursor rules, AGENTS.md, Claude skills, and this capability README.
+- Use \`setup_ai_files\` after init or when \`health\` reports outdated AI files. It refreshes CLAUDE.md, Copilot instructions, Cursor rules, AGENTS.md, generated skills, and this capability README.
 - Use \`arc_*\` for story architecture under \`${arcFolder}/\`.
 - Use \`character_*\` for cast profiles under \`${charactersFolder}/\`.
 - Use \`note_*\` for canonical story notes under \`${notesFolder}/\`.
@@ -156,7 +155,7 @@ work-in-progress and continue on another machine.
 
 ## Skill workflows (Claude / Copilot Chat / etc.)
 
-Generated under \`.claude/skills/<name>/SKILL.md\`. Trigger them with a slash
+Generated under \`.claude/skills/<name>/SKILL.md\` and/or \`.agents/skills/<name>/SKILL.md\` depending on selected targets. Trigger them with a slash
 command or by paraphrasing the description.
 
 | Skill | Trigger phrases |
