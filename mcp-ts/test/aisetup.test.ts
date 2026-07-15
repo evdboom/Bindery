@@ -98,4 +98,25 @@ describe('setupAiFiles skill generation', () => {
     expect(result.skillZipManifest.created).toEqual([]);
     expect(fs.readFileSync(path.join(root, '.claude', 'skills', 'read-aloud.zip'), 'utf-8')).toBe('legacy zip bytes');
   });
+
+  it('generates requested skill markdown files for agents target under .agents/skills', async () => {
+    const { setupAiFiles } = await loadAiSetup();
+
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+    }, null, 2) + '\n');
+
+    const result = setupAiFiles({
+      root,
+      targets: ['agents'],
+      skills: ['read-in'],
+      overwrite: true,
+    });
+
+    expect(result.regenerated).toContain('.agents/skills/read-in/SKILL.md');
+    expect(fs.existsSync(path.join(root, '.agents', 'skills', 'read-in', 'SKILL.md'))).toBe(true);
+  });
 });

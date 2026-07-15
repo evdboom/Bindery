@@ -85,6 +85,22 @@ describe('AI Setup', () => {
         expect(fs.existsSync(agentsPath)).toBe(true);
     });
 
+    it('should create skill markdown files under .agents/skills when agents target requested', async () => {
+        const settingsPath = path.join(tempRoot, '.bindery', 'settings.json');
+        fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+        fs.writeFileSync(settingsPath, JSON.stringify({
+            bookTitle: 'Test Book',
+        }, null, 2), 'utf-8');
+
+        await setupAiFiles(mockApp, tempRoot, ['agents'], ['read-in', 'review'], false);
+
+        const readInSkillPath = path.join(tempRoot, '.agents', 'skills', 'read-in', 'SKILL.md');
+        const reviewSkillPath = path.join(tempRoot, '.agents', 'skills', 'review', 'SKILL.md');
+
+        expect(fs.existsSync(readInSkillPath)).toBe(true);
+        expect(fs.existsSync(reviewSkillPath)).toBe(true);
+    });
+
     it('should skip existing files when overwrite is false', async () => {
         const settingsPath = path.join(tempRoot, '.bindery', 'settings.json');
         fs.mkdirSync(path.dirname(settingsPath), { recursive: true });

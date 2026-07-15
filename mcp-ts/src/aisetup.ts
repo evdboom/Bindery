@@ -2,7 +2,8 @@
  * AI instruction file generation for Bindery (MCP server).
  *
  * Generates CLAUDE.md, .github/copilot-instructions.md, .cursor/rules,
- * AGENTS.md, and .claude/skills/<skill>/SKILL.md from the book's
+ * AGENTS.md, and skills under .claude/skills/<skill>/SKILL.md and
+ * .agents/skills/<skill>/SKILL.md from the book's
  * .bindery/settings.json.
  *
  * Template content is maintained in bindery-core/src/templates/*.ts
@@ -169,6 +170,10 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
                 break;
             case 'agents':
                 writeFile(root, 'AGENTS.md', renderTemplate('agents', ctx), overwrite, versionFile, result);
+                for (const skill of skills) {
+                    const skillMd = path.join('.agents', 'skills', skill, 'SKILL.md');
+                    writeFile(root, skillMd, renderTemplate(skill, ctx), overwrite, versionFile, result);
+                }
                 break;
         }
     }
