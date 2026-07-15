@@ -59,19 +59,12 @@ export interface AiSetupOptions {
 export interface AiSetupResult {
     regenerated: string[];
     skipped: string[];
-    skillZipManifest: {
-        rebuilt: string[];
-        created: string[];
-        skipped: string[];
-        failed: string[];
-    };
     versionStamp: AiVersionFile;
 }
 
 interface AiVersionEntry {
     version: number;
     label: string;
-    zip: string | null;
 }
 
 export interface AiVersionFile {
@@ -143,7 +136,6 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
     const result: AiSetupResult = {
         regenerated: [],
         skipped: [],
-        skillZipManifest: { rebuilt: [], created: [], skipped: [], failed: [] },
         versionStamp: versionFile,
     };
 
@@ -205,7 +197,7 @@ export function readAiVersionFile(root: string): AiVersionFile {
 export function expectedAiVersionEntries(): Record<string, AiVersionEntry> {
     const out: Record<string, AiVersionEntry> = {};
     for (const [file, info] of Object.entries(FILE_VERSION_INFO)) {
-        out[file] = { version: info.version, label: info.label, zip: info.zip };
+        out[file] = { version: info.version, label: info.label};
     }
     return out;
 }
@@ -227,7 +219,6 @@ export function writeBinderyCapabilitiesReadme(root: string): void {
     const versionFile = readAiVersionFile(root);
     const result: AiSetupResult = {
         regenerated: [], skipped: [],
-        skillZipManifest: { rebuilt: [], created: [], skipped: [], failed: [] },
         versionStamp: versionFile,
     };
     writeFile(root, path.join('.bindery', 'README.md'), renderTemplate('bindery-readme', ctx), true, versionFile, result);
@@ -267,8 +258,7 @@ function stampVersionEntry(versionFile: AiVersionFile, relPath: string): void {
     if (!expected) { return; }
     versionFile.versions[relPath] = {
         version: expected.version,
-        label: expected.label,
-        zip: expected.zip,
+        label: expected.label
     };
 }
 

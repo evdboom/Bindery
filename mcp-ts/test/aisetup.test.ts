@@ -52,29 +52,6 @@ describe('setupAiFiles skill generation', () => {
     expect(fs.existsSync(path.join(root, '.claude', 'skills', 'translation-review.zip'))).toBe(false);
   });
 
-  it('returns an empty skill zip manifest (zips are no longer generated)', async () => {
-    const { setupAiFiles } = await loadAiSetup();
-
-    const root = makeRoot();
-    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
-      bookTitle: 'Test Book',
-      storyFolder: 'Story',
-      languages: [{ code: 'EN', folderName: 'EN' }],
-    }, null, 2) + '\n');
-
-    const result = setupAiFiles({
-      root,
-      targets: ['claude'],
-      skills: ['read-aloud'],
-      overwrite: true,
-    });
-
-    expect(result.skillZipManifest.created).toEqual([]);
-    expect(result.skillZipManifest.rebuilt).toEqual([]);
-    expect(result.skillZipManifest.skipped).toEqual([]);
-    expect(result.skillZipManifest.failed).toEqual([]);
-  });
-
   it('does not overwrite legacy zip files that already exist', async () => {
     const { setupAiFiles } = await loadAiSetup();
 
@@ -87,15 +64,13 @@ describe('setupAiFiles skill generation', () => {
 
     write(path.join(root, '.claude', 'skills', 'read-aloud.zip'), 'legacy zip bytes');
 
-    const result = setupAiFiles({
+    setupAiFiles({
       root,
       targets: ['claude'],
       skills: ['read-aloud'],
       overwrite: true,
     });
-
-    expect(result.skillZipManifest.failed).toEqual([]);
-    expect(result.skillZipManifest.created).toEqual([]);
+   
     expect(fs.readFileSync(path.join(root, '.claude', 'skills', 'read-aloud.zip'), 'utf-8')).toBe('legacy zip bytes');
   });
 

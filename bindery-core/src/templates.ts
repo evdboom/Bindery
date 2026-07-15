@@ -64,11 +64,11 @@ const TEMPLATES: Record<string, TemplateModule> = {
 // Bump per-file version inside the matching module's `meta` when content
 // changes significantly so users with outdated content are prompted.
 
-export const FILE_VERSION_INFO: Record<string, { version: number; label: string; zip: string | null }> =
+export const FILE_VERSION_INFO: Record<string, { version: number; label: string; }> =
     Object.fromEntries(
         Object.values(TEMPLATES).map(t => [
             t.meta.file,
-            { version: t.meta.version, label: t.meta.label, zip: t.meta.zip },
+            { version: t.meta.version, label: t.meta.label },
         ]),
     );
 
