@@ -7,7 +7,7 @@
  *   claude    → CLAUDE.md + .claude/skills/<skill>/SKILL.md
  *   copilot   → .github/copilot-instructions.md
  *   cursor    → .cursor/rules
- *   agents    → AGENTS.md  (OpenAI Agents, Aider, Codex, etc.)
+ *   agents    → AGENTS.md + .agents/skills/<skill>/SKILL.md (OpenAI Agents, Aider, Codex, etc.)
  *
  * Templates and TemplateContext live in @bindery/core (single source of truth).
  */
@@ -92,6 +92,10 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
 
             case 'agents':
                 writeFile(root, 'AGENTS.md', renderTemplate('agents', ctx), overwrite, result);
+                for (const skill of skills) {
+                    const skillDir = path.join('.agents', 'skills', skill);
+                    writeFile(root, path.join(skillDir, 'SKILL.md'), renderTemplate(skill, ctx), overwrite, result);
+                }
                 break;
         }
     }

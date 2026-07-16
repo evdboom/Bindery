@@ -2,7 +2,8 @@
  * AI instruction file generation for Bindery (MCP server).
  *
  * Generates CLAUDE.md, .github/copilot-instructions.md, .cursor/rules,
- * AGENTS.md, and .claude/skills/<skill>/SKILL.md from the book's
+ * AGENTS.md, and skills under .claude/skills/<skill>/SKILL.md and
+ * .agents/skills/<skill>/SKILL.md from the book's
  * .bindery/settings.json.
  *
  * Template content is maintained in bindery-core/src/templates/*.ts
@@ -58,24 +59,20 @@ export interface AiSetupOptions {
 export interface AiSetupResult {
     regenerated: string[];
     skipped: string[];
-    skillZipManifest: {
-        rebuilt: string[];
-        created: string[];
-        skipped: string[];
-        failed: string[];
-    };
     versionStamp: AiVersionFile;
 }
 
 interface AiVersionEntry {
     version: number;
     label: string;
-    zip: string | null;
 }
 
 export interface AiVersionFile {
     versions: Record<string, AiVersionEntry>;
 }
+
+const SKILL_ROOTS = ['.claude', '.agents'] as const;
+const SKILL_PATH_RE = /^\.(claude|agents)\/skills\/([^/]+)\/SKILL\.md$/;
 
 // ─── Settings types ───────────────────────────────────────────────────────────
 
@@ -142,7 +139,6 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
     const result: AiSetupResult = {
         regenerated: [],
         skipped: [],
-        skillZipManifest: { rebuilt: [], created: [], skipped: [], failed: [] },
         versionStamp: versionFile,
     };
 
@@ -169,6 +165,10 @@ export function setupAiFiles(options: AiSetupOptions): AiSetupResult {
                 break;
             case 'agents':
                 writeFile(root, 'AGENTS.md', renderTemplate('agents', ctx), overwrite, versionFile, result);
+                for (const skill of skills) {
+                    const skillMd = path.join('.agents', 'skills', skill, 'SKILL.md');
+                    writeFile(root, skillMd, renderTemplate(skill, ctx), overwrite, versionFile, result);
+                }
                 break;
         }
     }
@@ -200,7 +200,10 @@ export function readAiVersionFile(root: string): AiVersionFile {
 export function expectedAiVersionEntries(): Record<string, AiVersionEntry> {
     const out: Record<string, AiVersionEntry> = {};
     for (const [file, info] of Object.entries(FILE_VERSION_INFO)) {
-        out[file] = { version: info.version, label: info.label, zip: info.zip };
+        const entry = { version: info.version, label: info.label };
+        for (const variant of versionPathVariants(file)) {
+            out[variant] = entry;
+        }
     }
     return out;
 }
@@ -222,7 +225,6 @@ export function writeBinderyCapabilitiesReadme(root: string): void {
     const versionFile = readAiVersionFile(root);
     const result: AiSetupResult = {
         regenerated: [], skipped: [],
-        skillZipManifest: { rebuilt: [], created: [], skipped: [], failed: [] },
         versionStamp: versionFile,
     };
     writeFile(root, path.join('.bindery', 'README.md'), renderTemplate('bindery-readme', ctx), true, versionFile, result);
@@ -241,7 +243,7 @@ function writeFile(
 ): void {
     const full = path.join(root, relPath);
     const key = toKey(relPath);
-    const expected = FILE_VERSION_INFO[key];
+    const expected = expectedVersionInfoForKey(key);
     const existingVersion = versionFile.versions[key]?.version ?? 0;
     const isUpToDate = expected ? existingVersion >= expected.version : true;
 
@@ -258,13 +260,27 @@ function writeFile(
 }
 
 function stampVersionEntry(versionFile: AiVersionFile, relPath: string): void {
-    const expected = FILE_VERSION_INFO[relPath];
+    const expected = expectedVersionInfoForKey(relPath);
     if (!expected) { return; }
     versionFile.versions[relPath] = {
         version: expected.version,
-        label: expected.label,
-        zip: expected.zip,
+        label: expected.label
     };
+}
+
+function expectedVersionInfoForKey(key: string): { version: number; label: string } | undefined {
+    for (const variant of versionPathVariants(key)) {
+        const expected = FILE_VERSION_INFO[variant];
+        if (expected) { return expected; }
+    }
+    return undefined;
+}
+
+function versionPathVariants(relPath: string): string[] {
+    const skillMatch = SKILL_PATH_RE.exec(relPath);
+    if (!skillMatch) { return [relPath]; }
+    const skillName = skillMatch[2];
+    return SKILL_ROOTS.map(root => `${root}/skills/${skillName}/SKILL.md`);
 }
 
 function stampAiVersionFile(root: string, versionFile: AiVersionFile): void {

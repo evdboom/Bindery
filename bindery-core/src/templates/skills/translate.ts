@@ -4,7 +4,6 @@ export const meta: TemplateMeta = {
     file:    '.claude/skills/translate/SKILL.md',
     version: 10,
     label:   'translate skill',
-    zip:     null,
 };
 
 const CONTENT = [

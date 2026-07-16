@@ -2,7 +2,7 @@
  * Obsidian-specific AI setup wrapper.
  *
  * Generates AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md)
- * and Claude skill templates from the book's .bindery/settings.json.
+ * and skill templates from the book's .bindery/settings.json.
  *
  * For Obsidian, this is a simpler adaptation since we don't have the VS Code LM API,
  * so we just generate the files to the filesystem directly.
@@ -89,6 +89,10 @@ export function setupAiFiles(
                 break;
             case 'agents':
                 writeFile(bookRoot, 'AGENTS.md', renderTemplate('agents', ctx), overwrite, result);
+                for (const skill of skills) {
+                    const skillDir = path.join('.agents', 'skills', skill);
+                    writeFile(bookRoot, path.join(skillDir, 'SKILL.md'), renderTemplate(skill, ctx), overwrite, result);
+                }
                 break;
         }
     }

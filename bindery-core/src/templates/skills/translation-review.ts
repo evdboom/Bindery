@@ -2,9 +2,8 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/translation-review/SKILL.md',
-    version: 4,
+    version: 5,
     label:   'translation-review skill',
-    zip:     null,
 };
 
 const CONTENT = [
@@ -73,9 +72,9 @@ const CONTENT = [
     "",
     "## Output format",
     "",
-    "| Category | Before (target) | After (target) | Reason |",
-    "|---|---|---|---|",
-    "| Glossary | Keep context short; bold only the changed words | Suggested wording | Term differs from stored glossary |",
+    "| Category | Location | Before (target) | After (target) | Reason |",
+    "|---|---|---|---|---|",
+    "| Glossary | Line 5 | Keep context short; bold only the changed words | Suggested wording | Term differs from stored glossary |",
     "",
     "**Category values:** Fidelity · Naturalness · Glossary · Register · Comment",
     "",

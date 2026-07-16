@@ -342,18 +342,12 @@ describe('mcp tools', () => {
     const parsed = JSON.parse(raw) as {
       regenerated_files?: string[];
       skipped_files?: string[];
-      skill_zips?: { created?: string[]; rebuilt?: string[]; skipped?: string[]; failed?: string[]; reupload_required?: string[] };
       skill_files?: { reupload_required?: string[] };
-      ai_versions?: { versions?: Record<string, { version: number; label: string; zip: string | null }> };
+      ai_versions?: { versions?: Record<string, { version: number; label: string; }> };
     };
 
     expect(Array.isArray(parsed.regenerated_files)).toBe(true);
     expect(Array.isArray(parsed.skipped_files)).toBe(true);
-    expect(Array.isArray(parsed.skill_zips?.created)).toBe(true);
-    expect(Array.isArray(parsed.skill_zips?.rebuilt)).toBe(true);
-    expect(Array.isArray(parsed.skill_zips?.skipped)).toBe(true);
-    expect(Array.isArray(parsed.skill_zips?.failed)).toBe(true);
-    expect(Array.isArray(parsed.skill_zips?.reupload_required)).toBe(true);
     expect(Array.isArray(parsed.skill_files?.reupload_required)).toBe(true);
     expect(parsed.skill_files?.reupload_required).toContain('.claude/skills/review/SKILL.md');
     expect(parsed.ai_versions?.versions?.['.claude/skills/review/SKILL.md']?.label).toBe('review skill');
@@ -369,16 +363,11 @@ describe('mcp tools', () => {
 
     const raw = toolSetupAiFiles(root, { targets: ['claude'], skills: ['read-aloud'], overwrite: true });
     const parsed = JSON.parse(raw) as {
-      skill_zips?: { created?: string[]; rebuilt?: string[]; failed?: string[]; reupload_required?: string[] };
       skill_files?: { reupload_required?: string[] };
     };
 
     const zipPath = path.join(root, '.claude', 'skills', 'read-aloud.zip');
     expect(fs.existsSync(zipPath)).toBe(false);
-    expect(parsed.skill_zips?.created).toEqual([]);
-    expect(parsed.skill_zips?.rebuilt).toEqual([]);
-    expect(parsed.skill_zips?.failed).toEqual([]);
-    expect(parsed.skill_zips?.reupload_required).toEqual([]);
     expect(parsed.skill_files?.reupload_required).toEqual(['.claude/skills/read-aloud/SKILL.md']);
   });
 
@@ -401,7 +390,7 @@ describe('mcp tools', () => {
     // Downgrade the review skill version to simulate outdated
     const versionPath = path.join(root, '.bindery', 'ai-version.json');
     const versionFile = JSON.parse(fs.readFileSync(versionPath, 'utf-8')) as {
-      versions: Record<string, { version: number; label: string; zip: string | null }>;
+      versions: Record<string, { version: number; label: string; }>;
     };
     versionFile.versions['.claude/skills/review/SKILL.md'].version = 0;
     fs.writeFileSync(versionPath, JSON.stringify(versionFile, null, 2) + '\n', 'utf-8');
@@ -436,7 +425,7 @@ describe('mcp tools', () => {
     // Downgrade the review skill version to simulate outdated
     const versionPath = path.join(root, '.bindery', 'ai-version.json');
     const versionFile = JSON.parse(fs.readFileSync(versionPath, 'utf-8')) as {
-      versions: Record<string, { version: number; label: string; zip: string | null }>;
+      versions: Record<string, { version: number; label: string;}>;
     };
     versionFile.versions['.claude/skills/review/SKILL.md'].version = 0;
     fs.writeFileSync(versionPath, JSON.stringify(versionFile, null, 2) + '\n', 'utf-8');
@@ -523,7 +512,7 @@ describe('mcp tools', () => {
 
     const versionPath = path.join(root, '.bindery', 'ai-version.json');
     const versionFile = JSON.parse(fs.readFileSync(versionPath, 'utf-8')) as {
-      versions: Record<string, { version: number; label: string; zip: string | null }>;
+      versions: Record<string, { version: number; label: string; }>;
     };
     versionFile.versions['.claude/skills/review/SKILL.md'].version = 0;
     fs.writeFileSync(versionPath, JSON.stringify(versionFile, null, 2) + '\n', 'utf-8');
@@ -531,7 +520,7 @@ describe('mcp tools', () => {
     const healthRaw = toolHealth(root);
     const health = JSON.parse(healthRaw) as {
       ai_version_outdated?: boolean;
-      ai_versions_outdated?: Array<{ file: string; label: string; zip: string | null }>;
+      ai_versions_outdated?: Array<{ file: string; label: string; }>;
     };
 
     expect(health.ai_version_outdated).toBe(true);

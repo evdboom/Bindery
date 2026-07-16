@@ -4,7 +4,6 @@ export const meta: TemplateMeta = {
     file:    '.claude/skills/status/SKILL.md',
     version: 14,
     label:   'status skill',
-    zip:     null,
 };
 
 const CONTENT = [

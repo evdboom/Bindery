@@ -446,7 +446,7 @@ function getSemanticStatus(root: string): SemanticStatus {
     return { status, staleReasons: stale.isStale ? stale.reasons : [] };
 }
 
-type OutdatedEntry = { file: string; label: string; zip: string | null; expected: number; found: number };
+type OutdatedEntry = { file: string; label: string; expected: number; found: number };
 
 function getOutdatedAiFiles(root: string, enabledTargets: Set<string>): OutdatedEntry[] {
     const installed = readAiVersionFile(root);
@@ -457,7 +457,7 @@ function getOutdatedAiFiles(root: string, enabledTargets: Set<string>): Outdated
         if (!fs.existsSync(path.join(root, file))) { continue; }
         const found = installed.versions[file]?.version ?? 0;
         if (found < exp.version) {
-            outdated.push({ file, label: exp.label, zip: exp.zip, expected: exp.version, found });
+            outdated.push({ file, label: exp.label, expected: exp.version, found });
         }
     }
     return outdated;
@@ -2626,13 +2626,6 @@ export function toolSetupAiFiles(root: string, args: SetupAiFilesArgs): string {
     const response = {
         regenerated_files: result.regenerated,
         skipped_files: result.skipped,
-        skill_zips: {
-            created: result.skillZipManifest.created,
-            rebuilt: result.skillZipManifest.rebuilt,
-            skipped: result.skillZipManifest.skipped,
-            failed: result.skillZipManifest.failed,
-            reupload_required: [],
-        },
         skill_files: {
             reupload_required: skillFilesToReupload,
         },
