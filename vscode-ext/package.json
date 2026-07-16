@@ -1635,5 +1635,8 @@
     "esbuild": "^0.28.1",
     "typescript": "6.0.3",
     "vitest": "^4.1.5"
+  },
+  "overrides": {
+    "vite": ">=8.0.16"
   }
 }

@@ -40,6 +40,10 @@
     "typescript": "6.0.3",
     "vitest": "^4.1.5"
   },
+  "overrides": {
+    "hono": ">=4.12.25",
+    "vite": ">=8.0.16"
+  },
   "engines": {
     "node": ">=18.0.0"
   }
