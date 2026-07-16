@@ -2,7 +2,7 @@
 
 ## Highlights
 
-- Standardized release packaging across all supported surfaces.
+- Uniformed template generation
 - See attached assets below for install-ready downloads.
 
 ## Release Assets
