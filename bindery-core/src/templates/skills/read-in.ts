@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/read-in/SKILL.md',
-    version: 16,
+    version: 17,
     label:   'read-in skill',
 };
 
@@ -29,8 +29,7 @@ const CONTENT = [
     "- `get_text(identifier)` — read settings and memory files",
     "- `arc_list` / `arc_get` — list and read structured arc files",
     "- `character_list` / `character_get` — list and read structured character profiles",
-    "- `chapter_status_get(book)` — read the structured progress tracker",
-    "- `get_overview(language)` — list all acts and chapters (only if tracker is empty or sparse)",
+    "- `get_overview(language)` — list all acts and chapters",
     "- `get_notes(category, name)` — look up key character or world notes if relevant to current focus",
     "- `search(query, language)` — find relevant passages across the book based on current focus or open questions",
     "- `get_chapter(chapterNumber, language)` — read a chapter if that's the current focus",
@@ -53,12 +52,12 @@ const CONTENT = [
     "### 3. Read the arc and character map",
     "Use `arc_list` and `arc_get` to load the structural map (`index.md`, `Overall.md`, and any relevant act/thread/chapter arc file). Use `character_list` to load the cast map; call `character_get` only for characters relevant to the current focus.",
     "",
-    "### 4. Read the progress tracker",
-    "Use `chapter_status_get` to read current chapter progress. If it is empty or has fewer than 3 entries, also call `get_overview` for the full chapter listing.",
+    "### 4. Read chapter structure",
+    "Use `get_overview` to load the current chapter/act map for the active language.",
     "",
     "### 5. Determine working chapter",
     "If the current focus in `SESSION.md` names a chapter, use that.",
-    "Otherwise if the tracker has a single `in-progress` chapter, use that.",
+    "Otherwise if the latest chapter memory (`chXX.md`) clearly indicates an active chapter, use that.",
     "Otherwise — **ask the user**: \"Which chapter do you want to work on?\"",
     "",
     "### 6. Load chapter memory",
@@ -76,7 +75,7 @@ const CONTENT = [
     "### 8. Summarize",
     "Output a short orientation (3-6 lines):",
     "- Which chapter / scene we're in",
-    "- Status from the tracker (draft / in-progress / needs-review)",
+    "- Best-known progress signal (from SESSION.md and recent memory entries)",
     "- Relevant arc file or open structural question",
     "- Key open decisions from global memory relevant to this chapter",
     "- Any chapter-specific notes from the chapter memory file; note if the memory file is absent or if the last entry appears old",

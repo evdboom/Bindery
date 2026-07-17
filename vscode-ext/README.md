@@ -65,7 +65,7 @@ Bindery includes a bundled MCP server that makes your book's chapters, arc files
 | Tool | Description |
 |------|-------------|
 | `bindery_health` | Check workspace status: settings, search index, and embedding backend |
-| `bindery_init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |
+| `bindery_init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory scaffold |
 | `bindery_setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, etc.), Claude skills, and refresh generated `.bindery/README.md` |
 | `bindery_settings_update` | Merge a partial patch into `.bindery/settings.json` |
 | `bindery_index_build` | Build or rebuild the search index (lexical + optional semantic) |
@@ -100,8 +100,6 @@ Bindery includes a bundled MCP server that makes your book's chapters, arc files
 | `bindery_memory_list` | List session memory files with line counts |
 | `bindery_memory_append` | Append a dated entry to a memory file |
 | `bindery_memory_compact` | Overwrite a memory file with a summary (backs up original) |
-| `bindery_chapter_status_get` | Read per-chapter progress (draft, in-progress, done, needs-review) |
-| `bindery_chapter_status_update` | Upsert chapter progress entries |
 | `bindery_session_focus_get` | Read working state from `SESSION.md` (optionally a single section) |
 | `bindery_session_focus_update` | Update neutral `SESSION.md` sections (replace/append); leaves `PREFERENCES.md` untouched |
 | `bindery_inbox_process` | Enumerate `Notes/Inbox.md` items with stable numbers and propose destinations (read-only) |
@@ -111,7 +109,7 @@ Bindery includes a bundled MCP server that makes your book's chapters, arc files
 
 For the standalone MCP server (Claude Desktop / Cowork), two additional tools are available: `list_books` and `identify_book` for multi-book discovery. See [mcpb/README.md](../mcpb/README.md) for full MCP documentation and usage examples.
 
-These are agent-facing MCP / language-model tools. The Command Palette also exposes host commands for the same structured note, character, arc, memory, and chapter-status workflows. Host prompts cover common fields; agents can call the MCP/LM tools directly for complete structured payloads.
+These are agent-facing MCP / language-model tools. The Command Palette also exposes host commands for the same structured note, character, arc, memory, and session-focus workflows. Host prompts cover common fields; agents can call the MCP/LM tools directly for complete structured payloads.
 
 ### File Discovery
 
@@ -137,7 +135,7 @@ All commands are available from the Command Palette (`Ctrl+Shift+P`) under the *
 
 | Command | Description |
 |---------|-------------|
-| `Initialize Workspace` | Create `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |
+| `Initialize Workspace` | Create `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory scaffold |
 | `Setup AI Assistant Files` | Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md, Claude skills, and refresh generated `.bindery/README.md` |
 | `Register MCP Server` | Write `.vscode/mcp.json` for Claude / Codex MCP discovery |
 | `Format Typography` | Apply typography formatting to the active markdown file (`Ctrl+K Ctrl+B`) |
@@ -154,7 +152,6 @@ All commands are available from the Command Palette (`Ctrl+Shift+P`) under the *
 | `List Characters` / `Create Character Profile` / `Update Character Profile` | Maintain structured character profiles and the character index |
 | `List Arcs` / `Create Arc File` / `Update Arc File` | Maintain structured story-architecture files and the arc index |
 | `List Memories` / `Append Memory` / `Compact Memory` | Maintain durable `.bindery/memories/` files |
-| `Show Chapter Status` / `Update Chapter Status` | Read or update `.bindery/chapter-status.json` |
 | `Show Session Focus` / `Update Session Focus` / `Append Handoff Note` | Read or update the neutral working-state sections of `SESSION.md` |
 | `Process Inbox` / `Resolve Inbox Items` | Triage `Notes/Inbox.md`: list items with stable numbers, then remove routed items by number |
 

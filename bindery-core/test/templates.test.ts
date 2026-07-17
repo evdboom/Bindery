@@ -437,9 +437,9 @@ describe('renderTemplate — status skill', () => {
     expect(result).toContain('## Steps');
   });
 
-  it('references chapter_status_get and get_overview tools', () => {
+  it('references get_overview and session_focus_get tools', () => {
     const result = renderTemplate('status', makeCtx());
-    expect(result).toContain('chapter_status_get');
+    expect(result).toContain('session_focus_get');
     expect(result).toContain('get_overview');
   });
 });
@@ -495,10 +495,9 @@ describe('renderTemplate — read-in skill', () => {
     expect(result).toContain('## Rules');
   });
 
-  it('references memory_list, chapter_status_get, and get_overview tools', () => {
+  it('references memory_list and get_overview tools', () => {
     const result = renderTemplate('read-in', makeCtx());
     expect(result).toContain('memory_list');
-    expect(result).toContain('chapter_status_get');
     expect(result).toContain('get_overview');
   });
 
@@ -541,7 +540,6 @@ describe('renderTemplate — bindery-readme', () => {
     expect(result).toContain('List/Create/Append Notes');
     expect(result).toContain('List/Create/Update Character Profile');
     expect(result).toContain('List/Create/Update Arc File');
-    expect(result).toContain('Show/Update Chapter Status');
     expect(result).toContain('Show/Update Session Focus');
     expect(result).toContain('session_focus_get');
     expect(result).toContain('inbox_process');

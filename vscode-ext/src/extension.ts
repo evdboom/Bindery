@@ -81,8 +81,6 @@ interface McpToolsForAi {
     toolMemoryList: (_root: string) => string;
     toolMemoryAppend: (_root: string, _args: { file: string; title: string; content: string }) => string;
     toolMemoryCompact: (_root: string, _args: { file: string; compacted_content: string }) => string;
-    toolChapterStatusGet: (_root: string) => string;
-    toolChapterStatusUpdate: (_root: string, _args: { chapters: AuthoringChapterStatusEntry[] }) => string;
     toolSessionFocusGet: (_root: string, _args: { section?: string }) => string;
     toolSessionFocusUpdate: (_root: string, _args: { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }) => string;
     toolInboxProcess: (_root: string) => string;
@@ -108,15 +106,6 @@ interface AuthoringArcInput {
     continuityRisks?: string;
     linkedChapters?: string;
     overwrite?: boolean;
-}
-
-interface AuthoringChapterStatusEntry {
-    number: number;
-    title: string;
-    language: string;
-    status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review';
-    wordCount?: number;
-    notes?: string;
 }
 
 function loadMcpToolsForAi(extensionPath: string): McpToolsForAi {
@@ -406,7 +395,6 @@ async function initWorkspaceCommand(context?: vscode.ExtensionContext) {
         writeIfMissing(path.join(root, 'Notes', 'Inbox.md'), '# Inbox\n');
         writeIfMissing(path.join(root, 'Notes', 'Characters', 'index.md'), '# Character Index\n');
         writeIfMissing(path.join(root, '.bindery', 'memories', 'global.md'), `# Global Memory - ${title || path.basename(root)}\n`);
-        writeIfMissing(path.join(root, '.bindery', 'chapter-status.json'), JSON.stringify({ schemaVersion: 1, updatedAt: new Date().toISOString().slice(0, 10), chapters: [] }, null, 2) + '\n');
     }
     settings.formatOnSave = formatOption.value;
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
@@ -1479,46 +1467,6 @@ async function promptArcInput(title: string, update: boolean): Promise<Authoring
     };
 }
 
-async function promptChapterStatusEntry(title: string): Promise<AuthoringChapterStatusEntry | undefined> {
-    const chapterNumberRaw = await promptRequired(title, 'Chapter number');
-    if (!chapterNumberRaw) { return undefined; }
-    const chapterNumber = Number(chapterNumberRaw);
-    if (!Number.isInteger(chapterNumber) || chapterNumber < 0) {
-        vscode.window.showWarningMessage('Bindery: chapter number must be a non-negative integer.');
-        return undefined;
-    }
-    const chapterTitle = await promptRequired(title, 'Chapter title');
-    if (!chapterTitle) { return undefined; }
-    const languageResult = await promptOptional(title, 'Language code', 'EN');
-    if (languageResult === null) { return undefined; }
-    const language = languageResult ?? 'EN';
-    const statusPick = await vscode.window.showQuickPick(
-        [
-            { label: 'done' as const },
-            { label: 'in-progress' as const },
-            { label: 'needs-review' as const },
-            { label: 'draft' as const },
-            { label: 'planned' as const },
-        ],
-        { title, placeHolder: 'Chapter status' }
-    );
-    if (!statusPick) { return undefined; }
-    const wordCountRaw = await promptOptional(title, 'Word count (optional)');
-    if (wordCountRaw === null) { return undefined; }
-    const notes = await promptOptional(title, 'Notes (optional)');
-    if (notes === null) { return undefined; }
-    let wordCount: number | undefined;
-    if (wordCountRaw) {
-        const parsedWordCount = Number(wordCountRaw);
-        if (!Number.isInteger(parsedWordCount) || parsedWordCount < 0) {
-            vscode.window.showWarningMessage('Bindery: word count must be a non-negative integer.');
-            return undefined;
-        }
-        wordCount = parsedWordCount;
-    }
-    return { number: chapterNumber, title: chapterTitle, language, status: statusPick.label, wordCount, notes };
-}
-
 async function noteListCommand(context: vscode.ExtensionContext): Promise<void> {
     await runAuthoringCommand(context, 'Note List', (_root, tools) => tools.toolNoteList(_root, {}));
 }
@@ -1624,17 +1572,6 @@ async function memoryCompactCommand(context: vscode.ExtensionContext): Promise<v
         if (!file) { return undefined; }
         const compactedContent = await promptRequired('Bindery: Compact Memory', 'Compacted content');
         return compactedContent ? tools.toolMemoryCompact(root, { file, compacted_content: compactedContent }) : undefined;
-    });
-}
-
-async function chapterStatusGetCommand(context: vscode.ExtensionContext): Promise<void> {
-    await runAuthoringCommand(context, 'Chapter Status', (_root, tools) => tools.toolChapterStatusGet(_root));
-}
-
-async function chapterStatusUpdateCommand(context: vscode.ExtensionContext): Promise<void> {
-    await runAuthoringCommand(context, 'Update Chapter Status', async (root, tools) => {
-        const entry = await promptChapterStatusEntry('Bindery: Update Chapter Status');
-        return entry ? tools.toolChapterStatusUpdate(root, { chapters: [entry] }) : undefined;
     });
 }
 
@@ -1781,8 +1718,6 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bindery.memoryList',              () => memoryListCommand(context)),
         vscode.commands.registerCommand('bindery.memoryAppend',            () => memoryAppendCommand(context)),
         vscode.commands.registerCommand('bindery.memoryCompact',           () => memoryCompactCommand(context)),
-        vscode.commands.registerCommand('bindery.chapterStatusGet',        () => chapterStatusGetCommand(context)),
-        vscode.commands.registerCommand('bindery.chapterStatusUpdate',     () => chapterStatusUpdateCommand(context)),
         vscode.commands.registerCommand('bindery.sessionFocusShow',        () => sessionFocusShowCommand(context)),
         vscode.commands.registerCommand('bindery.sessionFocusUpdate',      () => sessionFocusUpdateCommand(context)),
         vscode.commands.registerCommand('bindery.sessionFocusAppendHandoff', () => sessionFocusAppendHandoffCommand(context)),

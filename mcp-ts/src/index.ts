@@ -51,8 +51,6 @@ import {
     toolMemoryList,
     toolMemoryAppend,
     toolMemoryCompact,
-    toolChapterStatusGet,
-    toolChapterStatusUpdate,
     toolSessionFocusGet,
     toolSessionFocusUpdate,
     toolInboxProcess,
@@ -580,7 +578,7 @@ server.registerTool('init_workspace', {
     title: 'Init Workspace',
     description:
         'Create or update .bindery/settings.json, .bindery/translations.json, .bindery/README.md, ' +
-        'and the opinionated Arc, Notes, Characters, SESSION, PREFERENCES, memory, and chapter-status scaffold. ' +
+        'and the opinionated Arc, Notes, Characters, SESSION, PREFERENCES, and memory scaffold. ' +
         'All arguments are optional — smart defaults are used for any omitted values. ' +
         'Safe to run on an existing workspace: existing settings are preserved unless explicitly overridden. ' +
         'Detects language folders in the story directory automatically.',
@@ -671,42 +669,6 @@ server.registerTool('memory_compact', {
     try { return ok(toolMemoryCompact(resolveBook(book).root, { file, compacted_content })); } catch (e) { return err(e); }
 });
 
-server.registerTool('chapter_status_get', {
-    title: 'Chapter Status Get',
-    description:
-        'Read the current chapter progress tracker from .bindery/chapter-status.json. ' +
-        'Returns a formatted summary grouped by status (done, in-progress, draft, planned, needs-review). ' +
-        'Returns a clear empty-state message if no status has been recorded yet.',
-    inputSchema: { book: bookSchema },
-    annotations: { readOnlyHint: true },
-}, ({ book }) => {
-    try { return ok(toolChapterStatusGet(resolveBook(book).root)); } catch (e) { return err(e); }
-});
-
-server.registerTool('chapter_status_update', {
-    title: 'Chapter Status Update',
-    description:
-        'Upsert chapter progress entries in .bindery/chapter-status.json. ' +
-        'Send only the chapters that changed — existing entries not in the payload are preserved. ' +
-        'Creates the file if it does not exist. ' +
-        'Each entry requires: number (int), title (string), language (e.g. EN), status (done | in-progress | draft | planned | needs-review). ' +
-        'Optional: wordCount (int), notes (string).',
-    inputSchema: {
-        book: bookSchema,
-        chapters: z.array(z.object({
-            number:    z.number().int().describe('Chapter number'),
-            title:     z.string().describe('Chapter title'),
-            language:  z.string().describe('Language code, e.g. EN or NL'),
-            status:    z.enum(['done', 'in-progress', 'draft', 'planned', 'needs-review']),
-            wordCount: z.number().int().optional().describe('Approximate word count'),
-            notes:     z.string().optional().describe('Short agent note about this chapter'),
-        })).describe('Chapter entries to upsert (existing entries not listed are preserved)'),
-    },
-    annotations: { destructiveHint: true },
-}, ({ book, chapters }) => {
-    try { return ok(toolChapterStatusUpdate(resolveBook(book).root, { chapters })); } catch (e) { return err(e); }
-});
-
 server.registerTool('session_focus_get', {
     title: 'Session Focus Get',
     description:
@@ -752,7 +714,7 @@ server.registerTool('inbox_process', {
     title: 'Inbox Process',
     description:
         'Read the notes Inbox (Notes/Inbox.md) and return a structured triage proposal: each loose item enumerated with a stable number, ' +
-        'plus the destination tools to route them (note_*, character_*, arc_*, memory_*, chapter_status_*, session_focus_*). ' +
+        'plus the destination tools to route them (note_*, character_*, arc_*, memory_*, session_focus_*). ' +
         'This tool only reads and proposes — it never moves, deletes, or categorizes anything. ' +
         'After the user confirms and items are routed with the destination tools, call inbox_resolve with the item numbers to clear them.',
     inputSchema: { book: bookSchema },

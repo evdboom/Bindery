@@ -22,7 +22,7 @@ The **Bindery** extension provides:
 - **Chapter merge & export** — Markdown, DOCX, EPUB, PDF output via Pandoc + LibreOffice, with auto-detection of tool paths
 - **Dialect & translation management** — extensible substitution rules for dialect exports (e.g. US→UK), plus cross-language glossaries in `.bindery/translations.json`
 - **Multi-language support** — configurable per-language chapter labelling and folder structure, with dialect derivatives
-- **Opinionated workspace setup** — `.bindery/settings.json` plus Arc, Notes, Characters, SESSION, PREFERENCES, memory, and chapter-status scaffolding
+- **Opinionated workspace setup** — `.bindery/settings.json` plus Arc, Notes, Characters, SESSION, PREFERENCES, and memory scaffolding
 - **MCP integration** — registers 38 Bindery tools for GitHub Copilot Chat and writes `.vscode/mcp.json` for Claude / Codex
 
 Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=option-a.bindery) or:
@@ -44,14 +44,13 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes
 - **Optional semantic search** — set `BINDERY_OLLAMA_URL` for semantic reranking, or enable a full semantic index for precomputed embedding search
 - **Version tracking** — `get_review_text` returns a structured git diff **plus** any regions wrapped in `<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->` markers (so committed work-in-progress can still be reviewed). `git_snapshot` saves progress as a git commit. Git is auto-initialized during workspace setup if available
 - **Translation & dialect management** — glossary entries and dialect substitution rules in `.bindery/translations.json`, queryable and updatable by agents
-- **Opinionated authoring scaffold** — `init_workspace` creates `SESSION.md`, `PREFERENCES.md`, `Arc/index.md`, `Arc/Overall.md`, `Arc/Acts/`, `Notes/Inbox.md`, `Notes/Characters/index.md`, structured note folders, `.bindery/memories/global.md`, and `.bindery/chapter-status.json`
+- **Opinionated authoring scaffold** — `init_workspace` creates `SESSION.md`, `PREFERENCES.md`, `Arc/index.md`, `Arc/Overall.md`, `Arc/Acts/`, `Notes/Inbox.md`, `Notes/Characters/index.md`, structured note folders, and `.bindery/memories/global.md`
 - **Story note management** — agents can list, read, create, and append notes under the configured notes folder while `get_notes` remains compatible with older recursive note layouts
 - **Session memory** — persistent `.bindery/memories/` files for cross-session decisions, with append, list, and compact operations
 - **Session focus** — `session_focus_*` tools maintain the ephemeral working-state file `SESSION.md` (current focus, next actions, open questions, handoff); durable preferences live in the user-owned `PREFERENCES.md`
 - **Inbox triage** — `inbox_process` enumerates loose items in `Notes/Inbox.md` and proposes destinations (read-only); `inbox_resolve` clears items after they are routed and confirmed — rough/pasted material goes to the Inbox, not memory
-- **Chapter status tracking** — per-chapter progress tracker (`draft`, `in-progress`, `done`, `needs-review`)
 - **Structured arc & character management** — agents can create/update arc files and character profiles using structured tools that keep indexes in sync
-- **Host command parity** — VS Code and Obsidian expose command-palette actions for notes, characters, arcs, memory, and chapter status, backed by the same structured tool functions agents use
+- **Host command parity** — VS Code and Obsidian expose command-palette actions for notes, characters, arcs, memory, and session focus, backed by the same structured tool functions agents use
 - **Multi-book support** — configure one or more books via `--book Name=path` CLI args or `BINDERY_BOOKS` env var; every tool call specifies which book to use by name (agents never see raw paths)
 - **Container/mount aware** — agents in sandboxed environments (e.g. Cowork) can call `identify_book` with their working directory to discover their book name, even when mount paths differ from the configured paths
 
@@ -65,10 +64,10 @@ The **Bindery** Obsidian plugin provides the same feature set as the VS Code ext
 - **Chapter merge & export** — Markdown, DOCX, EPUB, PDF output via Pandoc + LibreOffice
 - **Dialect & translation management** — extensible substitution rules and glossaries
 - **Multi-language support** — configurable per-language chapter labelling
-- **Opinionated workspace setup** — `.bindery/settings.json` plus Arc, Notes, Characters, SESSION, PREFERENCES, memory, and chapter-status scaffolding
+- **Opinionated workspace setup** — `.bindery/settings.json` plus Arc, Notes, Characters, SESSION, PREFERENCES, and memory scaffolding
 - **AI instruction generation** — Generate CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md
 - **Review markers** — Mark regions for agent feedback
-- **Opinionated authoring commands** — command-palette actions for notes, characters, arcs, memory, and chapter status
+- **Opinionated authoring commands** — command-palette actions for notes, characters, arcs, memory, and session focus
 - **MCP snippet generator** — Copy JSON for Claude Desktop integration
 
 Build and install:
@@ -98,7 +97,7 @@ Release assets now include two MCP package formats:
 
 1. Install the [Bindery extension](https://marketplace.visualstudio.com/items?itemName=option-a.bindery) from the Marketplace
 2. Open your book folder in VS Code
-3. Run `Bindery: Initialize Workspace` to create `.bindery/settings.json`, `.bindery/translations.json`, the generated `.bindery/README.md` capability reference, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold
+3. Run `Bindery: Initialize Workspace` to create `.bindery/settings.json`, `.bindery/translations.json`, the generated `.bindery/README.md` capability reference, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory scaffold
 4. Run `Bindery: Register MCP Server` to create `.vscode/mcp.json` (primarily for Claude/Codex discovery; not needed for GitHub Copilot Chat because the extension registers the tools automatically)
 5. Tools are now available in GitHub Copilot Chat, Claude for VS Code, and Codex
 
@@ -254,7 +253,7 @@ MIT — see [LICENSE](LICENSE).
 - **Chapter merge & export** (MD, DOCX, EPUB, PDF via Pandoc + LibreOffice)
 - **Dialect & translation management** — extensible substitution rules and glossaries
 - **Multi-language support** — configurable chapter labels and folder structures
-- **Workspace initialization** — `.bindery/settings.json`, `.bindery/translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold
+- **Workspace initialization** — `.bindery/settings.json`, `.bindery/translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory scaffold
 - **AI instruction generation** — CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md
 - **Review markers** — wrap text in `<!-- Bindery: Review start/stop -->` for agent feedback
 - **MCP config snippet** — JSON for Claude Desktop / Cowork integration

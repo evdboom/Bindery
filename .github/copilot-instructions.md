@@ -127,7 +127,7 @@ host-specific UI/activation):
 
 | Command | VS Code | Obsidian | Description |
 |---|---|---|---|
-| `bindery.init` | ✅ | ✅ | Create `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |
+| `bindery.init` | ✅ | ✅ | Create `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory scaffold |
 | `bindery.setupAI` | ✅ | ✅ | Generate CLAUDE.md / copilot-instructions.md / skills / AGENTS.md |
 | `bindery.formatDocument` | ✅ | ✅ | Typography formatting (curly quotes, em-dash, ellipsis) |
 | `bindery.formatFolder` | ✅ | ✅ | Recursively format all .md files in a folder |
@@ -156,8 +156,6 @@ host-specific UI/activation):
 | `bindery.memoryList` / `memory-list` | ✅ | ✅ | List durable memory files |
 | `bindery.memoryAppend` / `memory-append` | ✅ | ✅ | Append a dated memory entry |
 | `bindery.memoryCompact` / `memory-compact` | ✅ | ✅ | Compact a memory file with backup |
-| `bindery.chapterStatusGet` / `chapter-status-get` | ✅ | ✅ | Show chapter progress state |
-| `bindery.chapterStatusUpdate` / `chapter-status-update` | ✅ | ✅ | Upsert chapter progress entries |
 | `bindery.sessionFocusShow` / `session-focus-show` | ✅ | ✅ | Show working state from SESSION.md (optionally one section) |
 | `bindery.sessionFocusUpdate` / `session-focus-update` | ✅ | ✅ | Update a neutral SESSION.md section (replace/append) |
 | `bindery.sessionFocusAppendHandoff` / `session-focus-append-handoff` | ✅ | ✅ | Append a handoff note to SESSION.md |
@@ -185,7 +183,7 @@ The **memory skill** uses `memory_list` → `memory_append` → `memory_compact`
 
 The split: durable story/project decisions → `memory_*` (`.bindery/memories/`); ephemeral working state (current focus, next actions, open questions, handoff) → `session_focus_*` (`SESSION.md`); durable working preferences → `PREFERENCES.md` (user-owned, never tool-written — propose changes instead); rough/unsorted/pasted material → `Notes/Inbox.md`, triaged with `inbox_process` / `inbox_resolve` (not memory).
 
-Current authoring-tool boundary: note, character, arc, memory, chapter-status, session-focus, and inbox-triage MCP/LM tools exist and have matching VS Code/Obsidian host command wrappers. `session_focus_update` only touches neutral SESSION.md sections; `inbox_process` only proposes and `inbox_resolve` only removes named items (route confirmed items with the destination tools first).
+Current authoring-tool boundary: note, character, arc, memory, session-focus, and inbox-triage MCP/LM tools exist and have matching VS Code/Obsidian host command wrappers. `session_focus_update` only touches neutral SESSION.md sections; `inbox_process` only proposes and `inbox_resolve` only removes named items (route confirmed items with the destination tools first).
 
 ### AI setup versioning
 `FILE_VERSION_INFO` in `bindery-core/src/templates.ts` is a per-file version table/map (a Record keyed by output path) that controls staleness detection.

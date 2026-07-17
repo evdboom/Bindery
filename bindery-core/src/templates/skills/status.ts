@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/status/SKILL.md',
-    version: 14,
+    version: 15,
     label:   'status skill',
 };
 
@@ -25,8 +25,6 @@ const CONTENT = [
     "",
     "## Tools",
     "Use these Bindery MCP tools:",
-    "- `chapter_status_get(book)` — read the structured progress tracker from `.bindery/chapter-status.json`",
-    "- `chapter_status_update(book, chapters)` — upsert chapter progress entries (send only changed chapters)",
     "- `get_overview(language)` — list all acts and chapters with titles",
     "- `session_focus_get(section?)` — read the current focus / working state from `SESSION.md`",
     "- `get_text(identifier)` — read settings.json and memory files",
@@ -37,12 +35,12 @@ const CONTENT = [
     "## Steps",
     "",
     "1. Use `get_text(\".bindery/settings.json\")` to pick up the current book's structure and conventions.",
-    "2. Use `chapter_status_get` to read the current tracker. Use `memory_list` to check available memory files.",
-    "3. Use `session_focus_get` to read the current focus from `SESSION.md`, and `get_text` to read `.bindery/memories/global.md` and for in-progress chapters `.bindery/memories/chXX.md`. Use `arc_list`/`arc_get` for arc context and `character_list` for cast coverage when needed.",
-    "4. Use `get_overview` for the full chapter listing if the tracker is empty or incomplete.",
+    "2. Use `get_overview` for the full chapter listing and act structure.",
+    "3. Use `memory_list` to check available memory files. Use `session_focus_get` for current focus, and `get_text` to read `.bindery/memories/global.md` plus relevant `.bindery/memories/chXX.md` files.",
+    "4. Use `arc_list`/`arc_get` for arc context and `character_list` for cast coverage when needed.",
     "5. Check `Arc/` for what's planned vs written (`index.md`, `Overall.md`, and the relevant act/thread/chapter arc file).",
-    "6. Output: overall count / done / in-progress / coming up (next 2-3 chapters) / open questions.",
-    "7. If the tracker is out of date or missing entries, update it with `chapter_status_update` (upsert only the changed chapters).",
+    "6. Output: overall chapter count / current focus / likely recently completed or active chapters / next 2-3 chapters / open questions.",
+    "7. If status is ambiguous, say so explicitly and ask one clarifying question instead of guessing.",
     "",
     "## Output",
     "",
@@ -54,7 +52,7 @@ const CONTENT = [
     "**Progress:** X / Y chapters complete (Act I: X/Y · Act II: X/Y · Act III: X/Y)",
     "",
     "**Done:** Ch 1, 2, 3, 4 ...",
-    "**In progress:** Ch 10 — [chapter title] ([status note from tracker])",
+    "**Current focus:** Ch 10 — [chapter title] (from SESSION.md and/or recent memory)",
     "**Coming up:** Ch 11, 12, 13",
     "",
     "**Arc position:** [One sentence: where in the overall story the in-progress chapter sits — e.g. \"Midpoint of Act II, approaching the second turning point.\"]",
@@ -64,10 +62,8 @@ const CONTENT = [
     "**Open questions:**",
     "- [From global.md or chapter memory — unresolved decisions relevant to what comes next]",
     "",
-    "**Current focus:** [From SESSION.md via session_focus_get, if present]",
+    "**Confidence:** [High/Medium/Low — based on recency and consistency of SESSION.md + memory signals]",
     "```",
-    "",
-    "If the tracker was updated in Step 7, note which entries were added or changed.",
 ].join('\n') + '\n';
 
 export function render(_ctx: TemplateContext): string {
