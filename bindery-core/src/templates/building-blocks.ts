@@ -28,18 +28,18 @@ export function pushCapabilitiesSource(lines: string[]): void {
 export function pushSessionStart(lines: string[], ctx: TemplateContext, agent: AgentTemplate): void {
     lines.push(
         '## Start of session',
-        '1. Run `health` from the Bindery MCP and check `ai_versions_outdated`.',
-        '2. If `ai_versions_outdated` has entries, run `setup_ai_files`.' + (agent.requiresSkillUpload ? ' If `skill_files.reupload_required` has entries, ask the user to re-upload those SKILL.md files to use them.' : ''),
+        '1. Run `bindery_health` from the Bindery MCP and check `ai_versions_outdated`.',
+        '2. If `ai_versions_outdated` has entries, run `bindery_setup_ai_files`.' + (agent.requiresSkillUpload ? ' If `skill_files.reupload_required` has entries, ask the user to re-upload those SKILL.md files to use them.' : ''),
     );
     if (agent.hasSkills) {
     lines.push(
         '3. Use /read-in at the start of a session to load context and get your bearings.',
-        `4. If the skill is not available, read at least ${ctx.sessionFile} (if present, use \`session_focus_get\`) for current focus and handoff context, and ${ctx.preferencesFile} for the author's durable working preferences.`,
+        `4. If the skill is not available, read at least ${ctx.sessionFile} (if present, use \`bindery_session_focus_get\`) for current focus and handoff context, and ${ctx.preferencesFile} for the author's durable working preferences.`,
     );
     } else { 
     lines.push(
         `3. Read ${ctx.sessionFile} (if present) for current focus and handoff context, and ${ctx.preferencesFile} for the author's durable working preferences.`,
-        `4. If ${ctx.sessionFile} mentions a chapter, \`get_chapter(chapterNumber)\` to read that chapter and \`memory_list\` to check for any chapter-specific memory files.`,
+        `4. If ${ctx.sessionFile} mentions a chapter, \`bindery_get_chapter(chapterNumber)\` to read that chapter and \`bindery_memory_list\` to check for any chapter-specific memory files.`,
     );
     }
 }
@@ -57,9 +57,9 @@ export function pushMemorySystem(lines: string[], agent: AgentTemplate): void {
         );
     } else {
         lines.push(
-            `1. When concluding a discussion, or after you give a meaningful, preservation-worthy response: use \`memory_append\` to store it.`,
-            `2. Also when the user asks or otherwise indicates the end of a session: use \`memory_append\` to save decisions.`,
-            `3. If a memory file grows too large, use \`memory_compact\` to condense it.`,
+            `1. When concluding a discussion, or after you give a meaningful, preservation-worthy response: use \`bindery_memory_append\` to store it.`,
+            `2. Also when the user asks or otherwise indicates the end of a session: use \`bindery_memory_append\` to save decisions.`,
+            `3. If a memory file grows too large, use \`bindery_memory_compact\` to condense it.`,
         );
     }  
 }
@@ -74,7 +74,7 @@ export function pushRepoLayout(lines: string[], ctx: TemplateContext): void {
         '  Acts/  ← act-level arc files',
         `${ctx.notesFolder}/  ← story notes`,
         `${ctx.charactersFolder}/  ← character index and one profile per character`,
-        `${ctx.sessionFile}  ← ephemeral working state (current focus / next actions / open questions / handoff) via session_focus_*`,
+        `${ctx.sessionFile}  ← ephemeral working state (current focus / next actions / open questions / handoff) via bindery_session_focus_*`,
         `${ctx.preferencesFile}  ← durable working preferences ("do it like this for me"); user-owned, never tool-written`,
         `${ctx.storyFolder}/`,
         ...ctx.languages.map(l => `  ${l.folderName}/  ← ${l.code} chapters (one .md per chapter)`),

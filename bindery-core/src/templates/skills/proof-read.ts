@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/proof-read/SKILL.md',
-    version: 6,
+    version: 8,
     label:   'proof-read skill',
 };
 
@@ -18,7 +18,7 @@ const CONTENT = [
     "The value is in the isolation. A reader doesn't know what the arc says should happen, what a character's backstory is, or what the chapter was *trying* to do. That's exactly the feedback you can't give yourself, and can't get from an agent that has been working on the book with you.",
     "",
     "## Prerequisites",
-    "This skill requires a Bindery workspace. If unsure, call `identify_book` to check. If no workspace is found, tell the user and stop.",
+    "This skill requires a Bindery workspace. If unsure, call `bindery_identify_book` to check. If no workspace is found, tell the user and stop.",
     "",
     "## Trigger",
     "User says `/proof-read`, \"proofread chapter X\", \"get reader feedback\", \"how does this land with readers\", \"simulate reader reactions\", or \"peer review\".",
@@ -80,7 +80,7 @@ const CONTENT = [
     "",
     "**Why not have subagents call MCP themselves?** Subagents with MCP access could accidentally pull notes, arc files, or overviews. Using a pre-written staging file and passing only that payload to subagents reduces that risk and is the best available way in this workflow to keep them focused on reader-visible text.",
     "",
-    "Use `get_book_until(chapterNumber: n, language)` to fetch all prior chapters in one call. If unavailable, loop `get_chapter(1)` through `get_chapter(n)` in the main agent. For a **whole-book** run, fetch all chapters.",
+    "Use `bindery_get_book_until(chapterNumber: n, language)` to fetch all prior chapters in one call. If unavailable, loop `bindery_get_chapter(1)` through `bindery_get_chapter(n)` in the main agent. For a **whole-book** run, fetch all chapters.",
     "",
     "Once the text is retrieved, **write it to a staging file**:",
     "`.bindery/proof-read-payload.md`",

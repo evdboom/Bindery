@@ -25,10 +25,10 @@ describe('mcp index contract', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
 
     // Find the annotation block for each tool that contacts an external service and verify openWorldHint: true
-    // index_build / search → Ollama reranking; update_workspace → git fetch/pull; git_snapshot → git push
-    const externalTools = ['index_build', 'search', 'update_workspace', 'git_snapshot'];
+    // bindery_index_build / bindery_search → Ollama reranking; bindery_update_workspace → git fetch/pull; bindery_git_snapshot → git push
+    const externalTools = ['bindery_index_build', 'bindery_search', 'bindery_update_workspace', 'bindery_git_snapshot'];
     for (const toolName of externalTools) {
-      // Match registerTool('search', { ... annotations: { ... } ... })
+      // Match registerTool('bindery_search', { ... annotations: { ... } ... })
       const toolBlockMatch = new RegExp(
         String.raw`server\.registerTool\('${toolName}',[\s\S]*?annotations:\s*\{([^}]*)\}`,
       ).exec(source);
@@ -42,7 +42,7 @@ describe('mcp index contract', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
 
     // Tools that legitimately contact external services (Ollama, git remotes, etc.)
-    const externalToolNames = new Set(['index_build', 'search', 'update_workspace', 'git_snapshot']);
+    const externalToolNames = new Set(['bindery_index_build', 'bindery_search', 'bindery_update_workspace', 'bindery_git_snapshot']);
 
     // Extract all registerTool blocks and check non-Ollama tools lack openWorldHint
     const toolBlockRegex = /server\.registerTool\('([^']+)'[\s\S]*?annotations:\s*\{([^}]*)\}/g;

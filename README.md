@@ -42,17 +42,17 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes
 
 - **BM25 full-text search** — fast lexical search across all chapters and notes via [MiniSearch](https://lucaong.github.io/minisearch/)
 - **Optional semantic search** — set `BINDERY_OLLAMA_URL` for semantic reranking, or enable a full semantic index for precomputed embedding search
-- **Version tracking** — `get_review_text` returns a structured git diff **plus** any regions wrapped in `<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->` markers (so committed work-in-progress can still be reviewed). `git_snapshot` saves progress as a git commit. Git is auto-initialized during workspace setup if available
+- **Version tracking** — `bindery_get_review_text` returns a structured git diff **plus** any regions wrapped in `<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->` markers (so committed work-in-progress can still be reviewed). `bindery_git_snapshot` saves progress as a git commit. Git is auto-initialized during workspace setup if available
 - **Translation & dialect management** — glossary entries and dialect substitution rules in `.bindery/translations.json`, queryable and updatable by agents
-- **Opinionated authoring scaffold** — `init_workspace` creates `SESSION.md`, `PREFERENCES.md`, `Arc/index.md`, `Arc/Overall.md`, `Arc/Acts/`, `Notes/Inbox.md`, `Notes/Characters/index.md`, structured note folders, and `.bindery/memories/global.md`
-- **Story note management** — agents can list, read, create, and append notes under the configured notes folder while `get_notes` remains compatible with older recursive note layouts
+- **Opinionated authoring scaffold** — `bindery_init_workspace` creates `SESSION.md`, `PREFERENCES.md`, `Arc/index.md`, `Arc/Overall.md`, `Arc/Acts/`, `Notes/Inbox.md`, `Notes/Characters/index.md`, structured note folders, and `.bindery/memories/global.md`
+- **Story note management** — agents can list, read, create, and append notes under the configured notes folder while `bindery_get_notes` remains compatible with older recursive note layouts
 - **Session memory** — persistent `.bindery/memories/` files for cross-session decisions, with append, list, and compact operations
-- **Session focus** — `session_focus_*` tools maintain the ephemeral working-state file `SESSION.md` (current focus, next actions, open questions, handoff); durable preferences live in the user-owned `PREFERENCES.md`
-- **Inbox triage** — `inbox_process` enumerates loose items in `Notes/Inbox.md` and proposes destinations (read-only); `inbox_resolve` clears items after they are routed and confirmed — rough/pasted material goes to the Inbox, not memory
+- **Session focus** — `bindery_session_focus_*` tools maintain the ephemeral working-state file `SESSION.md` (current focus, next actions, open questions, handoff); durable preferences live in the user-owned `PREFERENCES.md`
+- **Inbox triage** — `bindery_inbox_process` enumerates loose items in `Notes/Inbox.md` and proposes destinations (read-only); `bindery_inbox_resolve` clears items after they are routed and confirmed — rough/pasted material goes to the Inbox, not memory
 - **Structured arc & character management** — agents can create/update arc files and character profiles using structured tools that keep indexes in sync
 - **Host command parity** — VS Code and Obsidian expose command-palette actions for notes, characters, arcs, memory, and session focus, backed by the same structured tool functions agents use
 - **Multi-book support** — configure one or more books via `--book Name=path` CLI args or `BINDERY_BOOKS` env var; every tool call specifies which book to use by name (agents never see raw paths)
-- **Container/mount aware** — agents in sandboxed environments (e.g. Cowork) can call `identify_book` with their working directory to discover their book name, even when mount paths differ from the configured paths
+- **Container/mount aware** — agents in sandboxed environments (e.g. Cowork) can call `bindery_identify_book` with their working directory to discover their book name, even when mount paths differ from the configured paths
 
 See [mcpb/README.md](mcpb/README.md) for the full 40-tool reference and usage examples.
 
@@ -110,7 +110,7 @@ Release assets now include two MCP package formats:
 4. Optionally set the **Ollama URL** if you want semantic reranking
 5. Optionally enable the semantic index and choose a default search mode if you want `full_semantic` search with rebuild warnings when the embedding index becomes stale.
    - **Note:** full embedding can be a heavy operation, depending on your hardware, when running a local Ollama instance.
-6. Tools are now available — the agent calls `list_books` to discover book names
+6. Tools are now available — the agent calls `bindery_list_books` to discover book names
 
 ### Standalone MCP Clients (ChatGPT Work, LM Studio, etc.)
 
@@ -203,7 +203,7 @@ Shared logic in `bindery-core` and `bindery-merge` ensures both `vscode-ext` and
 - **One writing environment**:
   - **VS Code** 1.85+
   - **Obsidian Desktop** with Community Plugins enabled
-- **Git** (recommended) — needed for version tracking, `get_review_text`, and `git_snapshot`. Auto-initialized during workspace setup.
+- **Git** (recommended) — needed for version tracking, `bindery_get_review_text`, and `bindery_git_snapshot`. Auto-initialized during workspace setup.
   - Install via package manager or from [https://git-scm.com](https://git-scm.com)
 - **Pandoc** (optional) — needed for DOCX/EPUB/PDF export.
   - Install via package manager or from [https://pandoc.org/installing.html](https://pandoc.org/installing.html)
@@ -227,12 +227,12 @@ You usually do not need to configure anything — install Pandoc/LibreOffice nor
 
 ## Known limitations
 
-- **Git** must be on `PATH` (or at a standard install location) for `get_review_text` and `git_snapshot`. If git isn't found, these tools fail with a clear error; all other tools still work.
+- **Git** must be on `PATH` (or at a standard install location) for `bindery_get_review_text` and `bindery_git_snapshot`. If git isn't found, these tools fail with a clear error; all other tools still work.
 - **Pandoc** is required for DOCX, EPUB, and PDF export. Markdown-only export has no external dependencies.
 - **LibreOffice** is required only for PDF export. Bindery generates PDFs by producing a DOCX via Pandoc and then converting with LibreOffice headless.
 - **Semantic search** requires an optional [Ollama](https://ollama.com/) instance. Without it, lexical BM25 search still works offline. Configure with `BINDERY_OLLAMA_URL`; optional tuning via `BINDERY_OLLAMA_TIMEOUT_MS` (default 15000) and `BINDERY_OLLAMA_RETRIES` (default 1).
 - **Large books with semantic indexing** can take several minutes to embed on first build. Rebuilds are incremental when chapter content is unchanged.
-- **Chapter numbering**: the tools sort chapters by filename but accept non-contiguous numbers. `get_overview` now flags gaps (e.g. chapters 1, 3 with no 2) as a warning.
+- **Chapter numbering**: the tools sort chapters by filename but accept non-contiguous numbers. `bindery_get_overview` now flags gaps (e.g. chapters 1, 3 with no 2) as a warning.
 - **Search index format**: bumped automatically when the on-disk format changes. Older indexes are silently ignored and rebuilt on next use — no manual action required.
 
 ## Privacy

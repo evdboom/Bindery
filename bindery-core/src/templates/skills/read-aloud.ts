@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/read-aloud/SKILL.md',
-    version: 11,
+    version: 13,
     label:   'read-aloud skill',
 };
 
@@ -16,7 +16,7 @@ const CONTENT = [
     "Test how a chapter sounds when read aloud — calibrated for books that may be read by an adult to a child, as well as for silent reading.",
     "",
     "## Prerequisites",
-    "This skill requires a Bindery workspace. If unsure, call `identify_book` to check. If no workspace is found, tell the user and stop.",
+    "This skill requires a Bindery workspace. If unsure, call `bindery_identify_book` to check. If no workspace is found, tell the user and stop.",
     "",
     "## Trigger",
     "User says `/read-aloud`, \"reading test\", or \"how does this sound\".",
@@ -25,12 +25,12 @@ const CONTENT = [
     "- Whole chapter or specific passage?",
     "",
     "## Runtime context",
-    "Before reviewing, read \".bindery/settings.json\" with `get_text` to pick up the current book's target audience and genre.",
+    "Before reviewing, read \".bindery/settings.json\" with `bindery_get_text` to pick up the current book's target audience and genre.",
     "",
     "## Tools",
     "Use these Bindery MCP tools:",
-    "- `get_chapter(chapterNumber, language)` — read the full chapter",
-    "- `get_text(identifier, startLine, endLine)` — read a specific passage by line range",
+    "- `bindery_get_chapter(chapterNumber, language)` — read the full chapter",
+    "- `bindery_get_text(identifier, startLine, endLine)` — read a specific passage by line range",
     "",
     "## What to check",
     "- Sentences over ~30 words",

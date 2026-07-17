@@ -60,7 +60,7 @@ Bindery includes a bundled MCP server that makes your book's chapters, arc files
 
 **Claude for VS Code / Codex** — run `Bindery: Register MCP Server` once per workspace. This writes `.vscode/mcp.json` pointing to the bundled server. Both extensions pick this up automatically on next reload.
 
-#### Available MCP tools (38)
+#### Available MCP tools
 
 | Tool | Description |
 |------|-------------|
@@ -107,7 +107,7 @@ Bindery includes a bundled MCP server that makes your book's chapters, arc files
 
 `bindery_search` supports `lexical`, `semantic_rerank`, and `full_semantic` modes. Semantic modes require an Ollama instance and fall back to lexical results with a warning if unavailable.
 
-For the standalone MCP server (Claude Desktop / Cowork), two additional tools are available: `list_books` and `identify_book` for multi-book discovery. See [mcpb/README.md](../mcpb/README.md) for full MCP documentation and usage examples.
+For the standalone MCP server (Claude Desktop / Cowork), two additional tools are available: `bindery_list_books` and `bindery_identify_book` for multi-book discovery. See [mcpb/README.md](../mcpb/README.md) for full MCP documentation and usage examples.
 
 These are agent-facing MCP / language-model tools. The Command Palette also exposes host commands for the same structured note, character, arc, memory, and session-focus workflows. Host prompts cover common fields; agents can call the MCP/LM tools directly for complete structured payloads.
 

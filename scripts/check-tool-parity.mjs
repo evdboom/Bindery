@@ -4,10 +4,10 @@
  *
  * Verifies every tool name appears in all 5 required surfaces:
  *   1. mcp-ts/src/tools.ts           — implementation function `toolXxx`
- *   2. mcp-ts/src/index.ts           — server.registerTool('xxx', ...)
+ *   2. mcp-ts/src/index.ts           — server.registerTool('bindery_xxx', ...)
  *   3. vscode-ext/src/mcp.ts         — vscode.lm.registerTool('bindery_xxx', ...)
  *   4. vscode-ext/package.json       — languageModelTools[].name = 'bindery_xxx'
- *   5. mcpb/manifest.json            — tools[].name = 'xxx' (no prefix)
+ *   5. mcpb/manifest.json            — tools[].name = 'bindery_xxx'
  *
  * Source of truth: the set of tool names in mcp-ts/src/index.ts.
  * Exits with code 1 if any surface diverges.
@@ -31,7 +31,7 @@ function extractMatches(source, regex) {
     return names;
 }
 
-// ── Surface 1: mcp-ts/src/index.ts — registerTool('xxx', ...) (no prefix in server)
+// ── Surface 1: mcp-ts/src/index.ts — registerTool('bindery_xxx', ...)
 const indexTs = read('mcp-ts/src/index.ts');
 const sourceOfTruth = extractMatches(indexTs, /registerTool\s*\(\s*['"]([a-z0-9_]+)['"]/gi);
 
@@ -41,22 +41,22 @@ const sourceOfTruth = extractMatches(indexTs, /registerTool\s*\(\s*['"]([a-z0-9_
  * workspace), so these aren't exposed via vscode.lm.registerTool or listed
  * in languageModelTools[]. They must still appear in mcpb/manifest.json.
  */
-const serverOnlyTools = new Set(['list_books', 'identify_book']);
+const serverOnlyTools = new Set(['bindery_list_books', 'bindery_identify_book']);
 const vscodeExpected = new Set([...sourceOfTruth].filter(t => !serverOnlyTools.has(t)));
 
 // ── Surface 2: vscode-ext/src/mcp.ts — vscode.lm.registerTool('bindery_xxx', ...)
 const mcpTs = read('vscode-ext/src/mcp.ts');
-const vscodeLmTools = extractMatches(mcpTs, /registerTool\s*(?:<[^>]+>)?\s*\(\s*['"]bindery_([a-z0-9_]+)['"]/gi);
+const vscodeLmTools = extractMatches(mcpTs, /registerTool\s*(?:<[^>]+>)?\s*\(\s*['"](bindery_[a-z0-9_]+)['"]/gi);
 
 // ── Surface 3: vscode-ext/package.json — languageModelTools[].name
 const vsPkg = JSON.parse(read('vscode-ext/package.json'));
 const lmManifest = new Set(
     (vsPkg.contributes?.languageModelTools ?? [])
-        .map((t) => (t.name || '').replace(/^bindery_/, ''))
+    .map((t) => t.name || '')
         .filter(Boolean)
 );
 
-// ── Surface 4: mcpb/manifest.json — tools[].name (no prefix)
+// ── Surface 4: mcpb/manifest.json — tools[].name (bindery_xxx)
 const mcpbManifest = JSON.parse(read('mcpb/manifest.json'));
 const mcpbTools = new Set((mcpbManifest.tools ?? []).map((t) => t.name).filter(Boolean));
 

@@ -6,7 +6,7 @@
  *   --book Name=path   CLI flags (claude_desktop_config.json, .vscode/mcp.json)
  *   BINDERY_BOOKS       env var with semicolon-separated Name=path pairs (mcpb)
  *
- * Every tool requires an explicit `book` argument. Use list_books to discover
+ * Every tool requires an explicit `book` argument. Use bindery_list_books to discover
  * available names. Agents never receive or provide raw filesystem paths.
  */
 
@@ -68,7 +68,7 @@ const server = new McpServer(
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 const bookSchema = z.string().describe(
-    'Book name as configured via --book args (e.g. "MyNovel"). Call list_books to see available names.'
+    'Book name as configured via --book args (e.g. "MyNovel"). Call bindery_list_books to see available names.'
 );
 
 const characterFields = {
@@ -106,7 +106,7 @@ function err(e: unknown)   { return { content: [{ type: 'text' as const, text: `
 
 // ─── Tools ────────────────────────────────────────────────────────────────────
 
-server.registerTool('list_books', {
+server.registerTool('bindery_list_books', {
     title: 'List Books',
     description: 'List all books registered via --book args in the MCP server config. Call this first to discover available book names.',
     inputSchema: {},
@@ -123,7 +123,7 @@ server.registerTool('list_books', {
     return ok(books.map(b => `${b.name}  →  ${b.path}`).join('\n'));
 });
 
-server.registerTool('identify_book', {
+server.registerTool('bindery_identify_book', {
     title: 'Identify Book',
     description:
         'Identify which book matches the directory you are working in. ' +
@@ -152,7 +152,7 @@ server.registerTool('identify_book', {
     } catch (e) { return err(e); }
 });
 
-server.registerTool('health', {
+server.registerTool('bindery_health', {
     title: 'Health Check',
     description: 'Check server status: active book, settings, index, and embedding backend.',
     inputSchema: { book: bookSchema },
@@ -161,7 +161,7 @@ server.registerTool('health', {
     try { return ok(toolHealth(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
-server.registerTool('index_build', {
+server.registerTool('bindery_index_build', {
     title: 'Build Index',
     description: 'Build or rebuild the lexical search index and, when enabled, the semantic embedding index for a book. Run after meaningful content changes.',
     inputSchema: { book: bookSchema },
@@ -170,7 +170,7 @@ server.registerTool('index_build', {
     try { return ok(await toolIndexBuild(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
-server.registerTool('index_status', {
+server.registerTool('bindery_index_status', {
     title: 'Index Status',
     description: 'Show current index metadata: chunk count and build time.',
     inputSchema: { book: bookSchema },
@@ -179,7 +179,7 @@ server.registerTool('index_status', {
     try { return ok(toolIndexStatus(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
-server.registerTool('get_text', {
+server.registerTool('bindery_get_text', {
     title: 'Get Text',
     description: 'Read a source file by relative path, optionally restricted to a line range.',
     inputSchema: {
@@ -193,7 +193,7 @@ server.registerTool('get_text', {
     try { return ok(toolGetText(resolveBook(book).root, { identifier, startLine, endLine })); } catch (e) { return err(e); }
 });
 
-server.registerTool('get_chapter', {
+server.registerTool('bindery_get_chapter', {
     title: 'Get Chapter',
     description: 'Fetch the full content of a chapter by number and language.',
     inputSchema: {
@@ -206,7 +206,7 @@ server.registerTool('get_chapter', {
     try { return ok(toolGetChapter(resolveBook(book).root, { chapterNumber, language })); } catch (e) { return err(e); }
 });
 
-server.registerTool('get_book_until', {
+server.registerTool('bindery_get_book_until', {
     title: 'Get Book Until',
     description: 'Fetch chapters from a starting chapter through a target chapter (inclusive), concatenated in reading order.',
     inputSchema: {
@@ -220,7 +220,7 @@ server.registerTool('get_book_until', {
     try { return ok(toolGetBookUntil(resolveBook(book).root, { chapterNumber, language, startChapter })); } catch (e) { return err(e); }
 });
 
-server.registerTool('get_overview', {
+server.registerTool('bindery_get_overview', {
     title: 'Get Overview',
     description: 'List the chapter structure (acts, chapters, titles) for one or all languages.',
     inputSchema: {
@@ -233,7 +233,7 @@ server.registerTool('get_overview', {
     try { return ok(toolGetOverview(resolveBook(book).root, { language, act })); } catch (e) { return err(e); }
 });
 
-server.registerTool('get_notes', {
+server.registerTool('bindery_get_notes', {
     title: 'Get Notes',
     description: 'Read from Notes/ files, optionally filtered by category name or character/place name.',
     inputSchema: {
@@ -246,7 +246,7 @@ server.registerTool('get_notes', {
     try { return ok(toolGetNotes(resolveBook(book).root, { category, name })); } catch (e) { return err(e); }
 });
 
-server.registerTool('note_list', {
+server.registerTool('bindery_note_list', {
     title: 'Note List',
     description: 'List markdown note files under the configured notes folder, optionally filtered to a category folder.',
     inputSchema: {
@@ -258,7 +258,7 @@ server.registerTool('note_list', {
     try { return ok(toolNoteList(resolveBook(book).root, { category })); } catch (e) { return err(e); }
 });
 
-server.registerTool('note_get', {
+server.registerTool('bindery_note_get', {
     title: 'Note Get',
     description: 'Read a single markdown note by path relative to the configured notes folder.',
     inputSchema: {
@@ -270,7 +270,7 @@ server.registerTool('note_get', {
     try { return ok(toolNoteGet(resolveBook(book).root, { path })); } catch (e) { return err(e); }
 });
 
-server.registerTool('note_create', {
+server.registerTool('bindery_note_create', {
     title: 'Note Create',
     description: 'Create a markdown note under the configured notes folder. Refuses to overwrite unless overwrite is true.',
     inputSchema: {
@@ -285,7 +285,7 @@ server.registerTool('note_create', {
     try { return ok(toolNoteCreate(resolveBook(book).root, { path, title, content, overwrite })); } catch (e) { return err(e); }
 });
 
-server.registerTool('note_append', {
+server.registerTool('bindery_note_append', {
     title: 'Note Append',
     description: 'Append markdown content to a note under the configured notes folder, creating the file if needed.',
     inputSchema: {
@@ -299,7 +299,7 @@ server.registerTool('note_append', {
     try { return ok(toolNoteAppend(resolveBook(book).root, { path, content, heading })); } catch (e) { return err(e); }
 });
 
-server.registerTool('character_list', {
+server.registerTool('bindery_character_list', {
     title: 'Character List',
     description: 'List structured character profile files under the configured characters folder.',
     inputSchema: {
@@ -311,7 +311,7 @@ server.registerTool('character_list', {
     try { return ok(toolCharacterList(resolveBook(book).root, { name })); } catch (e) { return err(e); }
 });
 
-server.registerTool('character_get', {
+server.registerTool('bindery_character_get', {
     title: 'Character Get',
     description: 'Read a structured character profile by character name.',
     inputSchema: {
@@ -323,7 +323,7 @@ server.registerTool('character_get', {
     try { return ok(toolCharacterGet(resolveBook(book).root, { name })); } catch (e) { return err(e); }
 });
 
-server.registerTool('character_create', {
+server.registerTool('bindery_character_create', {
     title: 'Character Create',
     description: 'Create a structured character profile and update Notes/Characters/index.md.',
     inputSchema: {
@@ -337,7 +337,7 @@ server.registerTool('character_create', {
     try { return ok(toolCharacterCreate(resolveBook(book).root, args)); } catch (e) { return err(e); }
 });
 
-server.registerTool('character_update', {
+server.registerTool('bindery_character_update', {
     title: 'Character Update',
     description: 'Update known fields in a structured character profile and refresh the character index row.',
     inputSchema: {
@@ -350,7 +350,7 @@ server.registerTool('character_update', {
     try { return ok(toolCharacterUpdate(resolveBook(book).root, args)); } catch (e) { return err(e); }
 });
 
-server.registerTool('arc_list', {
+server.registerTool('bindery_arc_list', {
     title: 'Arc List',
     description: 'List structured arc files under the configured arc folder.',
     inputSchema: {
@@ -362,7 +362,7 @@ server.registerTool('arc_list', {
     try { return ok(toolArcList(resolveBook(book).root, { kind })); } catch (e) { return err(e); }
 });
 
-server.registerTool('arc_get', {
+server.registerTool('bindery_arc_get', {
     title: 'Arc Get',
     description: 'Read a structured arc file by path relative to the configured arc folder.',
     inputSchema: {
@@ -374,7 +374,7 @@ server.registerTool('arc_get', {
     try { return ok(toolArcGet(resolveBook(book).root, { path })); } catch (e) { return err(e); }
 });
 
-server.registerTool('arc_create', {
+server.registerTool('bindery_arc_create', {
     title: 'Arc Create',
     description: 'Create a structured arc file under the configured arc folder and update Arc/index.md.',
     inputSchema: {
@@ -388,7 +388,7 @@ server.registerTool('arc_create', {
     try { return ok(toolArcCreate(resolveBook(book).root, args)); } catch (e) { return err(e); }
 });
 
-server.registerTool('arc_update', {
+server.registerTool('bindery_arc_update', {
     title: 'Arc Update',
     description: 'Update known fields in a structured arc file and refresh Arc/index.md.',
     inputSchema: {
@@ -401,7 +401,7 @@ server.registerTool('arc_update', {
     try { return ok(toolArcUpdate(resolveBook(book).root, args)); } catch (e) { return err(e); }
 });
 
-server.registerTool('search', {
+server.registerTool('bindery_search', {
     title: 'Search',
     description: 'Search the book corpus using lexical BM25, semantic reranking, or full semantic search. If Ollama or a semantic index is unavailable, semantic modes fall back to lexical results with a warning.',
     inputSchema: {
@@ -416,7 +416,7 @@ server.registerTool('search', {
     try { return ok(await toolSearch(resolveBook(book).root, { query, language, maxResults, mode })); } catch (e) { return err(e); }
 });
 
-server.registerTool('format', {
+server.registerTool('bindery_format', {
     title: 'Format Typography',
     description: 'Apply typography formatting (curly quotes, em-dashes, ellipses) to a file or folder.',
     inputSchema: {
@@ -430,7 +430,7 @@ server.registerTool('format', {
     try { return ok(toolFormat(resolveBook(book).root, { filePath, dryRun, noRecurse })); } catch (e) { return err(e); }
 });
 
-server.registerTool('get_review_text', {
+server.registerTool('bindery_get_review_text', {
     title: 'Review Text',
     description:
         'Structured review payload combining (a) the git diff of uncommitted changes and (b) any regions wrapped in Bindery review markers ' +
@@ -449,7 +449,7 @@ server.registerTool('get_review_text', {
     try { return ok(toolGetReviewText(resolveBook(book).root, { language, contextLines, autoStage })); } catch (e) { return err(e); }
 });
 
-server.registerTool('update_workspace', {
+server.registerTool('bindery_update_workspace', {
     title: 'Update Workspace',
     description:
         'Fetch and pull the current git branch for this workspace, report the current branch versus the remote default branch, ' +
@@ -466,7 +466,7 @@ server.registerTool('update_workspace', {
     try { return ok(toolUpdateWorkspace(resolveBook(book).root, { remote, branch, switchBranch, autoStash })); } catch (e) { return err(e); }
 });
 
-server.registerTool('git_snapshot', {
+server.registerTool('bindery_git_snapshot', {
     title: 'Git Snapshot',
     description:
         'Save a snapshot (git commit) of all changes in the bindery workspace. ' +
@@ -485,13 +485,13 @@ server.registerTool('git_snapshot', {
     try { return ok(toolGitSnapshot(resolveBook(book).root, { message, push, remote, branch, rememberPushDefaults })); } catch (e) { return err(e); }
 });
 
-server.registerTool('get_translation', {
+server.registerTool('bindery_get_translation', {
     title: 'Get Translation',
     description:
         'Look up glossary entries in .bindery/translations.json. ' +
         'Without a word, lists all entries for the language. ' +
         'With a word, does a forgiving case-insensitive lookup including plural and inflected forms. ' +
-        'For dialect substitution rules, use get_dialect instead.',
+        'For dialect substitution rules, use bindery_get_dialect instead.',
     inputSchema: {
         book:     bookSchema,
         language: z.string().describe('Language code or label (e.g. "nl", "fr", "Dutch")'),
@@ -503,12 +503,12 @@ server.registerTool('get_translation', {
     try { return ok(toolGetTranslation(resolveBook(book).root, { language, word, type })); } catch (e) { return err(e); }
 });
 
-server.registerTool('add_translation', {
+server.registerTool('bindery_add_translation', {
     title: 'Add Translation',
     description:
         'Add or update a glossary entry in .bindery/translations.json for agent reference. ' +
         'Glossaries are cross-language term pairs (source → target language) used by agents for consistency, ' +
-        'not auto-applied during export. For dialect substitution rules (e.g. US→UK spelling), use add_dialect.',
+        'not auto-applied during export. For dialect substitution rules (e.g. US→UK spelling), use bindery_add_dialect.',
     inputSchema: {
         book:           bookSchema,
         targetLangCode: z.string().describe('Target language code (e.g. "nl", "fr")'),
@@ -520,12 +520,12 @@ server.registerTool('add_translation', {
     try { return ok(toolAddTranslation(resolveBook(book).root, { targetLangCode, from, to })); } catch (e) { return err(e); }
 });
 
-server.registerTool('add_dialect', {
+server.registerTool('bindery_add_dialect', {
     title: 'Add Dialect Rule',
     description:
         'Add or update a dialect substitution rule in .bindery/translations.json. ' +
         'Substitution rules are auto-applied during export (e.g. US→UK spelling: color→colour). ' +
-        'For cross-language glossary entries, use add_translation.',
+        'For cross-language glossary entries, use bindery_add_translation.',
     inputSchema: {
         book:        bookSchema,
         dialectCode: z.string().describe('Dialect code used as key, e.g. "en-gb"'),
@@ -537,13 +537,13 @@ server.registerTool('add_dialect', {
     try { return ok(toolAddDialect(resolveBook(book).root, { dialectCode, from, to })); } catch (e) { return err(e); }
 });
 
-server.registerTool('get_dialect', {
+server.registerTool('bindery_get_dialect', {
     title: 'Get Dialect Rules',
     description:
         'Look up dialect substitution rules in .bindery/translations.json. ' +
         'Without a word, lists all rules for the dialect. ' +
         'With a word, does a forgiving case-insensitive lookup. ' +
-        'For cross-language glossary entries, use get_translation.',
+        'For cross-language glossary entries, use bindery_get_translation.',
     inputSchema: {
         book:        bookSchema,
         dialectCode: z.string().describe('Dialect code, e.g. "en-gb"'),
@@ -554,7 +554,7 @@ server.registerTool('get_dialect', {
     try { return ok(toolGetDialect(resolveBook(book).root, { dialectCode, word })); } catch (e) { return err(e); }
 });
 
-server.registerTool('add_language', {
+server.registerTool('bindery_add_language', {
     title: 'Add Language',
     description:
         'Add a new language to .bindery/settings.json and optionally scaffold ' +
@@ -574,7 +574,7 @@ server.registerTool('add_language', {
     try { return ok(toolAddLanguage(resolveBook(book).root, { code, folderName, chapterWord, actPrefix, prologueLabel, epilogueLabel, createStubs })); } catch (e) { return err(e); }
 });
 
-server.registerTool('init_workspace', {
+server.registerTool('bindery_init_workspace', {
     title: 'Init Workspace',
     description:
         'Create or update .bindery/settings.json, .bindery/translations.json, .bindery/README.md, ' +
@@ -596,7 +596,7 @@ server.registerTool('init_workspace', {
     try { return ok(toolInitWorkspace(resolveBook(book).root, { bookTitle, author, storyFolder, genre, description, targetAudience })); } catch (e) { return err(e); }
 });
 
-server.registerTool('settings_update', {
+server.registerTool('bindery_settings_update', {
     title: 'Settings Update',
     description:
         'Merge a partial patch into .bindery/settings.json without replacing unrelated keys. ' +
@@ -610,12 +610,12 @@ server.registerTool('settings_update', {
     try { return ok(toolSettingsUpdate(resolveBook(book).root, { patch })); } catch (e) { return err(e); }
 });
 
-server.registerTool('setup_ai_files', {
+server.registerTool('bindery_setup_ai_files', {
     title: 'Setup AI Files',
     description:
         'Generate AI assistant instruction files (CLAUDE.md, .github/copilot-instructions.md, ' +
         '.cursor/rules, AGENTS.md), Claude skill templates, and the generated .bindery/README.md capability reference from .bindery/settings.json. ' +
-        'Run init_workspace first. Safe to run multiple times — skips existing files unless overwrite is true.',
+        'Run bindery_init_workspace first. Safe to run multiple times — skips existing files unless overwrite is true.',
     inputSchema: {
         book:      bookSchema,
         targets:   z.array(z.string()).optional().describe('Which files to generate: claude, copilot, cursor, agents. Default: all.'),
@@ -627,7 +627,7 @@ server.registerTool('setup_ai_files', {
     try { return ok(toolSetupAiFiles(resolveBook(book).root, { targets, skills, overwrite })); } catch (e) { return err(e); }
 });
 
-server.registerTool('memory_list', {
+server.registerTool('bindery_memory_list', {
     title: 'Memory List',
     description: 'List all session memory files in .bindery/memories/. Returns each filename and its line count.',
     inputSchema: { book: bookSchema },
@@ -636,7 +636,7 @@ server.registerTool('memory_list', {
     try { return ok(toolMemoryList(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
-server.registerTool('memory_append', {
+server.registerTool('bindery_memory_append', {
     title: 'Memory Append',
     description:
         'Append a dated session entry to a memory file in .bindery/memories/. ' +
@@ -653,7 +653,7 @@ server.registerTool('memory_append', {
     try { return ok(toolMemoryAppend(resolveBook(book).root, { file, title, content })); } catch (e) { return err(e); }
 });
 
-server.registerTool('memory_compact', {
+server.registerTool('bindery_memory_compact', {
     title: 'Memory Compact',
     description:
         'Overwrite a memory file with a compacted version supplied by the model. ' +
@@ -669,7 +669,7 @@ server.registerTool('memory_compact', {
     try { return ok(toolMemoryCompact(resolveBook(book).root, { file, compacted_content })); } catch (e) { return err(e); }
 });
 
-server.registerTool('session_focus_get', {
+server.registerTool('bindery_session_focus_get', {
     title: 'Session Focus Get',
     description:
         'Read the ephemeral session file (default SESSION.md) holding current working state. ' +
@@ -685,14 +685,14 @@ server.registerTool('session_focus_get', {
     try { return ok(toolSessionFocusGet(resolveBook(book).root, { section })); } catch (e) { return err(e); }
 });
 
-server.registerTool('session_focus_update', {
+server.registerTool('bindery_session_focus_update', {
     title: 'Session Focus Update',
     description:
         'Update neutral sections of the ephemeral session file (default SESSION.md): Current Focus, Next Actions, Open Questions, Handoff Notes. ' +
         'Only the sections you pass are changed; all other content (and the user-owned PREFERENCES.md) is preserved. ' +
         'mode "replace" (default) overwrites a section body; mode "append" adds beneath existing content (natural for handoff notes). ' +
         'Creates the session file from the standard scaffold if it does not exist. ' +
-        'Use this for current working state, not durable preferences (PREFERENCES.md) or durable decisions (memory_append).',
+        'Use this for current working state, not durable preferences (PREFERENCES.md) or durable decisions (bindery_memory_append).',
     inputSchema: {
         book: bookSchema,
         currentFocus:  z.string().optional().describe('New content for the Current Focus section'),
@@ -710,28 +710,28 @@ server.registerTool('session_focus_update', {
     } catch (e) { return err(e); }
 });
 
-server.registerTool('inbox_process', {
+server.registerTool('bindery_inbox_process', {
     title: 'Inbox Process',
     description:
         'Read the notes Inbox (Notes/Inbox.md) and return a structured triage proposal: each loose item enumerated with a stable number, ' +
         'plus the destination tools to route them (note_*, character_*, arc_*, memory_*, session_focus_*). ' +
         'This tool only reads and proposes — it never moves, deletes, or categorizes anything. ' +
-        'After the user confirms and items are routed with the destination tools, call inbox_resolve with the item numbers to clear them.',
+        'After the user confirms and items are routed with the destination tools, call bindery_inbox_resolve with the item numbers to clear them.',
     inputSchema: { book: bookSchema },
     annotations: { readOnlyHint: true },
 }, ({ book }) => {
     try { return ok(toolInboxProcess(resolveBook(book).root)); } catch (e) { return err(e); }
 });
 
-server.registerTool('inbox_resolve', {
+server.registerTool('bindery_inbox_resolve', {
     title: 'Inbox Resolve',
     description:
-        'Remove already-routed items from the notes Inbox (Notes/Inbox.md) by their item numbers, as enumerated by inbox_process. ' +
+        'Remove already-routed items from the notes Inbox (Notes/Inbox.md) by their item numbers, as enumerated by bindery_inbox_process. ' +
         'Use only after the items have been routed to their destinations and the user has confirmed. ' +
-        'Item numbers are stable between inbox_process and inbox_resolve. Other items and the inbox heading/intro are preserved.',
+        'Item numbers are stable between bindery_inbox_process and bindery_inbox_resolve. Other items and the inbox heading/intro are preserved.',
     inputSchema: {
         book: bookSchema,
-        items: z.array(z.number().int()).describe('Item numbers to remove, as shown by inbox_process (1-based)'),
+        items: z.array(z.number().int()).describe('Item numbers to remove, as shown by bindery_inbox_process (1-based)'),
     },
     annotations: { destructiveHint: true },
 }, ({ book, items }) => {
