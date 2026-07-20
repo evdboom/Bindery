@@ -2353,10 +2353,6 @@ Use this file for durable cross-chapter decisions, recurring constraints, and st
 `;
 }
 
-function chapterStatusTemplate(): string {
-    return JSON.stringify({ schemaVersion: 1, updatedAt: new Date().toISOString().slice(0, 10), chapters: [] }, null, 2) + '\n';
-}
-
 function scaffoldOpinionatedWorkspace(root: string, settings: Record<string, unknown>, languages: Array<Record<string, unknown>>): string[] {
     const created: string[] = [];
     const typedSettings = settings as WorkspaceSettings;
@@ -2399,7 +2395,6 @@ function scaffoldOpinionatedWorkspace(root: string, settings: Record<string, unk
         [`${notesFolderName}/Research/index.md`, noteIndexTemplate('Research Notes', 'Research references, factual checks, and source links.')],
         [`${charactersFolderName}/index.md`, characterIndexTemplate()],
         ['.bindery/memories/global.md', memoryTemplate(title)],
-        ['.bindery/chapter-status.json', chapterStatusTemplate()],
     ];
     for (const [relPath, content] of files) {
         if (writeScaffoldFile(root, relPath, content)) { created.push(relPath); }
@@ -2717,114 +2712,6 @@ export function toolMemoryCompact(root: string, args: MemoryCompactArgs): string
     return `Compacted ${args.file}: backup → ${relBackup}, old lines: ${oldLineCount}, new lines: ${newLineCount}.`;
 }
 
-// ─── chapter_status_get / chapter_status_update ───────────────────────────────
-
-export interface ChapterStatusEntry {
-    number:      number;
-    title:       string;
-    language:    string;
-    status:      'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review';
-    wordCount?:  number;
-    notes?:      string;
-}
-
-interface ChapterStatus {
-    schemaVersion: 1;
-    updatedAt:     string;
-    chapters:      ChapterStatusEntry[];
-}
-
-const STATUS_ORDER  = ['done', 'in-progress', 'needs-review', 'draft', 'planned'] as const;
-const STATUS_LABELS: Record<string, string> = {
-    'done':         'Done',
-    'in-progress':  'In Progress',
-    'needs-review': 'Needs Review',
-    'draft':        'Draft',
-    'planned':      'Planned',
-};
-
-function formatStatusGroup(group: ChapterStatusEntry[]): string[] {
-    const lines: string[] = [];
-    for (const ch of group) {
-        const meta: string[] = [];
-        if (ch.language !== 'EN') { meta.push(ch.language); }
-        if (ch.wordCount)         { meta.push(`~${ch.wordCount}w`); }
-        const suffix = meta.length ? ` [${meta.join(', ')}]` : '';
-        lines.push(`  Ch ${ch.number} \u2014 ${ch.title}${suffix}`);
-        if (ch.notes) { lines.push(`    ${ch.notes}`); }
-    }
-    return lines;
-}
-
-export function toolChapterStatusGet(root: string): string {
-    const filePath = path.join(root, '.bindery', 'chapter-status.json');
-    if (!fs.existsSync(filePath)) {
-        return 'No chapter status on record. Use chapter_status_update to record progress.';
-    }
-    let data: ChapterStatus;
-    try { data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as ChapterStatus; }
-    catch { return 'Error: .bindery/chapter-status.json is present but cannot be parsed.'; }
-
-    const chapters = (data.chapters ?? []).slice().sort((a, b) => a.number - b.number);
-    if (chapters.length === 0) {
-        return 'No chapters recorded. Use chapter_status_update to record progress.';
-    }
-
-    const byStatus = new Map<string, ChapterStatusEntry[]>();
-    for (const ch of chapters) {
-        const list = byStatus.get(ch.status) ?? [];
-        list.push(ch);
-        byStatus.set(ch.status, list);
-    }
-
-    const lines: string[] = [`Chapter status \u2014 updated ${data.updatedAt}, ${chapters.length} chapter(s)`];
-    for (const status of STATUS_ORDER) {
-        const group = byStatus.get(status);
-        if (!group || group.length === 0) { continue; }
-        lines.push(`\n${STATUS_LABELS[status]} (${group.length})`, ...formatStatusGroup(group));
-    }
-    return lines.join('\n');
-}
-
-export interface ChapterStatusUpdateArgs {
-    chapters: ChapterStatusEntry[];
-}
-
-export function toolChapterStatusUpdate(root: string, args: ChapterStatusUpdateArgs): string {
-    if (!args.chapters || args.chapters.length === 0) {
-        return 'Error: chapters array must not be empty.';
-    }
-    const filePath = path.join(root, '.bindery', 'chapter-status.json');
-    let data: ChapterStatus = { schemaVersion: 1, updatedAt: '', chapters: [] };
-    if (fs.existsSync(filePath)) {
-        try { data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as ChapterStatus; }
-        catch { /* corrupt — start fresh */ }
-    }
-
-    const chapters = data.chapters ?? [];
-    let added = 0, updated = 0;
-    for (const incoming of args.chapters) {
-        const lang  = (incoming.language ?? 'EN').toUpperCase();
-        const entry = { ...incoming, language: lang };
-        const idx   = chapters.findIndex(c => c.number === entry.number && c.language === lang);
-        if (idx >= 0) { chapters[idx] = entry; updated++; }
-        else           { chapters.push(entry);  added++;   }
-    }
-
-    chapters.sort((a, b) => a.language.localeCompare(b.language) || a.number - b.number);
-
-    const out: ChapterStatus = {
-        schemaVersion: 1,
-        updatedAt:     new Date().toISOString().slice(0, 10),
-        chapters,
-    };
-
-    fs.mkdirSync(path.join(root, '.bindery'), { recursive: true });
-    fs.writeFileSync(filePath, JSON.stringify(out, null, 2) + '\n', 'utf-8');
-
-    return `Chapter status updated: ${added} added, ${updated} updated. Total: ${chapters.length} chapters.`;
-}
-
 // ─── Session focus (SESSION.md) ─────────────────────────────────────────────────
 
 /** Neutral SESSION.md sections that session_focus_update is allowed to touch. */
@@ -2956,7 +2843,7 @@ interface ParsedInbox { preamble: string; items: string[]; }
 
 /**
  * Split Inbox.md into a preamble (H1 + intro paragraph) plus discrete items.
- * Deterministic so `inbox_process` and `inbox_resolve` enumerate items identically:
+ * Deterministic so `bindery_inbox_process` and `bindery_inbox_resolve` enumerate items identically:
  * if any `## ` headings exist the body is split on them, otherwise on blank-line blocks.
  */
 function parseInboxItems(text: string): ParsedInbox {
@@ -3010,15 +2897,14 @@ export function toolInboxProcess(root: string): string {
     lines.push(
         '## How to triage',
         'Propose a destination for each item, confirm with the user, then route confirmed items with the matching tool:',
-        '- Story note → `note_create` / `note_append` (World, Scenes, Research, or a custom category)',
-        '- Character → `character_create` / `character_update`',
-        '- Arc / structure → `arc_create` / `arc_update`',
-        '- Durable cross-session decision → `memory_append`',
-        '- Chapter progress → `chapter_status_update`',
-        '- Current focus / next action / handoff → `session_focus_update`',
+        '- Story note → `bindery_note_create` / `bindery_note_append` (World, Scenes, Research, or a custom category)',
+        '- Character → `bindery_character_create` / `bindery_character_update`',
+        '- Arc / structure → `bindery_arc_create` / `bindery_arc_update`',
+        '- Durable cross-session decision → `bindery_memory_append`',
+        '- Current focus / next action / handoff → `bindery_session_focus_update`',
         '',
         'Do not move, delete, or categorize anything without the user\'s confirmation. ' +
-        'After confirmed items are routed, call `inbox_resolve` with their item numbers to remove them from the inbox. ' +
+        'After confirmed items are routed, call `bindery_inbox_resolve` with their item numbers to remove them from the inbox. ' +
         'Items left unconfirmed stay in the inbox.',
     );
     return lines.join('\n');

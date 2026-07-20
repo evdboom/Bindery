@@ -313,16 +313,6 @@
         "category": "Bindery"
       },
       {
-        "command": "bindery.chapterStatusGet",
-        "title": "Show Chapter Status",
-        "category": "Bindery"
-      },
-      {
-        "command": "bindery.chapterStatusUpdate",
-        "title": "Update Chapter Status",
-        "category": "Bindery"
-      },
-      {
         "command": "bindery.sessionFocusShow",
         "title": "Show Session Focus",
         "category": "Bindery"
@@ -1112,7 +1102,7 @@
         "displayName": "Bindery: Init Workspace",
         "toolReferenceName": "binderyInitWorkspace",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Create or update .bindery/settings.json, translations.json, .bindery/README.md, and the opinionated Arc, Notes, Characters, SESSION, PREFERENCES, memory, and chapter-status scaffold. All arguments optional — smart defaults used for any omitted values. Detects language folders automatically. Safe to run on an existing workspace.",
+        "modelDescription": "Create or update .bindery/settings.json, translations.json, .bindery/README.md, and the opinionated Arc, Notes, Characters, SESSION, PREFERENCES, and memory scaffold. All arguments optional — smart defaults used for any omitted values. Detects language folders automatically. Safe to run on an existing workspace.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1319,82 +1309,6 @@
         }
       },
       {
-        "name": "bindery_chapter_status_get",
-        "tags": [
-          "bindery"
-        ],
-        "displayName": "Bindery: Chapter Status",
-        "toolReferenceName": "binderyChapterStatusGet",
-        "canBeReferencedInPrompt": true,
-        "modelDescription": "Read the current chapter progress tracker from .bindery/chapter-status.json. Returns a grouped summary (done, in-progress, draft, planned, needs-review). Returns a clear empty-state message if no status has been recorded yet.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {}
-        }
-      },
-      {
-        "name": "bindery_chapter_status_update",
-        "tags": [
-          "bindery"
-        ],
-        "displayName": "Bindery: Chapter Status Update",
-        "toolReferenceName": "binderyChapterStatusUpdate",
-        "canBeReferencedInPrompt": true,
-        "modelDescription": "Upsert chapter progress entries in .bindery/chapter-status.json. Send only the chapters that changed — existing entries are preserved. status must be one of: done, in-progress, draft, planned, needs-review.",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "chapters": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "number": {
-                    "type": "number",
-                    "description": "Chapter number"
-                  },
-                  "title": {
-                    "type": "string",
-                    "description": "Chapter title"
-                  },
-                  "language": {
-                    "type": "string",
-                    "description": "Language code, e.g. EN or NL"
-                  },
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "done",
-                      "in-progress",
-                      "draft",
-                      "planned",
-                      "needs-review"
-                    ]
-                  },
-                  "wordCount": {
-                    "type": "number",
-                    "description": "Approximate word count"
-                  },
-                  "notes": {
-                    "type": "string",
-                    "description": "Short agent note about this chapter"
-                  }
-                },
-                "required": [
-                  "number",
-                  "title",
-                  "language",
-                  "status"
-                ]
-              }
-            }
-          },
-          "required": [
-            "chapters"
-          ]
-        }
-      },
-      {
         "name": "bindery_session_focus_get",
         "tags": [
           "bindery"
@@ -1460,7 +1374,7 @@
         "displayName": "Bindery: Process Inbox",
         "toolReferenceName": "binderyInboxProcess",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Read the notes Inbox (Notes/Inbox.md) and return a structured triage proposal: each loose item enumerated with a stable number, plus the destination tools to route them (note_*, character_*, arc_*, memory_*, chapter_status_*, session_focus_*). Read-only — never moves, deletes, or categorizes. After the user confirms and items are routed, call inbox_resolve with the item numbers to clear them.",
+        "modelDescription": "Read the notes Inbox (Notes/Inbox.md) and return a structured triage proposal: each loose item enumerated with a stable number, plus the destination tools to route them (note_*, character_*, arc_*, memory_*, session_focus_*). Read-only — never moves, deletes, or categorizes. After the user confirms and items are routed, call inbox_resolve with the item numbers to clear them.",
         "inputSchema": {
           "type": "object",
           "properties": {}

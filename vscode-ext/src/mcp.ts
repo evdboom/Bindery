@@ -74,7 +74,6 @@ interface SettingsUpdateInput { patch: Record<string, unknown> }
 interface SetupAiFilesInput   { targets?: string[]; skills?: string[]; overwrite?: boolean }
 interface MemoryAppendInput   { file: string; title: string; content: string }
 interface MemoryCompactInput  { file: string; compacted_content: string }
-interface ChapterStatusUpdateInput { chapters: Array<{ number: number; title: string; language: string; status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review'; wordCount?: number; notes?: string }> }
 interface SessionFocusGetInput    { section?: string }
 interface SessionFocusUpdateInput { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }
 interface InboxResolveInput       { items: number[] }
@@ -116,8 +115,6 @@ interface McpTools {
     toolMemoryList:       (_root: string) => string;
     toolMemoryAppend:     (_root: string, _args: MemoryAppendInput) => string;
     toolMemoryCompact:    (_root: string, _args: MemoryCompactInput) => string;
-    toolChapterStatusGet:    (_root: string) => string;
-    toolChapterStatusUpdate: (_root: string, _args: ChapterStatusUpdateInput) => string;
     toolSessionFocusGet:     (_root: string, _args: SessionFocusGetInput) => string;
     toolSessionFocusUpdate:  (_root: string, _args: SessionFocusUpdateInput) => string;
     toolInboxProcess:        (_root: string) => string;
@@ -305,14 +302,6 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
         vscode.lm.registerTool<MemoryCompactInput>('bindery_memory_compact', {
             invoke: (opts, _token) => ok(t.toolMemoryCompact(requireRoot(), opts.input)),
-        }),
-
-        vscode.lm.registerTool('bindery_chapter_status_get', {
-            invoke: (_opts, _token) => ok(t.toolChapterStatusGet(requireRoot())),
-        }),
-
-        vscode.lm.registerTool<ChapterStatusUpdateInput>('bindery_chapter_status_update', {
-            invoke: (opts, _token) => ok(t.toolChapterStatusUpdate(requireRoot(), opts.input)),
         }),
 
         vscode.lm.registerTool<SessionFocusGetInput>('bindery_session_focus_get', {

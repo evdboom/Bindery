@@ -50,7 +50,6 @@ export interface SemanticIndexMeta {
     root:                  string;
     model:                 string;
     contentSignature:      string;
-    chapterStatusSignature: string;
     indexFormatVersion?:   number;
 }
 
@@ -74,10 +73,8 @@ export interface LoadedSemanticIndex {
 export interface SemanticIndexStaleness {
     isStale:                boolean;
     contentChanged:         boolean;
-    statusTransitionStale:  boolean;
     changedChunkCount:      number;
     currentContentSignature: string;
-    currentChapterStatusSignature: string;
     reasons:                string[];
 }
 
@@ -198,7 +195,6 @@ export async function buildSemanticIndex(
         root,
         model: ollama.model,
         contentSignature: contentSignatureForChunks(chunks),
-        chapterStatusSignature: chapterStatusSignature(root),
         indexFormatVersion: INDEX_FORMAT_VERSION,
     };
 
@@ -399,7 +395,6 @@ export async function fullSemanticSearch(
 export function semanticIndexStaleness(root: string, semantic: LoadedSemanticIndex): SemanticIndexStaleness {
     const currentChunks = chunkWorkspace(root, semanticDiscoverOptions());
     const currentContentSignature = contentSignatureForChunks(currentChunks);
-    const currentChapterStatusSignature = chapterStatusSignature(root);
     const currentIds = new Set(currentChunks.map(chunk => chunk.id));
     const indexedIds = new Set(semantic.chunks.map(chunk => chunk.id));
 
@@ -412,22 +407,16 @@ export function semanticIndexStaleness(root: string, semantic: LoadedSemanticInd
     }
 
     const contentChanged = currentContentSignature !== semantic.meta.contentSignature;
-    const statusTransitionStale = currentChapterStatusSignature !== semantic.meta.chapterStatusSignature;
     const reasons: string[] = [];
-    if (statusTransitionStale) {
-        reasons.push('chapter status changed to or from a rebuild-worthy state');
-    }
     if (contentChanged) {
         reasons.push(`semantic corpus changed since indexing (${changedChunkCount} changed chunk${changedChunkCount === 1 ? '' : 's'})`);
     }
 
     return {
-        isStale: statusTransitionStale || contentChanged,
+        isStale: contentChanged,
         contentChanged,
-        statusTransitionStale,
         changedChunkCount,
         currentContentSignature,
-        currentChapterStatusSignature,
         reasons,
     };
 }
@@ -476,25 +465,6 @@ function contentSignatureForChunks(chunks: Chunk[]): string {
         hash.update('\n');
     }
     return hash.digest('hex').slice(0, 16);
-}
-
-function chapterStatusSignature(root: string): string {
-    const filePath = path.join(root, '.bindery', 'chapter-status.json');
-    if (!fs.existsSync(filePath)) { return 'none'; }
-
-    try {
-        const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as {
-            chapters?: Array<{ number: number; language?: string; status?: string }>;
-        };
-        const interesting = (parsed.chapters ?? [])
-            .filter(chapter => chapter.status === 'done' || chapter.status === 'needs-review')
-            .map(chapter => `${(chapter.language ?? 'EN').toUpperCase()}:${chapter.number}:${chapter.status}`)
-            .sort((a, b) => a.localeCompare(b))
-            .join('|');
-        return interesting || 'none';
-    } catch {
-        return 'unreadable';
-    }
 }
 
 async function fetchEmbedding(

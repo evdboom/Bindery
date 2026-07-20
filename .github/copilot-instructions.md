@@ -127,7 +127,7 @@ host-specific UI/activation):
 
 | Command | VS Code | Obsidian | Description |
 |---|---|---|---|
-| `bindery.init` | ✅ | ✅ | Create `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory / status scaffold |
+| `bindery.init` | ✅ | ✅ | Create `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory scaffold |
 | `bindery.setupAI` | ✅ | ✅ | Generate CLAUDE.md / copilot-instructions.md / skills / AGENTS.md |
 | `bindery.formatDocument` | ✅ | ✅ | Typography formatting (curly quotes, em-dash, ellipsis) |
 | `bindery.formatFolder` | ✅ | ✅ | Recursively format all .md files in a folder |
@@ -141,28 +141,26 @@ host-specific UI/activation):
 | `bindery.addTranslation` | ✅ | ✅ | Add a cross-language glossary entry |
 | `bindery.addLanguage` | ✅ | ✅ | Add a new language and scaffold its story folder |
 | `bindery.openTranslations` | ✅ | ✅ | Show path to translations.json (edit in host editor) |
-| `bindery.noteList` / `note-list` | ✅ | ✅ | List story notes under the configured notes folder |
-| `bindery.noteGet` / `note-get` | ✅ | ✅ | Read a story note by path |
-| `bindery.noteCreate` / `note-create` | ✅ | ✅ | Create a story note |
-| `bindery.noteAppend` / `note-append` | ✅ | ✅ | Append markdown content to a story note |
-| `bindery.characterList` / `character-list` | ✅ | ✅ | List structured character profiles |
-| `bindery.characterGet` / `character-get` | ✅ | ✅ | Read a character profile by name |
-| `bindery.characterCreate` / `character-create` | ✅ | ✅ | Create a character profile and update the character index |
-| `bindery.characterUpdate` / `character-update` | ✅ | ✅ | Update a character profile and refresh the index row |
-| `bindery.arcList` / `arc-list` | ✅ | ✅ | List structured arc files |
-| `bindery.arcGet` / `arc-get` | ✅ | ✅ | Read an arc file by path |
-| `bindery.arcCreate` / `arc-create` | ✅ | ✅ | Create an arc file and update the arc index |
-| `bindery.arcUpdate` / `arc-update` | ✅ | ✅ | Update an arc file and refresh the arc index |
-| `bindery.memoryList` / `memory-list` | ✅ | ✅ | List durable memory files |
-| `bindery.memoryAppend` / `memory-append` | ✅ | ✅ | Append a dated memory entry |
-| `bindery.memoryCompact` / `memory-compact` | ✅ | ✅ | Compact a memory file with backup |
-| `bindery.chapterStatusGet` / `chapter-status-get` | ✅ | ✅ | Show chapter progress state |
-| `bindery.chapterStatusUpdate` / `chapter-status-update` | ✅ | ✅ | Upsert chapter progress entries |
-| `bindery.sessionFocusShow` / `session-focus-show` | ✅ | ✅ | Show working state from SESSION.md (optionally one section) |
-| `bindery.sessionFocusUpdate` / `session-focus-update` | ✅ | ✅ | Update a neutral SESSION.md section (replace/append) |
-| `bindery.sessionFocusAppendHandoff` / `session-focus-append-handoff` | ✅ | ✅ | Append a handoff note to SESSION.md |
-| `bindery.inboxProcess` / `inbox-process` | ✅ | ✅ | Enumerate Notes/Inbox.md items and propose destinations (read-only) |
-| `bindery.inboxResolve` / `inbox-resolve` | ✅ | ✅ | Remove already-routed inbox items by number |
+| `bindery.noteList` / `bindery_note-list` | ✅ | ✅ | List story notes under the configured notes folder |
+| `bindery.noteGet` / `bindery_note-get` | ✅ | ✅ | Read a story note by path |
+| `bindery.noteCreate` / `bindery_note-create` | ✅ | ✅ | Create a story note |
+| `bindery.noteAppend` / `bindery_note-append` | ✅ | ✅ | Append markdown content to a story note |
+| `bindery.characterList` / `bindery_character-list` | ✅ | ✅ | List structured character profiles |
+| `bindery.characterGet` / `bindery_character-get` | ✅ | ✅ | Read a character profile by name |
+| `bindery.characterCreate` / `bindery_character-create` | ✅ | ✅ | Create a character profile and update the character index |
+| `bindery.characterUpdate` / `bindery_character-update` | ✅ | ✅ | Update a character profile and refresh the index row |
+| `bindery.arcList` / `bindery_arc-list` | ✅ | ✅ | List structured arc files |
+| `bindery.arcGet` / `bindery_arc-get` | ✅ | ✅ | Read an arc file by path |
+| `bindery.arcCreate` / `bindery_arc-create` | ✅ | ✅ | Create an arc file and update the arc index |
+| `bindery.arcUpdate` / `bindery_arc-update` | ✅ | ✅ | Update an arc file and refresh the arc index |
+| `bindery.memoryList` / `bindery_memory-list` | ✅ | ✅ | List durable memory files |
+| `bindery.memoryAppend` / `bindery_memory-append` | ✅ | ✅ | Append a dated memory entry |
+| `bindery.memoryCompact` / `bindery_memory-compact` | ✅ | ✅ | Compact a memory file with backup |
+| `bindery.sessionFocusShow` / `bindery_session-focus-show` | ✅ | ✅ | Show working state from SESSION.md (optionally one section) |
+| `bindery.sessionFocusUpdate` / `bindery_session-focus-update` | ✅ | ✅ | Update a neutral SESSION.md section (replace/append) |
+| `bindery.sessionFocusAppendHandoff` / `bindery_session-focus-append-handoff` | ✅ | ✅ | Append a handoff note to SESSION.md |
+| `bindery.inboxProcess` / `bindery_inbox-process` | ✅ | ✅ | Enumerate Notes/Inbox.md items and propose destinations (read-only) |
+| `bindery.inboxResolve` / `bindery_inbox-resolve` | ✅ | ✅ | Remove already-routed inbox items by number |
 | `bindery.registerMcp` | ✅ | — | Write .vscode/mcp.json for Claude/Codex MCP discovery (VS Code-only) |
 | `bindery.showMcpConfig` | — | ✅ | Display MCP configuration snippet (Obsidian-only) |
 
@@ -181,11 +179,11 @@ host-specific UI/activation):
 
 Skills: `review`, `brainstorm`, `memory`, `translate`, `translation-review`, `status`, `continuity`, `read-aloud`, `read-in`, `proof-read`, `plan-beats`, `character-setup`.
 
-The **memory skill** uses `memory_list` → `memory_append` → `memory_compact` for session decisions and `note_list` / `note_get` / `note_create` / `note_append` for canonical story notes. Do not fall back to `get_text` + Edit tool for memory or note writes when a structured tool exists.
+The **memory skill** uses `bindery_memory_list` → `bindery_memory_append` → `bindery_memory_compact` for session decisions and `bindery_note_list` / `bindery_note_get` / `bindery_note_create` / `bindery_note_append` for canonical story notes. Do not fall back to `bindery_get_text` + Edit tool for memory or note writes when a structured tool exists.
 
-The split: durable story/project decisions → `memory_*` (`.bindery/memories/`); ephemeral working state (current focus, next actions, open questions, handoff) → `session_focus_*` (`SESSION.md`); durable working preferences → `PREFERENCES.md` (user-owned, never tool-written — propose changes instead); rough/unsorted/pasted material → `Notes/Inbox.md`, triaged with `inbox_process` / `inbox_resolve` (not memory).
+The split: durable story/project decisions → `bindery_memory_*` (`.bindery/memories/`); ephemeral working state (current focus, next actions, open questions, handoff) → `bindery_session_focus_*` (`SESSION.md`); durable working preferences → `PREFERENCES.md` (user-owned, never tool-written — propose changes instead); rough/unsorted/pasted material → `Notes/Inbox.md`, triaged with `bindery_inbox_process` / `bindery_inbox_resolve` (not memory).
 
-Current authoring-tool boundary: note, character, arc, memory, chapter-status, session-focus, and inbox-triage MCP/LM tools exist and have matching VS Code/Obsidian host command wrappers. `session_focus_update` only touches neutral SESSION.md sections; `inbox_process` only proposes and `inbox_resolve` only removes named items (route confirmed items with the destination tools first).
+Current authoring-tool boundary: note, character, arc, memory, session-focus, and inbox-triage MCP/LM tools exist and have matching VS Code/Obsidian host command wrappers. `bindery_session_focus_update` only touches neutral SESSION.md sections; `bindery_inbox_process` only proposes and `bindery_inbox_resolve` only removes named items (route confirmed items with the destination tools first).
 
 ### AI setup versioning
 `FILE_VERSION_INFO` in `bindery-core/src/templates.ts` is a per-file version table/map (a Record keyed by output path) that controls staleness detection.
@@ -201,9 +199,9 @@ Current authoring-tool boundary: note, character, arc, memory, chapter-status, s
 Memory files live in `.bindery/memories/` inside the book root.
 - `global.md` — cross-chapter decisions
 - `chXX.md` — per-chapter notes (e.g. `ch10.md`)
-- `archive/` — compacted originals (auto-created by `memory_compact`)
+- `archive/` — compacted originals (auto-created by `bindery_memory_compact`)
 
-Format of an appended entry (stamped by `memory_append`, not the caller):
+Format of an appended entry (stamped by `bindery_memory_append`, not the caller):
 ```
 ## Session YYYY-MM-DD — [title]
 [content lines]

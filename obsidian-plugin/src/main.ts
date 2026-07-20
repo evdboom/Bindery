@@ -108,15 +108,6 @@ interface AuthoringArcInput {
     continuityRisks?: string;
 }
 
-interface AuthoringChapterStatusEntry {
-    number: number;
-    title: string;
-    language: string;
-    status: 'done' | 'in-progress' | 'draft' | 'planned' | 'needs-review';
-    wordCount?: number;
-    notes?: string;
-}
-
 interface AuthoringTools {
     toolInitWorkspace: (_root: string, _args: { bookTitle?: string; author?: string; storyFolder?: string }) => string;
     toolNoteList: (_root: string, _args: { category?: string }) => string;
@@ -134,8 +125,6 @@ interface AuthoringTools {
     toolMemoryList: (_root: string) => string;
     toolMemoryAppend: (_root: string, _args: { file: string; title: string; content: string }) => string;
     toolMemoryCompact: (_root: string, _args: { file: string; compacted_content: string }) => string;
-    toolChapterStatusGet: (_root: string) => string;
-    toolChapterStatusUpdate: (_root: string, _args: { chapters: AuthoringChapterStatusEntry[] }) => string;
     toolSessionFocusGet: (_root: string, _args: { section?: string }) => string;
     toolSessionFocusUpdate: (_root: string, _args: { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }) => string;
     toolInboxProcess: (_root: string) => string;
@@ -342,8 +331,6 @@ export default class BinderyPlugin extends Plugin {
         this.addCommand({ id: 'memory-list', name: 'List memories', callback: () => void this.memoryListCommand() });
         this.addCommand({ id: 'memory-append', name: 'Append memory', callback: () => void this.memoryAppendCommand() });
         this.addCommand({ id: 'memory-compact', name: 'Compact memory', callback: () => void this.memoryCompactCommand() });
-        this.addCommand({ id: 'chapter-status-get', name: 'Show chapter status', callback: () => void this.chapterStatusGetCommand() });
-        this.addCommand({ id: 'chapter-status-update', name: 'Update chapter status', callback: () => void this.chapterStatusUpdateCommand() });
         this.addCommand({ id: 'session-focus-show', name: 'Show session focus', callback: () => void this.sessionFocusShowCommand() });
         this.addCommand({ id: 'session-focus-update', name: 'Update session focus', callback: () => void this.sessionFocusUpdateCommand() });
         this.addCommand({ id: 'session-focus-append-handoff', name: 'Append handoff note', callback: () => void this.sessionFocusAppendHandoffCommand() });
@@ -680,41 +667,6 @@ export default class BinderyPlugin extends Plugin {
         return { path: arcPath, title, kind, purpose, majorBeats, continuityRisks };
     }
 
-    private async promptChapterStatusEntry(): Promise<AuthoringChapterStatusEntry | null> {
-        const chapterNumberRaw = await this.promptRequired('Chapter number:');
-        if (!chapterNumberRaw) { return null; }
-        const chapterNumber = Number(chapterNumberRaw);
-        if (!Number.isInteger(chapterNumber) || chapterNumber < 0) {
-            this.notify('Chapter number must be a non-negative integer');
-            return null;
-        }
-
-        const title = await this.promptRequired('Chapter title:');
-        if (!title) { return null; }
-        const language = await this.promptOptional('Language code:', 'EN');
-        if (language === null) { return null; }
-        const status = await this.promptRequired('Status (done, in-progress, needs-review, draft, planned):', 'draft');
-        if (!status) { return null; }
-        if (!['done', 'in-progress', 'needs-review', 'draft', 'planned'].includes(status)) {
-            this.notify('Invalid chapter status');
-            return null;
-        }
-        const wordCountRaw = await this.promptOptional('Word count (optional):');
-        if (wordCountRaw === null) { return null; }
-        const notes = await this.promptOptional('Notes (optional):');
-        if (notes === null) { return null; }
-        let wordCount: number | undefined;
-        if (wordCountRaw) {
-            const parsedWordCount = Number(wordCountRaw);
-            if (!Number.isInteger(parsedWordCount) || parsedWordCount < 0) {
-                this.notify('Word count must be a non-negative integer');
-                return null;
-            }
-            wordCount = parsedWordCount;
-        }
-        return { number: chapterNumber, title, language: language ?? 'EN', status: status as AuthoringChapterStatusEntry['status'], wordCount, notes };
-    }
-
     private async noteListCommand(): Promise<void> {
         await this.runAuthoringCommand('Note list', (root, tools) => tools.toolNoteList(root, {}));
     }
@@ -820,17 +772,6 @@ export default class BinderyPlugin extends Plugin {
             if (!file) { return null; }
             const compactedContent = await this.promptRequired('Compacted content:');
             return compactedContent ? tools.toolMemoryCompact(root, { file, compacted_content: compactedContent }) : null;
-        });
-    }
-
-    private async chapterStatusGetCommand(): Promise<void> {
-        await this.runAuthoringCommand('Chapter status', (root, tools) => tools.toolChapterStatusGet(root));
-    }
-
-    private async chapterStatusUpdateCommand(): Promise<void> {
-        await this.runAuthoringCommand('Chapter status update', async (root, tools) => {
-            const entry = await this.promptChapterStatusEntry();
-            return entry ? tools.toolChapterStatusUpdate(root, { chapters: [entry] }) : null;
         });
     }
 
@@ -977,7 +918,6 @@ export default class BinderyPlugin extends Plugin {
             writeIfMissing(path.join(bookPath, 'Notes', 'Inbox.md'), '# Inbox\n');
             writeIfMissing(path.join(bookPath, 'Notes', 'Characters', 'index.md'), '# Character Index\n');
             writeIfMissing(path.join(bookPath, '.bindery', 'memories', 'global.md'), `# Global Memory - ${vaultName}\n`);
-            writeIfMissing(path.join(bookPath, '.bindery', 'chapter-status.json'), JSON.stringify({ schemaVersion: 1, updatedAt: new Date().toISOString().slice(0, 10), chapters: [] }, null, 2) + '\n');
         }
     }
 

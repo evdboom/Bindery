@@ -414,9 +414,9 @@ describe('renderTemplate — translation-review skill', () => {
     const result = renderTemplate('translation-review', makeCtx());
     expect(result).toContain('recent conversation');
     expect(result).toContain('ask the user if ambiguous');
-    expect(result).toContain('search(query, targetLanguage)');
-    expect(result).toContain('add_translation');
-    expect(result).toContain('call `add_translation` before moving on');
+    expect(result).toContain('bindery_search(query, targetLanguage)');
+    expect(result).toContain('bindery_add_translation');
+    expect(result).toContain('call `bindery_add_translation` before moving on');
   });
 
   it('mentions review markers and the two-section response shape', () => {
@@ -437,10 +437,10 @@ describe('renderTemplate — status skill', () => {
     expect(result).toContain('## Steps');
   });
 
-  it('references chapter_status_get and get_overview tools', () => {
+  it('references bindery_get_overview and bindery_session_focus_get tools', () => {
     const result = renderTemplate('status', makeCtx());
-    expect(result).toContain('chapter_status_get');
-    expect(result).toContain('get_overview');
+    expect(result).toContain('bindery_session_focus_get');
+    expect(result).toContain('bindery_get_overview');
   });
 });
 
@@ -495,11 +495,10 @@ describe('renderTemplate — read-in skill', () => {
     expect(result).toContain('## Rules');
   });
 
-  it('references memory_list, chapter_status_get, and get_overview tools', () => {
+  it('references bindery_memory_list and bindery_get_overview tools', () => {
     const result = renderTemplate('read-in', makeCtx());
-    expect(result).toContain('memory_list');
-    expect(result).toContain('chapter_status_get');
-    expect(result).toContain('get_overview');
+    expect(result).toContain('bindery_memory_list');
+    expect(result).toContain('bindery_get_overview');
   });
 
   it('references the memories folder', () => {
@@ -526,26 +525,25 @@ describe('renderTemplate — bindery-readme', () => {
     const result = renderTemplate('bindery-readme', makeCtx());
     expect(result).toContain('SESSION.md');
     expect(result).toContain('PREFERENCES.md');
-    expect(result).toContain('session_focus_update');
+    expect(result).toContain('bindery_session_focus_update');
     expect(result).toContain('Arc/index.md');
     expect(result).toContain('Arc/Overall.md');
     expect(result).toContain('Notes/Characters/index.md');
-    expect(result).toContain('init_workspace');
-    expect(result).toContain('setup_ai_files');
+    expect(result).toContain('bindery_init_workspace');
+    expect(result).toContain('bindery_setup_ai_files');
     expect(result).toContain('/plan-beats');
     expect(result).toContain('/character-setup');
-    expect(result).toContain('note_list');
-    expect(result).toContain('note_append');
-    expect(result).toContain('character_list');
-    expect(result).toContain('arc_create');
+    expect(result).toContain('bindery_note_list');
+    expect(result).toContain('bindery_note_append');
+    expect(result).toContain('bindery_character_list');
+    expect(result).toContain('bindery_arc_create');
     expect(result).toContain('List/Create/Append Notes');
     expect(result).toContain('List/Create/Update Character Profile');
     expect(result).toContain('List/Create/Update Arc File');
-    expect(result).toContain('Show/Update Chapter Status');
     expect(result).toContain('Show/Update Session Focus');
-    expect(result).toContain('session_focus_get');
-    expect(result).toContain('inbox_process');
-    expect(result).toContain('inbox_resolve');
+    expect(result).toContain('bindery_session_focus_get');
+    expect(result).toContain('bindery_inbox_process');
+    expect(result).toContain('bindery_inbox_resolve');
     expect(result).toContain('never edits it');
     expect(result).not.toContain('session-focus/COWORK tools are not available yet');
   });

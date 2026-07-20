@@ -9,8 +9,6 @@ import {
     toolSetupAiFiles,
     toolMemoryAppend,
     toolMemoryCompact,
-    toolChapterStatusUpdate,
-    toolChapterStatusGet,
     toolMemoryList,
 } from '../src/tools';
 
@@ -71,7 +69,6 @@ describe('toolInitWorkspace', () => {
         expect(fs.existsSync(path.join(root, 'Notes', 'Inbox.md'))).toBe(true);
         expect(fs.existsSync(path.join(root, 'Notes', 'Characters', 'index.md'))).toBe(true);
         expect(fs.existsSync(path.join(root, '.bindery', 'memories', 'global.md'))).toBe(true);
-        expect(fs.existsSync(path.join(root, '.bindery', 'chapter-status.json'))).toBe(true);
         expect(fs.existsSync(path.join(root, 'Story', 'EN'))).toBe(true);
     });
 
@@ -439,97 +436,6 @@ describe('toolMemoryList', () => {
         expect(result).toContain('ch01.md');
         expect(result).toContain('global.md');
         expect(result).toMatch(/\(\d+ lines\)/);
-    });
-});
-
-// ─── toolChapterStatusUpdate ──────────────────────────────────────────────────
-
-describe('toolChapterStatusUpdate', () => {
-    it('creates chapter-status.json and adds chapters', () => {
-        const root = makeRoot();
-        const result = toolChapterStatusUpdate(root, {
-            chapters: [{ number: 1, title: 'The Beginning', language: 'EN', status: 'done' }],
-        });
-
-        expect(result).toContain('1 added');
-        expect(fs.existsSync(path.join(root, '.bindery', 'chapter-status.json'))).toBe(true);
-    });
-
-    it('upserts without duplicating existing chapters', () => {
-        const root = makeRoot();
-        toolChapterStatusUpdate(root, {
-            chapters: [{ number: 1, title: 'Ch 1', language: 'EN', status: 'draft' }],
-        });
-        const result = toolChapterStatusUpdate(root, {
-            chapters: [{ number: 1, title: 'Ch 1 Updated', language: 'EN', status: 'done' }],
-        });
-
-        expect(result).toContain('0 added');
-        expect(result).toContain('1 updated');
-
-        const data = JSON.parse(
-            fs.readFileSync(path.join(root, '.bindery', 'chapter-status.json'), 'utf-8')
-        ) as { chapters: Array<{ number: number; title: string; status: string }> };
-        expect(data.chapters.filter(c => c.number === 1)).toHaveLength(1);
-        expect(data.chapters[0].status).toBe('done');
-    });
-
-    it('normalises language to uppercase', () => {
-        const root = makeRoot();
-        toolChapterStatusUpdate(root, {
-            chapters: [{ number: 1, title: 'Ch 1', language: 'nl', status: 'planned' }],
-        });
-
-        const data = JSON.parse(
-            fs.readFileSync(path.join(root, '.bindery', 'chapter-status.json'), 'utf-8')
-        ) as { chapters: Array<{ language: string }> };
-        expect(data.chapters[0].language).toBe('NL');
-    });
-
-    it('returns error for empty chapters array', () => {
-        const root = makeRoot();
-        const result = toolChapterStatusUpdate(root, { chapters: [] });
-        expect(result).toContain('Error');
-    });
-});
-
-// ─── toolChapterStatusGet ─────────────────────────────────────────────────────
-
-describe('toolChapterStatusGet', () => {
-    it('returns message when no chapter status file exists', () => {
-        const root = makeRoot();
-        const result = toolChapterStatusGet(root);
-        expect(result).toContain('No chapter status');
-    });
-
-    it('groups chapters by status', () => {
-        const root = makeRoot();
-        toolChapterStatusUpdate(root, {
-            chapters: [
-                { number: 1, title: 'First',  language: 'EN', status: 'done' },
-                { number: 2, title: 'Second', language: 'EN', status: 'draft' },
-                { number: 3, title: 'Third',  language: 'EN', status: 'done' },
-            ],
-        });
-
-        const result = toolChapterStatusGet(root);
-        expect(result).toContain('Done');
-        expect(result).toContain('Draft');
-        // Done group should appear before Draft
-        expect(result.indexOf('Done')).toBeLessThan(result.indexOf('Draft'));
-    });
-
-    it('includes word count and notes when present', () => {
-        const root = makeRoot();
-        toolChapterStatusUpdate(root, {
-            chapters: [
-                { number: 1, title: 'Ch 1', language: 'EN', status: 'in-progress', wordCount: 3500, notes: 'Needs polish' },
-            ],
-        });
-
-        const result = toolChapterStatusGet(root);
-        expect(result).toContain('3500');
-        expect(result).toContain('Needs polish');
     });
 });
 

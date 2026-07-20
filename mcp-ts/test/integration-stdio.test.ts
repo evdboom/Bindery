@@ -170,7 +170,7 @@ describe('MCP stdio integration', { timeout: 20_000 }, () => {
         ).toBeDefined();
     });
 
-    it('list_books returns the configured book', async () => {
+    it('bindery_list_books returns the configured book', async () => {
         const root = makeRoot();
         const { send, readOne, kill: k } = spawnServer('TestBook', root);
         kill = k;
@@ -181,7 +181,7 @@ describe('MCP stdio integration', { timeout: 20_000 }, () => {
             jsonrpc: '2.0',
             id:      2,
             method:  'tools/call',
-            params:  { name: 'list_books', arguments: {} },
+            params:  { name: 'bindery_list_books', arguments: {} },
         });
 
         const resp = await readOne();
@@ -195,7 +195,7 @@ describe('MCP stdio integration', { timeout: 20_000 }, () => {
         expect(content[0]?.text).toContain('TestBook');
     });
 
-    it('health returns server status for a configured book', async () => {
+    it('bindery_health returns server status for a configured book', async () => {
         const root = makeRoot();
         const { send, readOne, kill: k } = spawnServer('MyNovel', root);
         kill = k;
@@ -206,7 +206,7 @@ describe('MCP stdio integration', { timeout: 20_000 }, () => {
             jsonrpc: '2.0',
             id:      3,
             method:  'tools/call',
-            params:  { name: 'health', arguments: { book: 'MyNovel' } },
+            params:  { name: 'bindery_health', arguments: { book: 'MyNovel' } },
         });
 
         const resp = await readOne();
@@ -215,20 +215,20 @@ describe('MCP stdio integration', { timeout: 20_000 }, () => {
         expect(resp.error).toBeUndefined();
 
         const content = (resp.result as { content: Array<{ text: string }> })?.content;
-        const health = JSON.parse(content[0]?.text ?? '{}') as {
+        const bindery_health = JSON.parse(content[0]?.text ?? '{}') as {
             root?: string;
             settings?: string;
             ai_version_outdated?: boolean;
             ai_versions_outdated?: unknown[];
         };
 
-        expect(health.root).toBe(root);
-        expect(typeof health.settings).toBe('string');
-        expect(typeof health.ai_version_outdated).toBe('boolean');
-        expect(Array.isArray(health.ai_versions_outdated)).toBe(true);
+        expect(bindery_health.root).toBe(root);
+        expect(typeof bindery_health.settings).toBe('string');
+        expect(typeof bindery_health.ai_version_outdated).toBe('boolean');
+        expect(Array.isArray(bindery_health.ai_versions_outdated)).toBe(true);
     });
 
-    it('get_text blocks a path-traversal attack and returns an error result', async () => {
+    it('bindery_get_text blocks a path-traversal attack and returns an error result', async () => {
         const root = makeRoot();
         // Create a sentinel file outside the book root to prove isolation
         const outsideRoot = path.dirname(root);
@@ -248,7 +248,7 @@ describe('MCP stdio integration', { timeout: 20_000 }, () => {
                 id:      4,
                 method:  'tools/call',
                 params:  {
-                    name:      'get_text',
+                    name:      'bindery_get_text',
                     arguments: { book: 'AttackBook', identifier: `../../${sentinelName}` },
                 },
             });
@@ -278,7 +278,7 @@ describe('MCP stdio integration', { timeout: 20_000 }, () => {
             jsonrpc: '2.0',
             id:      5,
             method:  'tools/call',
-            params:  { name: 'health', arguments: { book: 'NonExistentBook' } },
+            params:  { name: 'bindery_health', arguments: { book: 'NonExistentBook' } },
         });
 
         const resp = await readOne();
@@ -302,7 +302,7 @@ describe('MCP stdio integration', { timeout: 20_000 }, () => {
                 jsonrpc: '2.0',
                 id,
                 method:  'tools/call',
-                params:  { name: 'list_books', arguments: {} },
+                params:  { name: 'bindery_list_books', arguments: {} },
             });
         }
 
