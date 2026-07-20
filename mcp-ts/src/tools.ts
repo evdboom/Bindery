@@ -2843,7 +2843,7 @@ interface ParsedInbox { preamble: string; items: string[]; }
 
 /**
  * Split Inbox.md into a preamble (H1 + intro paragraph) plus discrete items.
- * Deterministic so `inbox_process` and `inbox_resolve` enumerate items identically:
+ * Deterministic so `bindery_inbox_process` and `bindery_inbox_resolve` enumerate items identically:
  * if any `## ` headings exist the body is split on them, otherwise on blank-line blocks.
  */
 function parseInboxItems(text: string): ParsedInbox {
@@ -2897,14 +2897,14 @@ export function toolInboxProcess(root: string): string {
     lines.push(
         '## How to triage',
         'Propose a destination for each item, confirm with the user, then route confirmed items with the matching tool:',
-        '- Story note → `note_create` / `note_append` (World, Scenes, Research, or a custom category)',
-        '- Character → `character_create` / `character_update`',
-        '- Arc / structure → `arc_create` / `arc_update`',
-        '- Durable cross-session decision → `memory_append`',
-        '- Current focus / next action / handoff → `session_focus_update`',
+        '- Story note → `bindery_note_create` / `bindery_note_append` (World, Scenes, Research, or a custom category)',
+        '- Character → `bindery_character_create` / `bindery_character_update`',
+        '- Arc / structure → `bindery_arc_create` / `bindery_arc_update`',
+        '- Durable cross-session decision → `bindery_memory_append`',
+        '- Current focus / next action / handoff → `bindery_session_focus_update`',
         '',
         'Do not move, delete, or categorize anything without the user\'s confirmation. ' +
-        'After confirmed items are routed, call `inbox_resolve` with their item numbers to remove them from the inbox. ' +
+        'After confirmed items are routed, call `bindery_inbox_resolve` with their item numbers to remove them from the inbox. ' +
         'Items left unconfirmed stay in the inbox.',
     );
     return lines.join('\n');

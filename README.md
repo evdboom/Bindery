@@ -54,7 +54,7 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes
 - **Multi-book support** — configure one or more books via `--book Name=path` CLI args or `BINDERY_BOOKS` env var; every tool call specifies which book to use by name (agents never see raw paths)
 - **Container/mount aware** — agents in sandboxed environments (e.g. Cowork) can call `bindery_identify_book` with their working directory to discover their book name, even when mount paths differ from the configured paths
 
-See [mcpb/README.md](mcpb/README.md) for the full 40-tool reference and usage examples.
+See [mcpb/README.md](mcpb/README.md) for the full tool reference and usage examples.
 
 ### [obsidian-plugin/](obsidian-plugin/) — Obsidian Plugin
 
