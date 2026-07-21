@@ -1734,7 +1734,9 @@ function fileMatchesLanguage(root: string, file: string, language: string): bool
 
 function getStoryScanRoots(root: string, language: string): string[] {
     const storyRoot = path.join(root, storyFolder(root));
-    if (!fs.existsSync(storyRoot) || !fs.statSync(storyRoot).isDirectory()) {
+    try {
+        if (!fs.statSync(storyRoot).isDirectory()) { return []; }
+    } catch {
         return [];
     }
     if (language === 'ALL') {
