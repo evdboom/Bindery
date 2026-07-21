@@ -125,6 +125,24 @@ afterEach(() => {
 });
 
 describe('toolGetReviewText — review markers', () => {
+    it('returns marker regions from committed chapter files without unstaged diffs', () => {
+        const root = makeGitRepo();
+        const file = path.join(root, 'Story', 'NL', 'Chapter 1.md');
+        write(file,
+            `# Hoofdstuk\n` +
+            `Vaste regel.\n` +
+            `${REVIEW_START_MARKER}\n` +
+            `Controleer deze alinea.\n` +
+            `${REVIEW_STOP_MARKER}\n`);
+        spawnSync('git', ['add', '.'], { cwd: root });
+        spawnSync('git', ['commit', '-m', 'add committed marker region'], { cwd: root });
+
+        const out = toolGetReviewText(root, { language: 'NL' });
+        expect(out).not.toContain('# Git diff');
+        expect(out).toContain('# Review markers');
+        expect(out).toContain('Controleer deze alinea.');
+    });
+
     it('returns marker regions from unstaged chapter files', () => {
         const root = makeGitRepo();
         const file = path.join(root, 'Story', 'EN', 'Chapter 1.md');

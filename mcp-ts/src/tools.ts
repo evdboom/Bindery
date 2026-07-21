@@ -1643,13 +1643,16 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     const diffSection  = filteredDiff.length > 0 ? formatReviewFiles(filteredDiff) : '';
     const reviewedFiles = filteredDiff.map(f => f.file);
 
-    // ── 2. Marker regions in the same unstaged chapter files ────────────
-    const markerFiles = collectReviewMarkerFiles(root, reviewedFiles);
+    // ── 2. Marker regions in story markdown files ────────────────────────
+    const markerFiles = collectReviewMarkerFiles(root, language);
     const markerSection = markerFiles.length > 0 ? formatReviewMarkerFiles(markerFiles) : '';
 
     // ── 3. Compose response ────────────────────────────────────────────────
+    if (!gitAvailable && !diffSection) {
+        return 'Failed to run git diff. Is this a git repository?';
+    }
+
     if (!diffSection && !markerSection) {
-        if (!gitAvailable) { return 'Failed to run git diff. Is this a git repository?'; }
         return language === 'ALL'
             ? 'No uncommitted changes.'
             : `No uncommitted changes in ${language} files.`;
@@ -1677,7 +1680,7 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
         }
         // Strip marker lines so the next review pass is clean. Marker
         // consumption doesn't require git — the file edits are local.
-        if (markerFiles.length > 0) {
+        if (gitAvailable && markerFiles.length > 0) {
             consumeReviewMarkers(root, markerFiles.map(f => f.file));
         }
     }
@@ -1693,11 +1696,11 @@ function filterByLanguage<T extends { file: string }>(items: T[], language: stri
     });
 }
 
-/** Scan only the reviewed (unstaged chapter diff) files for review markers. */
-function collectReviewMarkerFiles(root: string, relFiles: string[]): FormattedMarkerFile[] {
+/** Scan story markdown files for review markers, even when the file is already committed. */
+function collectReviewMarkerFiles(root: string, language: string): FormattedMarkerFile[] {
     const out: FormattedMarkerFile[] = [];
-    for (const rel of uniquePaths(relFiles)) {
-        if (!rel.toLowerCase().endsWith('.md')) { continue; }
+    for (const rel of listStoryMarkdownFiles(root)) {
+        if (!filterByLanguage([{ file: rel }], language).length) { continue; }
         const abs = path.join(root, rel);
         let content: string;
         try { content = fs.readFileSync(abs, 'utf-8'); }
@@ -1712,6 +1715,30 @@ function collectReviewMarkerFiles(root: string, relFiles: string[]): FormattedMa
 function chapterMarkdownPathspec(root: string): string {
     const story = storyFolder(root).replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
     return `:(glob)${story}/**/*.md`;
+}
+
+function listStoryMarkdownFiles(root: string): string[] {
+    const storyRoot = path.join(root, storyFolder(root));
+    if (!fs.existsSync(storyRoot) || !fs.statSync(storyRoot).isDirectory()) {
+        return [];
+    }
+
+    const files: string[] = [];
+    collectMarkdownFiles(storyRoot, files);
+    return uniquePaths(files.map(file => path.relative(root, file)));
+}
+
+function collectMarkdownFiles(dir: string, acc: string[]): void {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            collectMarkdownFiles(fullPath, acc);
+            continue;
+        }
+        if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
+            acc.push(fullPath);
+        }
+    }
 }
 
 function uniquePaths(items: string[]): string[] {
