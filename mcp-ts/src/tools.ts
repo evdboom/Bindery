@@ -1638,14 +1638,14 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
         gitAvailable = false;
     }
 
+    if (!gitAvailable) {
+        return 'Failed to run git diff. Is this a git repository?';
+    }
+
     const diffFiles = raw.trim() ? parseUnifiedDiff(raw) : [];
     const filteredDiff = filterByLanguage(root, diffFiles, language);
     const diffSection  = filteredDiff.length > 0 ? formatReviewFiles(filteredDiff) : '';
     const reviewedFiles = filteredDiff.map(f => f.file);
-
-    if (!gitAvailable) {
-        return 'Failed to run git diff. Is this a git repository?';
-    }
 
     // ── 2. Marker regions in story markdown files ────────────────────────
     const markerFiles = collectReviewMarkerFiles(root, language);
