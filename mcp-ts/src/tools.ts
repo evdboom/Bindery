@@ -1758,7 +1758,8 @@ function getLanguageFolderNames(root: string, language: string): string[] {
     const upper = language.toUpperCase();
     const names = new Set<string>([upper]);
     const settings = readSettings(root);
-    for (const entry of settings?.languages ?? []) {
+    const languages = Array.isArray(settings?.languages) ? settings.languages : [];
+    for (const entry of languages) {
         if (entry.code.toUpperCase() !== upper) { continue; }
         if (typeof entry.folderName === 'string' && entry.folderName.trim()) {
             names.add(entry.folderName.trim());
