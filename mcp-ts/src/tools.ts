@@ -1729,7 +1729,13 @@ function listStoryMarkdownFiles(root: string): string[] {
 }
 
 function collectMarkdownFiles(dir: string, acc: string[]): void {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    let entries: fs.Dirent[];
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
             collectMarkdownFiles(fullPath, acc);
