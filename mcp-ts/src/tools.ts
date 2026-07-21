@@ -1643,15 +1643,15 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     const diffSection  = filteredDiff.length > 0 ? formatReviewFiles(filteredDiff) : '';
     const reviewedFiles = filteredDiff.map(f => f.file);
 
+    if (!gitAvailable) {
+        return 'Failed to run git diff. Is this a git repository?';
+    }
+
     // ── 2. Marker regions in story markdown files ────────────────────────
     const markerFiles = collectReviewMarkerFiles(root, language);
     const markerSection = markerFiles.length > 0 ? formatReviewMarkerFiles(markerFiles) : '';
 
     // ── 3. Compose response ────────────────────────────────────────────────
-    if (!gitAvailable && !diffSection) {
-        return 'Failed to run git diff. Is this a git repository?';
-    }
-
     if (!diffSection && !markerSection) {
         return language === 'ALL'
             ? 'No uncommitted changes.'
@@ -1659,9 +1659,7 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     }
 
     const parts: string[] = [];
-    if (!gitAvailable) {
-        parts.push('# Git diff unavailable', 'Failed to run git diff. Is this a git repository?');
-    } else if (diffSection) {
+    if (diffSection) {
         parts.push('# Git diff', diffSection);
     }
     if (markerSection) { parts.push('# Review markers', markerSection); }
@@ -1678,9 +1676,9 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
                 } catch { /* best effort — staging failure shouldn't break the review */ }
             }
         }
-        // Strip marker lines so the next review pass is clean. Marker
-        // consumption doesn't require git — the file edits are local.
-        if (gitAvailable && markerFiles.length > 0) {
+        // Strip marker lines so the next review pass is clean. This performs
+        // local file edits and then best-effort git add on touched files.
+        if (markerFiles.length > 0) {
             consumeReviewMarkers(root, markerFiles.map(f => f.file));
         }
     }
