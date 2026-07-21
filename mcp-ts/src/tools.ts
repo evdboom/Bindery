@@ -1639,7 +1639,7 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     }
 
     const diffFiles = raw.trim() ? parseUnifiedDiff(raw) : [];
-    const filteredDiff = filterByLanguage(diffFiles, language);
+    const filteredDiff = filterByLanguage(root, diffFiles, language);
     const diffSection  = filteredDiff.length > 0 ? formatReviewFiles(filteredDiff) : '';
     const reviewedFiles = filteredDiff.map(f => f.file);
 
@@ -1688,19 +1688,15 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
     return result;
 }
 
-function filterByLanguage<T extends { file: string }>(items: T[], language: string): T[] {
+function filterByLanguage<T extends { file: string }>(root: string, items: T[], language: string): T[] {
     if (language === 'ALL') { return items; }
-    return items.filter(f => {
-        const upper = f.file.toUpperCase().replaceAll('\\', '/');
-        return upper.includes(`/${language}/`);
-    });
+    return items.filter(f => fileMatchesLanguage(root, f.file, language));
 }
 
 /** Scan story markdown files for review markers, even when the file is already committed. */
 function collectReviewMarkerFiles(root: string, language: string): FormattedMarkerFile[] {
     const out: FormattedMarkerFile[] = [];
-    for (const rel of listStoryMarkdownFiles(root)) {
-        if (!filterByLanguage([{ file: rel }], language).length) { continue; }
+    for (const rel of listStoryMarkdownFiles(root, language)) {
         const abs = path.join(root, rel);
         let content: string;
         try { content = fs.readFileSync(abs, 'utf-8'); }
@@ -1717,15 +1713,58 @@ function chapterMarkdownPathspec(root: string): string {
     return `:(glob)${story}/**/*.md`;
 }
 
-function listStoryMarkdownFiles(root: string): string[] {
+function listStoryMarkdownFiles(root: string, language: string): string[] {
+    const storyRoots = getStoryScanRoots(root, language);
+    const files: string[] = [];
+    for (const storyRoot of storyRoots) {
+        collectMarkdownFiles(storyRoot, files);
+    }
+    return uniquePaths(files.map(file => path.relative(root, file)));
+}
+
+function fileMatchesLanguage(root: string, file: string, language: string): boolean {
+    if (language === 'ALL') { return true; }
+    const normalizedFile = file.replaceAll('\\', '/').toUpperCase();
+    const story = storyFolder(root).replaceAll('\\', '/').replace(/^\/+|\/+$/g, '').toUpperCase();
+    return getLanguageFolderNames(root, language).some(folder => {
+        const prefix = `${story}/${folder.toUpperCase()}/`;
+        return normalizedFile.startsWith(prefix) || normalizedFile.includes(`/${prefix}`);
+    });
+}
+
+function getStoryScanRoots(root: string, language: string): string[] {
     const storyRoot = path.join(root, storyFolder(root));
     if (!fs.existsSync(storyRoot) || !fs.statSync(storyRoot).isDirectory()) {
         return [];
     }
+    if (language === 'ALL') {
+        return [storyRoot];
+    }
 
-    const files: string[] = [];
-    collectMarkdownFiles(storyRoot, files);
-    return uniquePaths(files.map(file => path.relative(root, file)));
+    const roots = getLanguageFolderNames(root, language)
+        .map(folder => path.join(storyRoot, folder))
+        .filter(dir => {
+            try {
+                return fs.existsSync(dir) && fs.statSync(dir).isDirectory();
+            } catch {
+                return false;
+            }
+        });
+
+    return roots.length > 0 ? uniquePaths(roots) : [];
+}
+
+function getLanguageFolderNames(root: string, language: string): string[] {
+    const upper = language.toUpperCase();
+    const names = new Set<string>([upper]);
+    const settings = readSettings(root);
+    for (const entry of settings?.languages ?? []) {
+        if (entry.code.toUpperCase() !== upper) { continue; }
+        if (typeof entry.folderName === 'string' && entry.folderName.trim()) {
+            names.add(entry.folderName.trim());
+        }
+    }
+    return Array.from(names);
 }
 
 function collectMarkdownFiles(dir: string, acc: string[]): void {

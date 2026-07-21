@@ -227,6 +227,27 @@ describe('toolGetReviewText — review markers', () => {
         expect(out).not.toContain('EN region');
     });
 
+    it('language filter uses configured folder names for marker scans', () => {
+        const root = makeGitRepo();
+        write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+            storyFolder: 'Story',
+            languages: [
+                { code: 'EN', folderName: 'English', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' },
+                { code: 'NL', folderName: 'Dutch', chapterWord: 'Hoofdstuk', actPrefix: 'Akte', prologueLabel: 'Proloog', epilogueLabel: 'Epiloog' },
+            ],
+        }));
+        write(path.join(root, 'Story', 'English', 'Chapter 1.md'),
+            `${REVIEW_START_MARKER}\nEN region\n${REVIEW_STOP_MARKER}\n`);
+        write(path.join(root, 'Story', 'Dutch', 'Chapter 1.md'),
+            `${REVIEW_START_MARKER}\nNL region\n${REVIEW_STOP_MARKER}\n`);
+        spawnSync('git', ['add', '.'], { cwd: root });
+        spawnSync('git', ['commit', '-m', 'add custom language folders'], { cwd: root });
+
+        const out = toolGetReviewText(root, { language: 'NL' });
+        expect(out).toContain('NL region');
+        expect(out).not.toContain('EN region');
+    });
+
     it('reports an unclosed marker as open-ended in the output', () => {
         const root = makeGitRepo();
         const file = path.join(root, 'Story', 'EN', 'Chapter 1.md');
