@@ -16,6 +16,7 @@ import { z }                     from 'zod';
 
 import {
     toolHealth,
+    toolDownloadLatestMcp,
     toolIndexBuild,
     toolIndexStatus,
     toolGetText,
@@ -154,11 +155,27 @@ server.registerTool('bindery_identify_book', {
 
 server.registerTool('bindery_health', {
     title: 'Health Check',
-    description: 'Check server status: active book, settings, index, and embedding backend.',
+    description: 'Check server status: active book, settings, index, embedding backend, and latest Bindery release availability.',
     inputSchema: { book: bookSchema },
-    annotations: { readOnlyHint: true },
-}, ({ book }) => {
-    try { return ok(toolHealth(resolveBook(book).root)); } catch (e) { return err(e); }
+    annotations: { readOnlyHint: true, openWorldHint: true },
+}, async ({ book }) => {
+    try { return ok(await toolHealth(resolveBook(book).root)); } catch (e) { return err(e); }
+});
+
+server.registerTool('bindery_download_latest_mcp', {
+    title: 'Download Latest Standalone MCP',
+    description:
+        'Download and unpack the latest standalone bindery-mcp-server-*.zip release into BINDERY_MCP_LOCATION. ' +
+        'This tool does not edit MCP client settings. Not for Claude Desktop/Cowork; use the .mcpb installer there.',
+    inputSchema: {
+        book: bookSchema,
+        client: z.enum(['standalone', 'chatgpt', 'lmstudio', 'other', 'claude']).optional().describe(
+            'Optional target client label. If set to claude, the tool refuses and returns .mcpb guidance.'
+        ),
+    },
+    annotations: { destructiveHint: true, openWorldHint: true },
+}, async ({ book, client }) => {
+    try { return ok(await toolDownloadLatestMcp(resolveBook(book).root, { client })); } catch (e) { return err(e); }
 });
 
 server.registerTool('bindery_index_build', {

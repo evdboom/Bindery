@@ -372,10 +372,36 @@
         "displayName": "Bindery: Health",
         "toolReferenceName": "binderyHealth",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "Check Bindery workspace status: settings, index, embedding backend.",
+        "modelDescription": "Check Bindery workspace status: settings, index, embedding backend, and latest release availability.",
         "inputSchema": {
           "type": "object",
           "properties": {}
+        }
+      },
+      {
+        "name": "bindery_download_latest_mcp",
+        "tags": [
+          "bindery"
+        ],
+        "displayName": "Bindery: Download Latest Standalone MCP",
+        "toolReferenceName": "binderyDownloadLatestMcp",
+        "canBeReferencedInPrompt": true,
+        "modelDescription": "Download and unpack the latest standalone bindery-mcp-server zip into BINDERY_MCP_LOCATION. This tool does not edit client settings and is not for Claude Desktop/Cowork.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "client": {
+              "type": "string",
+              "description": "Optional client label: standalone, chatgpt, lmstudio, other, or claude.",
+              "enum": [
+                "standalone",
+                "chatgpt",
+                "lmstudio",
+                "other",
+                "claude"
+              ]
+            }
+          }
         }
       },
       {

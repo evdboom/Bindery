@@ -9,7 +9,7 @@ This package contains:
 
 1. Unzip this archive to a stable folder on your machine.
 2. In your MCP client, add a new MCP server.
-   - eg. in ChatGPT Work -> **Settings** -> **Plug-ins** -> **MCP's** tab
+   - eg. in ChatGPT Work -> **Settings** -> **Plug-ins** -> **MCPs** tab
 3. Use the following values:
    - Command: `node`
    - Args: absolute path to `server/index.js` in the folder you unzipped

@@ -9,6 +9,7 @@
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { unzipSync } from 'fflate';
 import { updateTypography }                 from './format.js';
 import {
     buildIndex,
@@ -118,6 +119,155 @@ function appendWarnings(body: string, warnings: string[]): string {
     if (warnings.length === 0) { return body; }
     const header = warnings.map(w => 'Warning: ' + w).join('\n');
     return `${header}\n\n${body}`;
+}
+
+const MODULE_DIR = __dirname;
+const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/evdboom/Bindery/releases/latest';
+
+type LatestReleaseAsset = {
+    name: string;
+    browser_download_url?: string;
+};
+
+type LatestRelease = {
+    tag_name?: string;
+    html_url?: string;
+    assets?: LatestReleaseAsset[];
+};
+
+type ReleaseCache = {
+    fetchedAt: number;
+    data: LatestRelease;
+};
+
+let latestReleaseCache: ReleaseCache | null = null;
+
+function parseVersionParts(version: string): number[] {
+    const cleaned = version.trim().replace(/^v/i, '').split('-')[0];
+    if (!cleaned) { return []; }
+    return cleaned.split('.').map(part => Number.parseInt(part, 10)).map(n => Number.isFinite(n) ? n : 0);
+}
+
+function compareSemverLoose(a: string, b: string): number {
+    const pa = parseVersionParts(a);
+    const pb = parseVersionParts(b);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+        const av = pa[i] ?? 0;
+        const bv = pb[i] ?? 0;
+        if (av > bv) { return 1; }
+        if (av < bv) { return -1; }
+    }
+    return 0;
+}
+
+function isLikelyVersion(value: string): boolean {
+    return /^v?\d+(\.\d+){1,3}([.-][A-Z0-9]+)?$/i.test(value.trim());
+}
+
+function readVersionFromPackageJson(): string | null {
+    const candidates = [
+        path.join(MODULE_DIR, '..', 'package.json'),
+        path.join(MODULE_DIR, '..', '..', 'package.json'),
+    ];
+
+    for (const candidate of candidates) {
+        const pkg = readJson<{ version?: string }>(candidate);
+        const version = pkg?.version?.trim();
+        if (version && isLikelyVersion(version)) {
+            return version;
+        }
+    }
+    return null;
+}
+
+function readVersionFromPathHints(): string | null {
+    const normalized = MODULE_DIR.replaceAll('\\', '/');
+
+    const extensionMatch = /option-a\.bindery-(\d+\.\d+\.\d+)/i.exec(normalized);
+    if (extensionMatch?.[1]) { return extensionMatch[1]; }
+
+    const standaloneMatch = /bindery-mcp-server-(\d+\.\d+\.\d+)/i.exec(normalized);
+    if (standaloneMatch?.[1]) { return standaloneMatch[1]; }
+
+    const genericMatch = /bindery-(\d+\.\d+\.\d+)/i.exec(normalized);
+    if (genericMatch?.[1]) { return genericMatch[1]; }
+
+    return null;
+}
+
+function installedBinderyVersion(): string {
+    const fromEnv = process.env['BINDERY_VERSION']?.trim();
+    if (fromEnv && isLikelyVersion(fromEnv)) { return fromEnv; }
+
+    const fromPkg = readVersionFromPackageJson();
+    if (fromPkg) { return fromPkg; }
+
+    const fromPath = readVersionFromPathHints();
+    if (fromPath) { return fromPath; }
+
+    return 'unknown';
+}
+
+async function fetchLatestRelease(forceRefresh = false): Promise<LatestRelease> {
+    const ttlMs = 60 * 60 * 1000;
+    const now = Date.now();
+    const disableCache = /^(1|true|yes|on)$/i.test(process.env['BINDERY_DISABLE_UPDATE_CACHE'] ?? '');
+    if (!disableCache && !forceRefresh && latestReleaseCache && now - latestReleaseCache.fetchedAt < ttlMs) {
+        return latestReleaseCache.data;
+    }
+
+    const response = await fetch(GITHUB_LATEST_RELEASE_API, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'bindery-mcp-health-check',
+        },
+        signal: AbortSignal.timeout(6000),
+    });
+
+    if (!response.ok) {
+        throw new Error(`GitHub latest-release check failed with HTTP ${response.status}.`);
+    }
+
+    const json = await response.json() as LatestRelease;
+    if (!disableCache) {
+        latestReleaseCache = { fetchedAt: now, data: json };
+    }
+    return json;
+}
+
+function ensureSafeExtractPath(baseDir: string, entryName: string): string | null {
+    const normalized = entryName.replaceAll('\\', '/').replace(/^\/+/, '');
+    if (!normalized || normalized.includes('..')) { return null; }
+    const resolved = path.resolve(baseDir, normalized);
+    const rel = path.relative(baseDir, resolved);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) { return null; }
+    return resolved;
+}
+
+function extractZipToDirectory(zipBuffer: Buffer, destinationDir: string): number {
+    const entries = unzipSync(new Uint8Array(zipBuffer));
+    let written = 0;
+
+    for (const [entryName, content] of Object.entries(entries)) {
+        if (!entryName || entryName.endsWith('/')) { continue; }
+        const target = ensureSafeExtractPath(destinationDir, entryName);
+        if (!target) { continue; }
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, Buffer.from(content));
+        written++;
+    }
+
+    return written;
+}
+
+function formatUpdateGuidance(installedVersion: string, latestVersion: string, releaseUrl: string): string {
+    return [
+        `I see you have bindery version ${installedVersion} installed, the latest is ${latestVersion}. Get it at ${releaseUrl}`,
+        'ChatGPT: use the MCP interface (Settings -> Plug-ins -> MCPs) to update/repoint the server instead of editing config.toml directly.',
+        'Claude Desktop/Cowork: install the .mcpb file from Releases in Settings -> Extensions -> Install from file.',
+    ].join('\n');
 }
 
 type GitExecResult = { stdout: string; stderr: string; status: number | null };
@@ -463,7 +613,7 @@ function getOutdatedAiFiles(root: string, enabledTargets: Set<string>): Outdated
     return outdated;
 }
 
-export function toolHealth(root: string): string {
+export async function toolHealth(root: string): Promise<string> {
     const settingsPath = path.join(root, '.bindery', 'settings.json');
     const settingsStatus = fs.existsSync(settingsPath)
         ? 'present'
@@ -497,6 +647,30 @@ export function toolHealth(root: string): string {
     const enabledTargets = new Set<string>(validTargets ?? ALL_AI_TARGETS);
     const aiVersionsOutdated = getOutdatedAiFiles(root, enabledTargets);
 
+    const installedVersion = installedBinderyVersion();
+    let latestVersion: string | null = null;
+    let latestReleaseUrl = 'https://github.com/evdboom/Bindery/releases/latest';
+    let updateCheckError: string | null = null;
+
+    try {
+        const release = await fetchLatestRelease();
+        latestVersion = release.tag_name?.trim() || null;
+        latestReleaseUrl = release.html_url?.trim() || latestReleaseUrl;
+    } catch (error) {
+        updateCheckError = error instanceof Error ? error.message : String(error);
+    }
+
+    const updateAvailable = installedVersion !== 'unknown' && !!latestVersion
+        ? compareSemverLoose(installedVersion, latestVersion) < 0
+        : null;
+
+    const updateMessage = updateAvailable
+        ? formatUpdateGuidance(installedVersion, latestVersion as string, latestReleaseUrl)
+        : null;
+
+    const mcpDownloadLocation = process.env['BINDERY_MCP_LOCATION']?.trim() || null;
+    const canAutoDownloadRelease = !!mcpDownloadLocation;
+
     const tools = {
         git:         summarizeProbe(probeTool('git')),
         pandoc:      summarizeProbe(probeTool('pandoc')),
@@ -514,6 +688,16 @@ export function toolHealth(root: string): string {
         semantic_index_stale_reasons: semanticIndexStale,
         embeddings: embeddingsStatus,
         default_search_mode: parseSearchMode(process.env['BINDERY_DEFAULT_SEARCH_MODE']),
+        bindery_version: {
+            installed: installedVersion,
+            latest: latestVersion,
+            latest_release_url: latestReleaseUrl,
+            update_available: updateAvailable,
+            can_auto_download_release: canAutoDownloadRelease,
+            mcp_download_location: mcpDownloadLocation,
+            check_error: updateCheckError,
+            guidance: updateMessage,
+        },
         tools,
         ai_version_outdated: aiVersionsOutdated.length > 0,
         ai_versions_outdated: aiVersionsOutdated,
@@ -523,6 +707,77 @@ export function toolHealth(root: string): string {
     };
 
     return JSON.stringify(response, null, 2);
+}
+
+export interface DownloadLatestMcpArgs {
+    client?: 'standalone' | 'chatgpt' | 'lmstudio' | 'other' | 'claude';
+}
+
+export async function toolDownloadLatestMcp(_root: string, args: DownloadLatestMcpArgs): Promise<string> {
+    if ((args.client ?? '').toLowerCase() === 'claude') {
+        return [
+            'Download skipped: this ZIP updater is not for Claude Desktop/Cowork.',
+            'Use the .mcpb release asset instead: https://github.com/evdboom/Bindery/releases/latest',
+            'Claude path: Settings -> Extensions -> Install from file.',
+        ].join('\n');
+    }
+
+    const configuredLocation = process.env['BINDERY_MCP_LOCATION']?.trim();
+    if (!configuredLocation) {
+        return [
+            'Download service not configured. Set BINDERY_MCP_LOCATION to a stable folder first.',
+            String.raw`Example: BINDERY_MCP_LOCATION=C:\tools`,
+            'Then call this tool again to download and unpack the latest standalone MCP ZIP.',
+        ].join('\n');
+    }
+
+    const destinationRoot = path.resolve(configuredLocation);
+    fs.mkdirSync(destinationRoot, { recursive: true });
+
+    const release = await fetchLatestRelease(true);
+    const latestVersion = release.tag_name?.trim() || 'unknown';
+    const releaseUrl = release.html_url?.trim() || 'https://github.com/evdboom/Bindery/releases/latest';
+    const zipAsset = (release.assets ?? []).find(asset =>
+        asset.name.toLowerCase().startsWith('bindery-mcp-server-') && asset.name.toLowerCase().endsWith('.zip')
+    );
+
+    if (!zipAsset?.browser_download_url) {
+        return [
+            'Could not find a standalone MCP ZIP asset in the latest release.',
+            `Latest release: ${releaseUrl}`,
+        ].join('\n');
+    }
+
+    const destinationDir = path.join(destinationRoot, `bindery-mcp-server-${latestVersion}`);
+    fs.mkdirSync(destinationDir, { recursive: true });
+
+    const response = await fetch(zipAsset.browser_download_url, {
+        method: 'GET',
+        headers: { 'User-Agent': 'bindery-mcp-downloader' },
+        signal: AbortSignal.timeout(20000),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Download failed with HTTP ${response.status}.`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const extractedFiles = extractZipToDirectory(Buffer.from(arrayBuffer), destinationDir);
+    const serverEntry = path.join(destinationDir, 'server', 'index.js');
+
+    const guidance = [
+        `Downloaded and unpacked Bindery standalone MCP ${latestVersion} to: ${destinationDir}`,
+        `Extracted files: ${extractedFiles}`,
+        '',
+        'Update guidance:',
+        '1) In your MCP client UI, point the server command to node and args to the extracted server/index.js path.',
+        `2) Recommended args entry: ${serverEntry}`,
+        '3) For ChatGPT, use Settings -> Plug-ins -> MCPs to reconnect/repoint this server.',
+        '4) Do not use this ZIP flow for Claude Desktop/Cowork; use the .mcpb installer from Releases instead.',
+        `Release page: ${releaseUrl}`,
+    ];
+
+    return guidance.join('\n');
 }
 
 function summarizeProbe(p: ProbeResult): { available: boolean; path: string | null; version: string | null } {

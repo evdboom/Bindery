@@ -33,7 +33,7 @@ To install manually without using published Claude Connectors
 1. Download the `bindery-mcp-server-*.zip` file from the latest release
 2. Unzip it to a stable folder
 3. In your MCP client, add a new MCP server.
-   - eg. in ChatGPT Work -> **Settings** -> **Plug-ins** -> **MCP's** tab
+   - eg. in ChatGPT Work -> **Settings** -> **Plug-ins** -> **MCPs** tab
 4. With:
    - Command: `node`
    - Args: absolute path to `server/index.js` from the unzipped folder
@@ -42,6 +42,15 @@ To install manually without using published Claude Connectors
    - `BINDERY_OLLAMA_URL` (optional): Ollama endpoint for semantic features
    - `BINDERY_ENABLE_SEMANTIC_INDEX` (optional): `true` to enable full semantic index builds
    - `BINDERY_DEFAULT_SEARCH_MODE` (optional): `lexical`, `semantic_rerank`, or `full_semantic`
+   - `BINDERY_MCP_LOCATION` (optional): stable folder for `bindery_download_latest_mcp` to download/unpack the latest standalone ZIP
+
+### Update guidance
+
+- `bindery_health` includes installed vs latest Bindery release information.
+- `bindery_health` also returns `can_auto_download_release` and `mcp_download_location` based on `BINDERY_MCP_LOCATION`.
+- If outdated, agents should report installed version, latest version, and the release URL.
+- `bindery_download_latest_mcp` is for standalone ZIP-based MCP clients only; it downloads and unpacks but never edits client settings.
+- Do not use `bindery_download_latest_mcp` in Claude Desktop/Cowork. For Claude, always install/update via `.mcpb` in Settings -> Extensions.
 
 ## Configuration
 
@@ -177,7 +186,8 @@ table with issue type, location, and the reference that contradicts it.
 |---|---|
 | `bindery_list_books` | List all configured book names |
 | `bindery_identify_book` | Match a working directory to a book name |
-| `bindery_health` | Server status: settings, index, embedding backend |
+| `bindery_health` | Server status: settings, index, embedding backend, and latest release availability |
+| `bindery_download_latest_mcp` | Download and unpack latest standalone MCP ZIP into `BINDERY_MCP_LOCATION` (not for Claude `.mcpb` installs) |
 | `bindery_init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, generated `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory scaffold |
 | `bindery_setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, and refresh generated `.bindery/README.md` |
 | `bindery_index_build` | Build or rebuild the lexical index and, when enabled, the semantic embedding index |

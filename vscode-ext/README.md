@@ -64,7 +64,8 @@ Bindery includes a bundled MCP server that makes your book's chapters, arc files
 
 | Tool | Description |
 |------|-------------|
-| `bindery_health` | Check workspace status: settings, search index, and embedding backend |
+| `bindery_health` | Check workspace status: settings, search index, embedding backend, and latest release availability |
+| `bindery_download_latest_mcp` | Download/unpack latest standalone MCP ZIP into `BINDERY_MCP_LOCATION` (does not edit client settings; not for Claude `.mcpb` installs) |
 | `bindery_init_workspace` | Create or update `.bindery/settings.json`, `translations.json`, `.bindery/README.md`, and the opinionated Arc / Notes / Characters / SESSION / PREFERENCES / memory scaffold |
 | `bindery_setup_ai_files` | Generate AI instruction files (CLAUDE.md, copilot-instructions.md, etc.), Claude skills, and refresh generated `.bindery/README.md` |
 | `bindery_settings_update` | Merge a partial patch into `.bindery/settings.json` |

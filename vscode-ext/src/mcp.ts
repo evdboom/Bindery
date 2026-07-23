@@ -77,9 +77,11 @@ interface MemoryCompactInput  { file: string; compacted_content: string }
 interface SessionFocusGetInput    { section?: string }
 interface SessionFocusUpdateInput { currentFocus?: string; nextActions?: string; openQuestions?: string; handoffNotes?: string; mode?: 'replace' | 'append' }
 interface InboxResolveInput       { items: number[] }
+interface DownloadLatestMcpInput  { client?: 'standalone' | 'chatgpt' | 'lmstudio' | 'other' | 'claude' }
 
 interface McpTools {
-    toolHealth:           (_root: string) => string;
+    toolHealth:           (_root: string) => Promise<string>;
+    toolDownloadLatestMcp: (_root: string, _args: DownloadLatestMcpInput) => Promise<string>;
     toolIndexBuild:       (_root: string) => Promise<string>;
     toolIndexStatus:      (_root: string) => string;
     toolGetText:          (_root: string, _args: GetTextInput) => string;
@@ -161,7 +163,11 @@ export function registerLmTools(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(
         vscode.lm.registerTool('bindery_health', {
-            invoke: (_opts, _token) => ok(t.toolHealth(requireRoot())),
+            invoke: async (_opts, _token) => ok(await t.toolHealth(requireRoot())),
+        }),
+
+        vscode.lm.registerTool<DownloadLatestMcpInput>('bindery_download_latest_mcp', {
+            invoke: async (opts, _token) => ok(await t.toolDownloadLatestMcp(requireRoot(), opts.input ?? {})),
         }),
 
         vscode.lm.registerTool('bindery_index_build', {

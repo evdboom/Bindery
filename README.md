@@ -23,7 +23,7 @@ The **Bindery** extension provides:
 - **Dialect & translation management** — extensible substitution rules for dialect exports (e.g. US→UK), plus cross-language glossaries in `.bindery/translations.json`
 - **Multi-language support** — configurable per-language chapter labelling and folder structure, with dialect derivatives
 - **Opinionated workspace setup** — `.bindery/settings.json` plus Arc, Notes, Characters, SESSION, PREFERENCES, and memory scaffolding
-- **MCP integration** — registers 38 Bindery tools for GitHub Copilot Chat and writes `.vscode/mcp.json` for Claude / Codex
+- **MCP integration** — registers Bindery tools for GitHub Copilot Chat and writes `.vscode/mcp.json` for Claude / Codex
 
 Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=option-a.bindery) or:
 
@@ -117,7 +117,7 @@ Release assets now include two MCP package formats:
 1. Download `bindery-mcp-server-*.zip` from the [latest release](../../releases/latest)
 2. Unzip it to a stable folder
 3. In your MCP client, add an MCP server with:
-  - eg. in ChatGPT Work -> **Settings** -> **Plug-ins** -> **MCP's** tab
+  - eg. in ChatGPT Work -> **Settings** -> **Plug-ins** -> **MCPs** tab
   - Command: `node`
   - Args: absolute path to `server/index.js` from the unzipped folder
 4. Set environment variables:
@@ -125,7 +125,16 @@ Release assets now include two MCP package formats:
   - `BINDERY_OLLAMA_URL` (optional): Ollama endpoint for semantic features
   - `BINDERY_ENABLE_SEMANTIC_INDEX` (optional): `true` to enable full semantic index builds
   - `BINDERY_DEFAULT_SEARCH_MODE` (optional): `lexical`, `semantic_rerank`, or `full_semantic`
+    - `BINDERY_MCP_LOCATION` (optional): stable folder used by `bindery_download_latest_mcp` to download and unpack the latest standalone MCP ZIP (tool never edits client settings)
 5. Save and reconnect the MCP server
+
+  ### Update behavior
+
+  - `bindery_health` checks the latest GitHub release and reports installed vs latest version in its JSON response.
+  - `bindery_health` also reports `can_auto_download_release` and `mcp_download_location` based on `BINDERY_MCP_LOCATION`.
+  - When outdated, agents should tell the user: installed version, latest version, and the release URL.
+  - `bindery_download_latest_mcp` is only for standalone ZIP-based MCP clients (for example ChatGPT Work or LM Studio), and only when `BINDERY_MCP_LOCATION` is configured.
+  - Claude Desktop/Cowork should use the `.mcpb` installer flow, not the ZIP updater tool.
 
 ## Architecture Overview
 
@@ -223,7 +232,7 @@ On all platforms the extension resolves tool paths in this order:
    - **macOS**: `/opt/homebrew/bin/pandoc`, `/usr/local/bin/pandoc`, `/Applications/LibreOffice.app/Contents/MacOS/soffice`
    - **Linux**: `/usr/bin/pandoc`, `/usr/bin/libreoffice`
 
-You usually do not need to configure anything — install Pandoc/LibreOffice normally and exports will work. Use the `bindery_health` MCP tool to see what was detected.
+You usually do not need to configure anything — install Pandoc/LibreOffice normally and exports will work. Use the `bindery_health` MCP tool to see what was detected and whether a newer Bindery release is available.
 
 ## Known limitations
 
