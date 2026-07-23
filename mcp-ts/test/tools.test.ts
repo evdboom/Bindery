@@ -51,17 +51,11 @@ afterEach(() => {
 });
 
 describe('mcp tools', () => {
-  const originalFetch = globalThis.fetch;
   const originalDisableUpdateCache = process.env['BINDERY_DISABLE_UPDATE_CACHE'];
   const originalMcpLocation = process.env['BINDERY_MCP_LOCATION'];
 
   afterEach(() => {
     vi.restoreAllMocks();
-    if (originalFetch === undefined) {
-      delete (globalThis as { fetch?: typeof fetch }).fetch;
-    } else {
-      globalThis.fetch = originalFetch;
-    }
     if (originalDisableUpdateCache === undefined) {
       delete process.env['BINDERY_DISABLE_UPDATE_CACHE'];
     } else {
