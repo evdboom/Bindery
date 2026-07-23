@@ -736,7 +736,8 @@ export async function toolDownloadLatestMcp(_root: string, args: DownloadLatestM
     fs.mkdirSync(destinationRoot, { recursive: true });
 
     const release = await fetchLatestRelease(true);
-    const latestVersion = release.tag_name?.trim() || 'unknown';
+    const tag = release.tag_name?.trim();
+    const latestVersion = tag && isLikelyVersion(tag) ? tag : 'unknown';
     const releaseUrl = release.html_url?.trim() || 'https://github.com/evdboom/Bindery/releases/latest';
     const zipAsset = (release.assets ?? []).find(asset =>
         asset.name.toLowerCase().startsWith('bindery-mcp-server-') && asset.name.toLowerCase().endsWith('.zip')
