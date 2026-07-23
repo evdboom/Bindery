@@ -2,9 +2,9 @@
 
 ## Highlights
 
-- `bindery_health` now checks the latest GitHub release and reports installed/latest version, plus whether auto-download is available (`can_auto_download_release`) when `BINDERY_MCP_LOCATION` is configured
-- Added optional `BINDERY_MCP_LOCATION` + `bindery_download_latest_mcp` for standalone ZIP-based MCP clients; the tool only downloads/unpacks and never edits client settings (Claude Desktop/Cowork remains `.mcpb` install flow)
-- See attached assets below for install-ready downloads.
+- Added a unified image-handling pipeline for exports: chapter image links are normalized and rewritten for portable merged output.
+- Added legacy image migration support for older workspaces, including migration proposals and automatic settings updates when applied.
+- VS Code extension and Obsidian plugin now prompt for legacy image migration and report migration results after applying changes.
 
 ## Release Assets
 
