@@ -24,9 +24,17 @@ describe('mcp index contract', () => {
   it('tools that contact external services declare openWorldHint: true', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
 
-    // Find the annotation block for each tool that contacts an external service and verify openWorldHint: true
-    // bindery_index_build / bindery_search → Ollama reranking; bindery_update_workspace → git fetch/pull; bindery_git_snapshot → git push
-    const externalTools = ['bindery_index_build', 'bindery_search', 'bindery_update_workspace', 'bindery_git_snapshot'];
+    // Find the annotation block for each tool that contacts an external service and verify openWorldHint: true.
+    // bindery_health / bindery_download_latest_mcp → GitHub releases API, bindery_index_build / bindery_search
+    // → Ollama reranking, bindery_update_workspace → git fetch/pull, bindery_git_snapshot → git push.
+    const externalTools = [
+      'bindery_health',
+      'bindery_download_latest_mcp',
+      'bindery_index_build',
+      'bindery_search',
+      'bindery_update_workspace',
+      'bindery_git_snapshot',
+    ];
     for (const toolName of externalTools) {
       // Match registerTool('bindery_search', { ... annotations: { ... } ... })
       const toolBlockMatch = new RegExp(
@@ -42,7 +50,14 @@ describe('mcp index contract', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf-8');
 
     // Tools that legitimately contact external services (Ollama, git remotes, etc.)
-    const externalToolNames = new Set(['bindery_index_build', 'bindery_search', 'bindery_update_workspace', 'bindery_git_snapshot']);
+    const externalToolNames = new Set([
+      'bindery_health',
+      'bindery_download_latest_mcp',
+      'bindery_index_build',
+      'bindery_search',
+      'bindery_update_workspace',
+      'bindery_git_snapshot',
+    ]);
 
     // Extract all registerTool blocks and check non-Ollama tools lack openWorldHint
     const toolBlockRegex = /server\.registerTool\('([^']+)'[\s\S]*?annotations:\s*\{([^}]*)\}/g;

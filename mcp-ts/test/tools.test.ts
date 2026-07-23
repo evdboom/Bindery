@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   toolGetChapter,
@@ -23,6 +23,7 @@ import {
   toolSettingsUpdate,
   toolSearch,
   toolHealth,
+  toolDownloadLatestMcp,
   toolSetupAiFiles,
   toolSessionFocusGet,
   toolSessionFocusUpdate,
@@ -50,6 +51,23 @@ afterEach(() => {
 });
 
 describe('mcp tools', () => {
+  const originalDisableUpdateCache = process.env['BINDERY_DISABLE_UPDATE_CACHE'];
+  const originalMcpLocation = process.env['BINDERY_MCP_LOCATION'];
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    if (originalDisableUpdateCache === undefined) {
+      delete process.env['BINDERY_DISABLE_UPDATE_CACHE'];
+    } else {
+      process.env['BINDERY_DISABLE_UPDATE_CACHE'] = originalDisableUpdateCache;
+    }
+    if (originalMcpLocation === undefined) {
+      delete process.env['BINDERY_MCP_LOCATION'];
+    } else {
+      process.env['BINDERY_MCP_LOCATION'] = originalMcpLocation;
+    }
+  });
+
   it('prevents path traversal in get_text', () => {
     const root = makeRoot();
     write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter1.md'), '# Ch1\ninside\n');
@@ -371,7 +389,8 @@ describe('mcp tools', () => {
     expect(parsed.skill_files?.reupload_required).toEqual(['.claude/skills/read-aloud/SKILL.md']);
   });
 
-  it('health skips claude files when aiTargets excludes claude', () => {
+  it('health skips claude files when aiTargets excludes claude', async () => {
+    process.env['BINDERY_DISABLE_UPDATE_CACHE'] = 'true';
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
       bookTitle: 'Test Book',
@@ -395,7 +414,13 @@ describe('mcp tools', () => {
     versionFile.versions['.claude/skills/review/SKILL.md'].version = 0;
     fs.writeFileSync(versionPath, JSON.stringify(versionFile, null, 2) + '\n', 'utf-8');
 
-    const healthRaw = toolHealth(root);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      tag_name: '1.1.6',
+      html_url: 'https://github.com/evdboom/Bindery/releases/tag/1.1.6',
+      assets: [],
+    }), { status: 200 }));
+
+    const healthRaw = await toolHealth(root);
     const health = JSON.parse(healthRaw) as {
       ai_version_outdated?: boolean;
       ai_versions_outdated?: Array<{ file: string }>;
@@ -411,7 +436,8 @@ describe('mcp tools', () => {
     expect(health).toHaveProperty('semantic_index');
   });
 
-  it('health includes claude files when aiTargets includes claude', () => {
+  it('health includes claude files when aiTargets includes claude', async () => {
+    process.env['BINDERY_DISABLE_UPDATE_CACHE'] = 'true';
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
       bookTitle: 'Test Book',
@@ -430,7 +456,13 @@ describe('mcp tools', () => {
     versionFile.versions['.claude/skills/review/SKILL.md'].version = 0;
     fs.writeFileSync(versionPath, JSON.stringify(versionFile, null, 2) + '\n', 'utf-8');
 
-    const healthRaw = toolHealth(root);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      tag_name: '1.1.6',
+      html_url: 'https://github.com/evdboom/Bindery/releases/tag/1.1.6',
+      assets: [],
+    }), { status: 200 }));
+
+    const healthRaw = await toolHealth(root);
     const health = JSON.parse(healthRaw) as {
       ai_version_outdated?: boolean;
       ai_versions_outdated?: Array<{ file: string }>;
@@ -500,7 +532,8 @@ describe('mcp tools', () => {
     expect(settings.aiSkills).toBeUndefined();
   });
 
-  it('health reports per-file AI version mismatches', () => {
+  it('health reports per-file AI version mismatches', async () => {
+    process.env['BINDERY_DISABLE_UPDATE_CACHE'] = 'true';
     const root = makeRoot();
     write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
       bookTitle: 'Test Book',
@@ -517,7 +550,13 @@ describe('mcp tools', () => {
     versionFile.versions['.claude/skills/review/SKILL.md'].version = 0;
     fs.writeFileSync(versionPath, JSON.stringify(versionFile, null, 2) + '\n', 'utf-8');
 
-    const healthRaw = toolHealth(root);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      tag_name: '1.1.6',
+      html_url: 'https://github.com/evdboom/Bindery/releases/tag/1.1.6',
+      assets: [],
+    }), { status: 200 }));
+
+    const healthRaw = await toolHealth(root);
     const health = JSON.parse(healthRaw) as {
       ai_version_outdated?: boolean;
       ai_versions_outdated?: Array<{ file: string; label: string; }>;
@@ -526,6 +565,91 @@ describe('mcp tools', () => {
     expect(health.ai_version_outdated).toBe(true);
     expect(health.ai_versions_outdated?.some(x => x.file === '.claude/skills/review/SKILL.md')).toBe(true);
     expect(health.ai_versions_outdated?.some(x => x.label === 'review skill')).toBe(true);
+  });
+
+  it('health reports available release updates with user guidance', async () => {
+    process.env['BINDERY_DISABLE_UPDATE_CACHE'] = 'true';
+    delete process.env['BINDERY_MCP_LOCATION'];
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+    }, null, 2) + '\n');
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      tag_name: '9.9.9',
+      html_url: 'https://github.com/evdboom/Bindery/releases/tag/9.9.9',
+      assets: [],
+    }), { status: 200 }));
+
+    const raw = await toolHealth(root);
+    const parsed = JSON.parse(raw) as {
+      bindery_version?: {
+        installed?: string;
+        latest?: string;
+        update_available?: boolean | null;
+        can_auto_download_release?: boolean;
+        mcp_download_location?: string | null;
+        guidance?: string | null;
+      };
+    };
+
+    expect(parsed.bindery_version?.latest).toBe('9.9.9');
+    expect(parsed.bindery_version?.update_available).toBe(true);
+    expect(parsed.bindery_version?.can_auto_download_release).toBe(false);
+    expect(parsed.bindery_version?.mcp_download_location).toBeNull();
+    expect(parsed.bindery_version?.guidance).toContain('I see you have bindery version');
+    expect(parsed.bindery_version?.guidance).toContain('ChatGPT: use the MCP interface');
+  });
+
+  it('health reports auto-download capability when BINDERY_MCP_LOCATION is configured', async () => {
+    process.env['BINDERY_DISABLE_UPDATE_CACHE'] = 'true';
+    process.env['BINDERY_MCP_LOCATION'] = 'C:\\tools';
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+    }, null, 2) + '\n');
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      tag_name: '9.9.9',
+      html_url: 'https://github.com/evdboom/Bindery/releases/tag/9.9.9',
+      assets: [],
+    }), { status: 200 }));
+
+    const raw = await toolHealth(root);
+    const parsed = JSON.parse(raw) as {
+      bindery_version?: {
+        can_auto_download_release?: boolean;
+        mcp_download_location?: string | null;
+      };
+    };
+
+    expect(parsed.bindery_version?.can_auto_download_release).toBe(true);
+    expect(parsed.bindery_version?.mcp_download_location).toBe('C:\\tools');
+  });
+
+  it('download_latest_mcp refuses Claude flow and requires configured location', async () => {
+    const root = makeRoot();
+
+    const claude = await toolDownloadLatestMcp(root, { client: 'claude' });
+    expect(claude).toContain('not for Claude Desktop/Cowork');
+
+    const oldLocation = process.env['BINDERY_MCP_LOCATION'];
+    delete process.env['BINDERY_MCP_LOCATION'];
+    try {
+      const missing = await toolDownloadLatestMcp(root, { client: 'chatgpt' });
+      expect(missing).toContain('BINDERY_MCP_LOCATION');
+      expect(missing).toContain('Download service not configured');
+    } finally {
+      if (oldLocation === undefined) {
+        delete process.env['BINDERY_MCP_LOCATION'];
+      } else {
+        process.env['BINDERY_MCP_LOCATION'] = oldLocation;
+      }
+    }
   });
 
   it('reports an empty state when the session file is missing', () => {

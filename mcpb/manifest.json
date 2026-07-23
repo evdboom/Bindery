@@ -60,7 +60,8 @@
   "tools": [
     { "name": "bindery_list_books",       "description": "List all books configured in the MCP server. Call this first to discover available book names." },
     { "name": "bindery_identify_book",    "description": "Identify which book matches a working directory. Pass your cwd and the server matches by folder name or .bindery/settings.json." },
-    { "name": "bindery_health",           "description": "Check server status: active book, settings, search index, and embedding backend." },
+    { "name": "bindery_health",           "description": "Check server status: active book, settings, search index, embedding backend, and latest Bindery release availability." },
+    { "name": "bindery_download_latest_mcp", "description": "Download and unpack the latest standalone bindery-mcp-server zip into BINDERY_MCP_LOCATION. Does not edit client settings; not for Claude Desktop/Cowork (.mcpb install)." },
     { "name": "bindery_init_workspace",   "description": "Create or update .bindery/settings.json, translations.json, .bindery/README.md, and the opinionated Arc, Notes, Characters, SESSION, PREFERENCES, and memory scaffold. All arguments optional — smart defaults used if omitted. Detects language folders automatically. Safe to run on an existing workspace." },
     { "name": "bindery_setup_ai_files",   "description": "Generate AI assistant instruction files (CLAUDE.md, copilot-instructions.md, .cursor/rules, AGENTS.md), Claude skill templates, and the generated .bindery/README.md capability reference from settings. Run bindery_init_workspace first. Skips existing files unless overwrite: true." },
     { "name": "bindery_index_build",      "description": "Build or rebuild the lexical search index and, when enabled, the semantic embedding index for a book." },

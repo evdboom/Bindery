@@ -2,7 +2,8 @@
 
 ## Highlights
 
-- Uniformed template generation
+- `bindery_health` now checks the latest GitHub release and reports installed/latest version, plus whether auto-download is available (`can_auto_download_release`) when `BINDERY_MCP_LOCATION` is configured
+- Added optional `BINDERY_MCP_LOCATION` + `bindery_download_latest_mcp` for standalone ZIP-based MCP clients; the tool only downloads/unpacks and never edits client settings (Claude Desktop/Cowork remains `.mcpb` install flow)
 - See attached assets below for install-ready downloads.
 
 ## Release Assets
