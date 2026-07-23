@@ -10,6 +10,7 @@ import * as path from 'node:path';
 import * as cp from 'node:child_process';
 import { updateTypography } from '@bindery/core';
 import type { LanguageConfig, UkReplacement } from '@bindery/core';
+import { rewriteImageLinks, makePortableMarkdown, legacyImageName, hasImageLink } from './images.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,8 @@ export interface MergeOptions {
     author?: string;
     /** Book title override */
     bookTitle?: string;
+    /** Book-level fallback cover image (relative to root), used when `language.coverImage` is unset. */
+    coverImage?: string;
     /** Output directory (relative to root) */
     outputDir: string;
     /** Merged file prefix */
@@ -60,13 +63,13 @@ interface ActInfo {
     subtitle?: string;
 }
 
-type FileType =
+export type FileType =
     | { kind: 'prologue' }
     | { kind: 'act'; act: ActInfo }
     | { kind: 'chapter'; act: ActInfo; num: number }
     | { kind: 'epilogue' };
 
-interface OrderedFile {
+export interface OrderedFile {
     filePath: string;
     fileType: FileType;
 }
@@ -79,7 +82,6 @@ const H1_RE = /^\s*#\s+(.+?)\s*$/m;
 const SLUG_CLEAN_RE = /[^\p{L}\p{N}\s-]/gu;
 const BLANK_LINES_RE = /\n{2,}/g;
 const FIRST_H1_RE = /^(\s*)#\s+/m;
-const HEADING_LINE_RE = /^#[^\n]*\n/m;
 const FENCE_RE = /^\s*```/;
 
 // ─── UK Conversion (US → UK) ───────────────────────────────────────────────
@@ -340,7 +342,7 @@ function formatActTitle(act: ActInfo, lang: LanguageConfig): string {
 
 // ─── File Discovery ─────────────────────────────────────────────────────────
 
-function getOrderedFiles(langPath: string, lang: LanguageConfig): OrderedFile[] {
+export function getOrderedFiles(langPath: string, lang: LanguageConfig): OrderedFile[] {
     const files: OrderedFile[] = [];
 
     // Prologue
@@ -454,7 +456,7 @@ const PAGE_BREAK = `
 \`\`\`
 `;
 
-function buildMarkdownContent(files: OrderedFile[], options: MergeOptions): string {
+function buildMarkdownContent(files: OrderedFile[], options: MergeOptions, resolver: ImageResolver): string {
     let content = '';
 
     if (options.includeToc) {
@@ -468,8 +470,7 @@ function buildMarkdownContent(files: OrderedFile[], options: MergeOptions): stri
         switch (file.fileType.kind) {
             case 'prologue':
             case 'epilogue': {
-                const fileContent = fs.readFileSync(file.filePath, 'utf-8');
-                content += fileContent;
+                content += resolver.read(file);
                 break;
             }
             case 'act':
@@ -477,12 +478,11 @@ function buildMarkdownContent(files: OrderedFile[], options: MergeOptions): stri
                 content += `# ${formatActTitle(file.fileType.act, options.language)}\n\n`;
                 break;
             case 'chapter': {
-                const fileContent = fs.readFileSync(file.filePath, 'utf-8');
                 if (currentAct !== file.fileType.act.number) {
                     currentAct = file.fileType.act.number;
                     content += `# ${formatActTitle(file.fileType.act, options.language)}\n\n`;
                 }
-                content += fileContent;
+                content += resolver.read(file);
                 break;
             }
         }
@@ -506,36 +506,111 @@ function hasNextContentFile(files: OrderedFile[], currentIndex: number): boolean
     return false;
 }
 
-function imageMarkdownFor(file: OrderedFile, options: MergeOptions): string | undefined {
-    let imageName: string;
-    switch (file.fileType.kind) {
-        case 'prologue': imageName = 'prologue.jpg'; break;
-        case 'epilogue': imageName = 'epilogue.jpg'; break;
-        case 'chapter': imageName = `chapter${file.fileType.num}.jpg`; break;
-        default: return undefined;
-    }
-
-    const imagePath = path.join(options.root, 'images', imageName);
-    if (!fs.existsSync(imagePath)) { return undefined; }
-    return `![](${imagePath.replaceAll(/\\/g, '/')})\n\n`;
+/**
+ * Reads chapter content with markdown image links resolved to absolute paths.
+ * Caches per file so multiple output types report each warning only once.
+ */
+interface ImageResolver {
+    read(file: OrderedFile): string;
+    warnings: string[];
 }
 
-function insertImageAfterHeading(content: string, imageMd: string): string {
-    const m = HEADING_LINE_RE.exec(content);
-    if (m) {
-        const end = m.index + m[0].length;
-        return content.substring(0, end) + imageMd + content.substring(end);
-    }
-    return imageMd + content;
+function createImageResolver(): ImageResolver {
+    const cache = new Map<string, string>();
+    const warnings: string[] = [];
+    return {
+        warnings,
+        read(file: OrderedFile): string {
+            const cached = cache.get(file.filePath);
+            if (cached !== undefined) { return cached; }
+            const raw = fs.readFileSync(file.filePath, 'utf-8');
+            const result = rewriteImageLinks(raw, path.dirname(file.filePath), path.basename(file.filePath));
+            warnings.push(...result.warnings);
+            cache.set(file.filePath, result.content);
+            return result.content;
+        },
+    };
 }
 
-function coverMarkdown(options: MergeOptions): string | undefined {
-    const coverPath = path.join(options.root, options.storyFolder, options.language.folderName, 'cover.jpg');
-    if (!fs.existsSync(coverPath)) { return undefined; }
+/**
+ * Legacy implicit chapter images (images/chapterN.jpg) are no longer injected
+ * automatically. Warn when such an image exists but its file has no inline link,
+ * so users who relied on the old behavior are told at export time.
+ */
+function detectOrphanedLegacyImages(files: OrderedFile[], options: MergeOptions, resolver: ImageResolver): string[] {
+    const warnings: string[] = [];
+    for (const file of files) {
+        const kind = file.fileType.kind;
+        if (kind === 'act') { continue; }
+        const name = legacyImageName(kind, kind === 'chapter' ? file.fileType.num : undefined);
+        const imagePath = path.join(options.root, 'images', name);
+        if (!fs.existsSync(imagePath)) { continue; }
+        if (!hasImageLink(resolver.read(file))) {
+            warnings.push(
+                `images/${name} exists but ${path.basename(file.filePath)} has no image link. ` +
+                'Implicit chapter images are no longer inserted — add ![](path/to/image) to the chapter, ' +
+                'or run the image link migration in VS Code/Obsidian.'
+            );
+        }
+    }
+    return warnings;
+}
+
+export interface CoverResolution {
+    coverPath?: string;
+    warning?: string;
+}
+
+/**
+ * Resolve the cover image for a language, in priority order:
+ *
+ * 1. `language.coverImage` — per-language cover (e.g. translated cover text/art).
+ * 2. `options.coverImage` — book-level fallback, for a single cover design shared
+ *    across every translation.
+ * 3. Legacy `<storyFolder>/<langFolder>/cover.jpg` convention, with a warning
+ *    nudging the user to set one of the above (suggested: `images/<code>-cover.jpg`).
+ *
+ * All paths are relative to the book root.
+ */
+export function resolveCoverImage(options: MergeOptions): CoverResolution {
+    const languageConfigured = options.language.coverImage?.trim();
+    const bookConfigured = options.coverImage?.trim();
+    const configured = languageConfigured || bookConfigured;
+
+    if (configured) {
+        const resolved = path.join(options.root, configured);
+        if (fs.existsSync(resolved)) {
+            return { coverPath: resolved };
+        }
+        const scope = languageConfigured ? `language ${options.language.code}` : 'book-level';
+        return { warning: `Configured ${scope} coverImage not found: ${configured}` };
+    }
+
+    const legacy = path.join(options.root, options.storyFolder, options.language.folderName, 'cover.jpg');
+    if (fs.existsSync(legacy)) {
+        return {
+            coverPath: legacy,
+            warning:
+                `Using legacy cover image at ${options.storyFolder}/${options.language.folderName}/cover.jpg — ` +
+                `set languages[].coverImage or a book-level coverImage in settings.json (suggested: images/${options.language.code}-cover.jpg) to make this explicit.`,
+        };
+    }
+
+    return {};
+}
+
+function coverMarkdownFor(coverPath: string | undefined): string | undefined {
+    if (!coverPath) { return undefined; }
     return `![](${coverPath.replaceAll(/\\/g, '/')})\n\n`;
 }
 
-function buildPandocContent(files: OrderedFile[], options: MergeOptions, outputType: OutputType): string {
+function buildPandocContent(
+    files: OrderedFile[],
+    options: MergeOptions,
+    outputType: OutputType,
+    resolver: ImageResolver,
+    coverPath: string | undefined
+): string {
     let content = '';
 
     const pageBreak = outputType === 'pdf'
@@ -543,7 +618,7 @@ function buildPandocContent(files: OrderedFile[], options: MergeOptions, outputT
         : PAGE_BREAK;
 
     if (outputType === 'docx' || outputType === 'pdf') {
-        const cover = coverMarkdown(options);
+        const cover = coverMarkdownFor(coverPath);
         if (cover) {
             content += cover + pageBreak + '\n';
         }
@@ -555,21 +630,14 @@ function buildPandocContent(files: OrderedFile[], options: MergeOptions, outputT
         switch (file.fileType.kind) {
             case 'prologue':
             case 'epilogue': {
-                let fileContent = fs.readFileSync(file.filePath, 'utf-8');
-                const img = imageMarkdownFor(file, options);
-                if (img) { fileContent = insertImageAfterHeading(fileContent, img); }
-                content += fileContent;
+                content += resolver.read(file);
                 break;
             }
             case 'act':
                 content += `# ${formatActTitle(file.fileType.act, options.language)}\n\n`;
                 break;
             case 'chapter': {
-                let fileContent = fs.readFileSync(file.filePath, 'utf-8');
-                fileContent = demoteH1ToH2(fileContent);
-                const img = imageMarkdownFor(file, options);
-                if (img) { fileContent = insertImageAfterHeading(fileContent, img); }
-                content += fileContent;
+                content += demoteH1ToH2(resolver.read(file));
                 break;
             }
         }
@@ -636,7 +704,8 @@ function runPandoc(
     title: string,
     lang: LanguageConfig,
     author: string | undefined,
-    pandocPath: string
+    pandocPath: string,
+    coverPath?: string
 ): Promise<void> {
     const args: string[] = [
         inputPath,
@@ -664,9 +733,8 @@ function runPandoc(
 
     if (outputType === 'epub') {
         args.push('--split-level=2');
-        const cover = path.join(root, 'Story', lang.folderName, 'cover.jpg');
-        if (fs.existsSync(cover)) {
-            args.push('--epub-cover-image', cover);
+        if (coverPath && fs.existsSync(coverPath)) {
+            args.push('--epub-cover-image', coverPath);
         }
     }
 
@@ -802,22 +870,29 @@ export async function mergeBook(options: MergeOptions): Promise<MergeResult> {
         }
 
         const title = resolveBookTitle(options);
+        const resolver = createImageResolver();
+        warnings.push(...detectOrphanedLegacyImages(files, options, resolver));
+
+        const coverResolution = resolveCoverImage(options);
+        if (coverResolution.warning) { warnings.push(coverResolution.warning); }
 
         for (const outputType of options.outputTypes) {
             const outputPath = path.join(outputDir, `${baseName}.${outputType}`);
 
             if (outputType === 'md') {
-                const content = buildMarkdownContent(files, options);
-                fs.writeFileSync(outputPath, content, 'utf-8');
+                const content = buildMarkdownContent(files, options, resolver);
+                const portable = makePortableMarkdown(content, outputDir);
+                warnings.push(...portable.warnings);
+                fs.writeFileSync(outputPath, portable.content, 'utf-8');
                 outputs.push(outputPath);
             } else if (outputType === 'pdf') {
                 const libreOfficePath = options.libreOfficePath?.trim() || 'libreoffice';
                 const tempMdPath = path.join(outputDir, `${baseName}_pdf_temp.md`);
                 const tempDocxPath = path.join(outputDir, `${baseName}_pdf_temp.docx`);
-                const content = buildPandocContent(files, options, 'docx');
+                const content = buildPandocContent(files, options, 'docx', resolver, coverResolution.coverPath);
                 fs.writeFileSync(tempMdPath, content, 'utf-8');
                 try {
-                    await runPandoc(tempMdPath, tempDocxPath, 'docx', options.root, title, options.language, options.author, options.pandocPath);
+                    await runPandoc(tempMdPath, tempDocxPath, 'docx', options.root, title, options.language, options.author, options.pandocPath, coverResolution.coverPath);
                     await runLibreOfficeToPdf(tempDocxPath, outputDir, outputPath, libreOfficePath);
                     outputs.push(outputPath);
                 } finally {
@@ -825,11 +900,11 @@ export async function mergeBook(options: MergeOptions): Promise<MergeResult> {
                     try { fs.unlinkSync(tempDocxPath); } catch { /* ignore */ }
                 }
             } else {
-                const content = buildPandocContent(files, options, outputType);
+                const content = buildPandocContent(files, options, outputType, resolver, coverResolution.coverPath);
                 const tempPath = path.join(outputDir, `${baseName}_temp.md`);
                 fs.writeFileSync(tempPath, content, 'utf-8');
                 try {
-                    await runPandoc(tempPath, outputPath, outputType, options.root, title, options.language, options.author, options.pandocPath);
+                    await runPandoc(tempPath, outputPath, outputType, options.root, title, options.language, options.author, options.pandocPath, coverResolution.coverPath);
                     outputs.push(outputPath);
                 } finally {
                     try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
@@ -837,6 +912,7 @@ export async function mergeBook(options: MergeOptions): Promise<MergeResult> {
             }
         }
 
+        warnings.push(...resolver.warnings);
         return { outputs, filesMerged: files.length, warnings };
     } finally {
         if (isLegacyUk) {

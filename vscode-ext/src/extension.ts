@@ -18,6 +18,8 @@ import { execSync, spawnSync } from 'node:child_process'
 import { updateTypography }                    from './format';
 import {
     mergeBook, checkPandoc, getBuiltInUkReplacements,
+    proposeLegacyImageMigration, applyLegacyImageMigration,
+    proposeLegacyCoverMigration, applyLegacyCoverMigration,
     type LanguageConfig, type DialectConfig, type OutputType, type MergeOptions, type UkReplacement,
 } from './merge';
 import {
@@ -123,6 +125,7 @@ interface EffectiveConfig {
     formatOnSave:    boolean;
     author:          string | undefined;
     bookTitle:       string | undefined;
+    coverImage:      string | undefined;
     languages:       LanguageConfig[];
     pandocPath:      string;
     libreOfficePath: string;
@@ -144,6 +147,7 @@ function getEffectiveConfig(wsSettings: WorkspaceSettings | null): EffectiveConf
         bookTitle: (typeof wsSettings?.bookTitle === 'string' ? wsSettings.bookTitle : undefined)
                    || vsc.get<string>('bookTitle')
                    || undefined,
+        coverImage:      wsSettings?.coverImage || undefined,
         languages:       wsSettings?.languages
                          ?? vsc.get<LanguageConfig[]>('languages')
                          ?? [DEFAULT_LANGUAGE],
@@ -744,7 +748,7 @@ async function addLanguageCommand() {
     const storyFolder = wsSettings?.storyFolder ?? 'Story';
 
     const code = await vscode.window.showInputBox({
-        title:       'Bindery: Add Language (1/6) — Language code',
+        title:       'Bindery: Add Language (1/7) — Language code',
         prompt:      'Short code (2–3 uppercase letters)',
         placeHolder: 'FR  NL  DE  ES  IT  PT  …',
         validateInput: v => /^[A-Za-z]{2,3}$/.test(v.trim()) ? undefined : 'Enter 2–3 letters',
@@ -755,37 +759,44 @@ async function addLanguageCommand() {
     const preset = KNOWN_LANGUAGES[upper];
 
     const folderName = await vscode.window.showInputBox({
-        title:       'Bindery: Add Language (2/6) — Folder name',
+        title:       'Bindery: Add Language (2/7) — Folder name',
         prompt:      'Subfolder under Story/ for this language',
         value:       preset?.folderName ?? upper,
     });
     if (!folderName?.trim()) { return; }
 
     const chapterWord = await vscode.window.showInputBox({
-        title:       'Bindery: Add Language (3/6) — Chapter word',
+        title:       'Bindery: Add Language (3/7) — Chapter word',
         prompt:      'Word used for "Chapter" in this language',
         value:       preset?.chapterWord ?? 'Chapter',
     });
     if (!chapterWord?.trim()) { return; }
 
     const actPrefix = await vscode.window.showInputBox({
-        title:       'Bindery: Add Language (4/6) — Act prefix',
+        title:       'Bindery: Add Language (4/7) — Act prefix',
         prompt:      'Word used for "Act" in this language',
         value:       preset?.actPrefix ?? 'Act',
     });
     if (!actPrefix?.trim()) { return; }
 
     const prologueLabel = await vscode.window.showInputBox({
-        title:       'Bindery: Add Language (5/6) — Prologue label',
+        title:       'Bindery: Add Language (5/7) — Prologue label',
         value:       preset?.prologueLabel ?? 'Prologue',
     });
     if (!prologueLabel?.trim()) { return; }
 
     const epilogueLabel = await vscode.window.showInputBox({
-        title:       'Bindery: Add Language (6/6) — Epilogue label',
+        title:       'Bindery: Add Language (6/7) — Epilogue label',
         value:       preset?.epilogueLabel ?? 'Epilogue',
     });
     if (!epilogueLabel?.trim()) { return; }
+
+    const coverImage = await vscode.window.showInputBox({
+        title:       'Bindery: Add Language (7/7) — Cover image path',
+        prompt:      'Path to this language\'s cover image, relative to the book root (leave blank for none)',
+        value:       `images/${upper}-cover.jpg`,
+    });
+    if (coverImage === undefined) { return; }
 
     const newLang: LanguageConfig = {
         code:          upper,
@@ -794,6 +805,7 @@ async function addLanguageCommand() {
         actPrefix:     actPrefix.trim(),
         prologueLabel: prologueLabel.trim(),
         epilogueLabel: epilogueLabel.trim(),
+        ...(coverImage.trim() ? { coverImage: coverImage.trim() } : {}),
     };
 
     // Update settings.json
@@ -996,6 +1008,7 @@ function buildMergeOptions(
         includeSeparators: true,
         author:          cfg.author,
         bookTitle,
+        coverImage:      cfg.coverImage,
         outputDir:       cfg.mergedOutputDir,
         filePrefix:      cfg.mergeFilePrefix,
         pandocPath:      cfg.pandocPath,
@@ -1750,6 +1763,67 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             } catch {
                 // Non-fatal: keep activation resilient if MCP tools are unavailable.
+            }
+        })();
+    }
+
+    // Legacy image migration — implicit images/chapterN.jpg injection and the
+    // fixed Story/<lang>/cover.jpg convention were replaced by inline markdown
+    // links and an explicit coverImage setting; offer a one-time conversion.
+    if (root && fs.existsSync(getSettingsPath(root))) {
+        void (async () => {
+            try {
+                const settings = readWorkspaceSettings(root);
+                if (!settings || settings.imageLinksMigrated) { return; }
+                const storyFolder = settings.storyFolder ?? 'Story';
+                const languages = settings.languages?.length ? settings.languages : [DEFAULT_LANGUAGE];
+                const chapterProposals = languages.flatMap(lang => proposeLegacyImageMigration(root, storyFolder, lang));
+                const coverProposals = proposeLegacyCoverMigration(root, storyFolder, languages);
+                if (chapterProposals.length === 0 && coverProposals.length === 0) { return; }
+
+                const parts: string[] = [];
+                if (chapterProposals.length > 0) {
+                    parts.push(`${chapterProposals.length} chapter image(s) in images/ not referenced by a markdown link`);
+                }
+                if (coverProposals.length > 0) {
+                    parts.push(`${coverProposals.length} cover image(s) still using the old Story/<lang>/cover.jpg location`);
+                }
+
+                const action = await vscode.window.showInformationMessage(
+                    `Bindery: found ${parts.join(' and ')}. ` +
+                    'These are no longer picked up implicitly at export — apply the explicit migration now?',
+                    'Migrate',
+                    'Keep as-is'
+                );
+                if (action === undefined) { return; }
+
+                if (action === 'Migrate') {
+                    const changed = applyLegacyImageMigration(chapterProposals);
+                    const coverApplied = applyLegacyCoverMigration(root, coverProposals);
+
+                    const updated = readWorkspaceSettings(root);
+                    if (updated?.languages) {
+                        for (const lang of updated.languages) {
+                            const newCover = coverApplied.get(lang.code);
+                            if (newCover) { lang.coverImage = newCover; }
+                        }
+                    }
+                    if (updated) {
+                        updated.imageLinksMigrated = true;
+                        fs.writeFileSync(getSettingsPath(root), JSON.stringify(updated, null, 2) + '\n', 'utf-8');
+                    }
+                    vscode.window.showInformationMessage(
+                        `Bindery: inserted image links in ${changed} file(s), moved ${coverApplied.size} cover image(s) to images/.`
+                    );
+                } else {
+                    const updated = readWorkspaceSettings(root);
+                    if (updated) {
+                        updated.imageLinksMigrated = true;
+                        fs.writeFileSync(getSettingsPath(root), JSON.stringify(updated, null, 2) + '\n', 'utf-8');
+                    }
+                }
+            } catch {
+                // Non-fatal: keep activation resilient.
             }
         })();
     }

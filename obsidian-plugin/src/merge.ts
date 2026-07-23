@@ -61,6 +61,7 @@ export async function mergeBook(
         const filePrefix  = wsSettings?.mergeFilePrefix ?? 'Book';
         const author      = wsSettings?.author;
         const bookTitle   = getBookTitleForLang(wsSettings, language.code);
+        const coverImage  = wsSettings?.coverImage;
 
         const options: MergeOptionsCore = {
             root: bookRoot,
@@ -71,6 +72,7 @@ export async function mergeBook(
             includeSeparators: true,
             author,
             bookTitle,
+            coverImage,
             outputDir,
             filePrefix,
             pandocPath:      resolvePandocPath(settings),

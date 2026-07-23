@@ -21,6 +21,8 @@ export interface LanguageConfig {
     epilogueLabel: string;
     /** True for the primary language the book is written in. */
     isDefault?: boolean;
+    /** Path to this language's cover image, relative to the book root (e.g. "images/EN-cover.jpg"). */
+    coverImage?: string;
     /** Dialect exports derived from this language (e.g. en-gb from EN). No story folder of their own. */
     dialects?: DialectConfig[];
 }
@@ -73,6 +75,14 @@ export interface WorkspaceSettings {
     mergedOutputDir?:  string;
     mergeFilePrefix?: string;
     formatOnSave?:   boolean;
+    /**
+     * Book-level fallback cover image, relative to the book root. Used when a
+     * language has no `coverImage` of its own — handy when one cover design
+     * (without per-language text) applies to every translation.
+     */
+    coverImage?: string;
+    /** Set after the legacy chapterN.jpg → inline image link migration has run (or was declined). */
+    imageLinksMigrated?: boolean;
     languages?:      LanguageConfig[];
     git?: {
         snapshot?: {

@@ -17,6 +17,12 @@ export {
     getPandocOutputFormats,
     clearPandocCapabilityCache,
     getBuiltInUkReplacements,
+    type LegacyImageProposal,
+    proposeLegacyImageMigration,
+    applyLegacyImageMigration,
+    type LegacyCoverProposal,
+    proposeLegacyCoverMigration,
+    applyLegacyCoverMigration,
 } from '@bindery/merge';
 
 // Re-export types from bindery-core for backward compatibility

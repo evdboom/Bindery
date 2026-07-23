@@ -21,6 +21,12 @@ const EM_DASH = '\u{2014}';       // —
 /** Matches HTML comments: <!-- ... --> */
 const COMMENT_RE = /<!--[\s\S]*?-->/g;
 
+/** Matches the target part of a markdown link/image: `](path "title")`. */
+const LINK_TARGET_RE = /\]\([^)\n]*\)/g;
+
+/** Matches Obsidian wikilinks and embeds: `[[target]]`, `![[target]]`. */
+const WIKILINK_RE = /!?\[\[[^\]\n]*\]\]/g;
+
 /** Matches opening double quote context: after whitespace, line start, or brackets */
 const OPEN_DOUBLE_RE = /(^|[\s([{—–-])"/gm;
 
@@ -42,6 +48,17 @@ const CLOSE_DOUBLE_AFTER_EM_DASH_RE = /—"([\s)\].,;:!?]|$)/gm;
  */
 export function updateTypography(text: string): string {
     let result = text;
+
+    // Step 0: Protect link targets and wikilinks — paths must not get
+    // em-dashes, ellipses, or curly quotes (that would break the link).
+    const protectedLinks: string[] = [];
+    const protectLink = (match: string): string => {
+        const placeholder = `\x00LINK${protectedLinks.length}\x00`;
+        protectedLinks.push(match);
+        return placeholder;
+    };
+    result = result.replaceAll(WIKILINK_RE, protectLink);
+    result = result.replaceAll(LINK_TARGET_RE, protectLink);
 
     // Step 1: Convert ... to ellipsis (must happen before quote processing)
     result = result.replaceAll(/\.\.\./g, ELLIPSIS);
@@ -85,6 +102,11 @@ export function updateTypography(text: string): string {
     });
     // Closing/apostrophe: all remaining straight single quotes
     result = result.replaceAll(/'/g, CLOSE_SINGLE);
+
+    // Step 7: Restore link targets and wikilinks
+    for (let i = 0; i < protectedLinks.length; i++) {
+        result = result.replaceAll(`\x00LINK${i}\x00`, protectedLinks[i]);
+    }
 
     return result;
 }

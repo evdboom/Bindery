@@ -3,7 +3,7 @@ import { renderAgentTemplate } from './agentRender';
 
 export const meta: TemplateMeta = {
     file:    'AGENTS.md',
-    version: 13,
+    version: 14,
     label:   'agent instructions',
 };
 

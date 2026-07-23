@@ -3,7 +3,7 @@ import { renderAgentTemplate } from './agentRender';
 
 export const meta: TemplateMeta = {
     file:    '.github/copilot-instructions.md',
-    version: 12,
+    version: 13,
     label:   'copilot instructions',
 };
 

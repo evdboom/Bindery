@@ -90,6 +90,7 @@ export function pushWritingRules(lines: string[], ctx: TemplateContext): void {
         '- Never rewrite paragraphs unless explicitly asked. Suggest edits only.',
         '- HTML comments `<!-- -->` in chapter files are writer notes. Treat as context, not prose.',
         '- Quotation marks and dashes in chapter files are managed by the Bindery extension. Do not flag these as formatting errors.',
+        '- Inline images use standard markdown image syntax `![alt](relative/path.png)`, resolved relative to the chapter file — this is what renders in host previews and survives export. Do not use Obsidian embed syntax `![[image.png]]`; it only renders inside Obsidian and is stripped (with a warning) at merge time.',
     );
     if (ctx.audience) {
         lines.push(`- Content is aimed at ${ctx.audience}. Keep language accessible and themes age-appropriate.`);
