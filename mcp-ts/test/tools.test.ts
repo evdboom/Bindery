@@ -51,6 +51,29 @@ afterEach(() => {
 });
 
 describe('mcp tools', () => {
+  const originalFetch = globalThis.fetch;
+  const originalDisableUpdateCache = process.env['BINDERY_DISABLE_UPDATE_CACHE'];
+  const originalMcpLocation = process.env['BINDERY_MCP_LOCATION'];
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    if (originalFetch === undefined) {
+      delete (globalThis as { fetch?: typeof fetch }).fetch;
+    } else {
+      globalThis.fetch = originalFetch;
+    }
+    if (originalDisableUpdateCache === undefined) {
+      delete process.env['BINDERY_DISABLE_UPDATE_CACHE'];
+    } else {
+      process.env['BINDERY_DISABLE_UPDATE_CACHE'] = originalDisableUpdateCache;
+    }
+    if (originalMcpLocation === undefined) {
+      delete process.env['BINDERY_MCP_LOCATION'];
+    } else {
+      process.env['BINDERY_MCP_LOCATION'] = originalMcpLocation;
+    }
+  });
+
   it('prevents path traversal in get_text', () => {
     const root = makeRoot();
     write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter1.md'), '# Ch1\ninside\n');

@@ -62,7 +62,7 @@ function getWorkspaceRoot(): string | undefined {
 }
 
 interface McpToolsForAi {
-    toolHealth: (_root: string) => string;
+    toolHealth: (_root: string) => Promise<string>;
     toolInitWorkspace: (_root: string, _args: { bookTitle?: string; author?: string; storyFolder?: string; targetAudience?: string }) => string;
     toolSetupAiFiles: (_root: string, _args: { targets?: string[]; skills?: string[]; overwrite?: boolean }) => string;
     writeBinderyCapabilitiesReadme: (_root: string) => void;
@@ -1732,24 +1732,26 @@ export function activate(context: vscode.ExtensionContext) {
     // AI setup version check — prompt if generated files are out of date
     const root = getWorkspaceRoot();
     if (root && fs.existsSync(getSettingsPath(root))) {
-        try {
-            const tools = loadMcpToolsForAi(context.extensionPath);
-            const raw = tools.toolHealth(root);
-            const health = JSON.parse(raw) as { ai_version_outdated?: boolean };
-            if (health.ai_version_outdated) {
-            vscode.window.showInformationMessage(
-                'Bindery: AI assistant files may be out of date (skill templates were updated).',
-                'Update now',
-                'Dismiss'
-            ).then(action => {
-                if (action === 'Update now') {
-                    vscode.commands.executeCommand('bindery.setupAI');
+        void (async () => {
+            try {
+                const tools = loadMcpToolsForAi(context.extensionPath);
+                const raw = await tools.toolHealth(root);
+                const health = JSON.parse(raw) as { ai_version_outdated?: boolean };
+                if (health.ai_version_outdated) {
+                    vscode.window.showInformationMessage(
+                        'Bindery: AI assistant files may be out of date (skill templates were updated).',
+                        'Update now',
+                        'Dismiss'
+                    ).then(action => {
+                        if (action === 'Update now') {
+                            vscode.commands.executeCommand('bindery.setupAI');
+                        }
+                    });
                 }
-            });
+            } catch {
+                // Non-fatal: keep activation resilient if MCP tools are unavailable.
             }
-        } catch {
-            // Non-fatal: keep activation resilient if MCP tools are unavailable.
-        }
+        })();
     }
 
     // Status bar — shown when a markdown file is active
