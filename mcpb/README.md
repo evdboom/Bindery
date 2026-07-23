@@ -43,6 +43,7 @@ To install manually without using published Claude Connectors
    - `BINDERY_ENABLE_SEMANTIC_INDEX` (optional): `true` to enable full semantic index builds
    - `BINDERY_DEFAULT_SEARCH_MODE` (optional): `lexical`, `semantic_rerank`, or `full_semantic`
    - `BINDERY_MCP_LOCATION` (optional): stable folder for `bindery_download_latest_mcp` to download/unpack the latest standalone ZIP
+6. Save and reconnect the MCP server.
 
 ### Update guidance
 
