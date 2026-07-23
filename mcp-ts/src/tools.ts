@@ -654,7 +654,8 @@ export async function toolHealth(root: string): Promise<string> {
 
     try {
         const release = await fetchLatestRelease();
-        latestVersion = release.tag_name?.trim() || null;
+        const tag = release.tag_name?.trim();
+        latestVersion = tag && isLikelyVersion(tag) ? tag : null;
         latestReleaseUrl = release.html_url?.trim() || latestReleaseUrl;
     } catch (error) {
         updateCheckError = error instanceof Error ? error.message : String(error);
