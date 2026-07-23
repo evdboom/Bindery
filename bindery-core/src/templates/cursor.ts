@@ -3,7 +3,7 @@ import { renderAgentTemplate } from './agentRender';
 
 export const meta: TemplateMeta = {
     file:    '.cursor/rules',
-    version: 12,
+    version: 13,
     label:   'cursor rules',
 };
 

@@ -10,11 +10,15 @@
  */
 
 import { BINDERY_FOLDER, SETTINGS_FILENAME, upsertGlossaryRule, getDefaultLanguage, applyTypography, readWorkspaceSettings, type LanguageConfig } from '@bindery/core';
+import {
+    proposeLegacyImageMigration, applyLegacyImageMigration,
+    proposeLegacyCoverMigration, applyLegacyCoverMigration,
+} from '@bindery/merge';
 import { mergeBook, type OutputType } from './merge';
 import { formatFile } from './formatter';
 import { resolveBookRoot } from './exporter';
 import { setupAiFiles, ALL_SKILLS } from './ai-setup';
-import { readSettings, addDialectRule, addLanguage, findProbableUsWords } from './workspace';
+import { readSettings, writeSettings, addDialectRule, addLanguage, findProbableUsWords } from './workspace';
 import { BinderySettingsTab, DEFAULT_SETTINGS, type BinderySettings } from './settings-tab';
 import { App, Modal, Notice, Plugin, TFile } from 'obsidian';
 import type { Editor } from 'obsidian';
@@ -87,6 +91,59 @@ class TextPromptModal extends Modal {
         }
         this.resolved = true;
         this.onResolve(value);
+        this.close();
+    }
+}
+
+class ConfirmModal extends Modal {
+    private readonly titleText: string;
+    private readonly bodyText: string;
+    private readonly confirmLabel: string;
+    private readonly declineLabel: string;
+    private readonly onResolve: (_confirmed: boolean | null) => void;
+    private resolved = false;
+
+    constructor(
+        app: App,
+        titleText: string,
+        bodyText: string,
+        confirmLabel: string,
+        declineLabel: string,
+        onResolve: (_confirmed: boolean | null) => void
+    ) {
+        super(app);
+        this.titleText = titleText;
+        this.bodyText = bodyText;
+        this.confirmLabel = confirmLabel;
+        this.declineLabel = declineLabel;
+        this.onResolve = onResolve;
+    }
+
+    onOpen(): void {
+        this.titleEl.setText(this.titleText);
+        this.contentEl.empty();
+        this.contentEl.createEl('p', { text: this.bodyText });
+
+        const buttons = this.contentEl.createDiv({ cls: 'bindery-prompt-buttons' });
+        const confirmButton = buttons.createEl('button', { text: this.confirmLabel, cls: 'mod-cta' });
+        confirmButton.addEventListener('click', () => this.resolveAndClose(true));
+
+        const declineButton = buttons.createEl('button', { text: this.declineLabel });
+        declineButton.addEventListener('click', () => this.resolveAndClose(false));
+    }
+
+    onClose(): void {
+        if (!this.resolved) {
+            this.onResolve(null);
+        }
+    }
+
+    private resolveAndClose(confirmed: boolean): void {
+        if (this.resolved) {
+            return;
+        }
+        this.resolved = true;
+        this.onResolve(confirmed);
         this.close();
     }
 }
@@ -365,6 +422,74 @@ export default class BinderyPlugin extends Plugin {
         }
 
         this.addSettingTab(new BinderySettingsTab(this.app, this));
+
+        // Legacy image migration — implicit images/chapterN.jpg injection and the
+        // fixed Story/<lang>/cover.jpg convention were replaced by inline markdown
+        // links and an explicit coverImage setting; offer a one-time conversion.
+        void this.checkLegacyImageMigration();
+    }
+
+    private async checkLegacyImageMigration(): Promise<void> {
+        try {
+            const vaultPath = this.getVaultBasePath();
+            const bookRoot = resolveBookRoot(vaultPath, this.settings.bookRoot);
+            const wsSettings = readSettings(bookRoot);
+            if (!wsSettings || wsSettings.imageLinksMigrated) { return; }
+
+            const storyFolder = wsSettings.storyFolder ?? 'Story';
+            const languages: LanguageConfig[] = wsSettings.languages?.length
+                ? wsSettings.languages
+                : [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue' }];
+            const chapterProposals = languages.flatMap(lang => proposeLegacyImageMigration(bookRoot, storyFolder, lang));
+            const coverProposals = proposeLegacyCoverMigration(bookRoot, storyFolder, languages);
+            if (chapterProposals.length === 0 && coverProposals.length === 0) { return; }
+
+            const parts: string[] = [];
+            if (chapterProposals.length > 0) {
+                parts.push(`${chapterProposals.length} chapter image(s) in images/ not referenced by a markdown link`);
+            }
+            if (coverProposals.length > 0) {
+                parts.push(`${coverProposals.length} cover image(s) still using the old Story/<lang>/cover.jpg location`);
+            }
+
+            const confirmed = await new Promise<boolean | null>((resolve) => {
+                new ConfirmModal(
+                    this.app,
+                    'Bindery: legacy images',
+                    `Found ${parts.join(' and ')}. These are no longer picked up implicitly at export — apply the explicit migration now?`,
+                    'Migrate',
+                    'Keep as-is',
+                    resolve
+                ).open();
+            });
+            if (confirmed === null) { return; }
+
+            if (confirmed) {
+                const changed = applyLegacyImageMigration(chapterProposals);
+                const coverApplied = applyLegacyCoverMigration(bookRoot, coverProposals);
+
+                const updated = readSettings(bookRoot);
+                if (updated?.languages) {
+                    for (const lang of updated.languages) {
+                        const newCover = coverApplied.get(lang.code);
+                        if (newCover) { lang.coverImage = newCover; }
+                    }
+                }
+                if (updated) {
+                    updated.imageLinksMigrated = true;
+                    writeSettings(bookRoot, updated);
+                }
+                this.notify(`Bindery: inserted image links in ${changed} file(s), moved ${coverApplied.size} cover image(s) to images/.`);
+            } else {
+                const updated = readSettings(bookRoot);
+                if (updated) {
+                    updated.imageLinksMigrated = true;
+                    writeSettings(bookRoot, updated);
+                }
+            }
+        } catch {
+            // Non-fatal: keep plugin load resilient.
+        }
     }
 
     private async mergeBook(outputTypes: OutputType[]): Promise<void> {
@@ -383,6 +508,11 @@ export default class BinderyPlugin extends Plugin {
 
             const names = result.outputs.map((p: string) => path.basename(p)).join(', ');
             this.notify(`Merged: ${names}`);
+            if (result.warnings.length > 0) {
+                const preview = result.warnings.slice(0, 2).join(' | ');
+                const more    = result.warnings.length > 2 ? ` (+${result.warnings.length - 2} more)` : '';
+                this.notify(`Merge warnings: ${preview}${more}`);
+            }
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error(`✗ Merge failed: ${message}`);
@@ -530,7 +660,13 @@ export default class BinderyPlugin extends Plugin {
             const folderName = await this.promptString('Folder name:', code);
             if (!folderName) return;
 
-            addLanguage(bookRoot, code, folderName);
+            const coverImage = await this.promptOptional(
+                'Cover image path (relative to book root, blank for none):',
+                `images/${code.toUpperCase()}-cover.jpg`
+            );
+            if (coverImage === null) return;
+
+            addLanguage(bookRoot, code, folderName, undefined, undefined, coverImage);
             this.notify(`Added language: ${code}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);

@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-  version: 12,
+  version: 13,
     label:   'bindery capabilities',
 };
 
@@ -150,6 +150,68 @@ work-in-progress and continue on another machine.
 - \`get_review_text(autoStage: true)\` returns marker regions in addition to the
   git diff and **removes** the marker lines as part of staging, so the next
   review pass starts clean.
+
+## Inline images in chapters
+
+Put an image anywhere in a chapter with standard markdown image syntax:
+
+\`\`\`
+![A map of the region](../../Images/map.png)
+\`\`\`
+
+- The path is resolved **relative to the chapter file**, so it renders in VS Code
+  and Obsidian previews exactly as written — what you see in preview is what
+  export produces.
+- At merge time the link is resolved to an absolute path so Pandoc can embed it
+  regardless of where the merged temp file lives; a missing target produces a
+  merge warning instead of a silent 404.
+- **Markdown \`.md\` export is fully portable**: every referenced image is copied
+  into \`Images/\` next to the merged file and links are rewritten to
+  \`Images/<name>.png\`, so \`book.md\` + \`Images/\` can be moved or shared as a unit.
+  DOCX/EPUB/PDF embed images directly (via Pandoc) and need no such folder.
+- Obsidian embed syntax \`![[image.png]]\` only renders inside Obsidian. It is
+  stripped from merged output with a warning — use the markdown syntax above
+  instead (Obsidian's *Files & Links* setting can be switched to "Use \`[markdown\` links" to make this the default when inserting via drag-and-drop).
+- Older Bindery versions inserted \`images/chapterN.jpg\` / \`images/prologue.jpg\`
+  / \`images/epilogue.jpg\` automatically at export. That implicit behavior has
+  been removed in favor of explicit inline links; VS Code and Obsidian offer a
+  one-time migration on activation that inserts links for any legacy image
+  still unreferenced, and merge surfaces a warning for any that remain orphaned.
+
+### Cover images
+
+Cover art is book-level metadata, not chapter content — it becomes the EPUB
+cover-image flag and a full front page in DOCX/PDF, so it is **not** an inline
+\`![]()\` link inside a chapter. Instead, set it explicitly in
+\`.bindery/settings.json\`, at either (or both) of two levels:
+
+\`\`\`json
+{
+  "coverImage": "images/cover.jpg",
+  "languages": [
+    { "code": "EN", "coverImage": "images/EN-cover.jpg", ... },
+    { "code": "NL", ... }
+  ]
+}
+\`\`\`
+
+Resolution order per language: **\`languages[].coverImage\`** (per-language —
+use this when cover art includes translated text) → **top-level
+\`coverImage\`** (a book-level fallback — use this when one cover design is
+shared across every translation, e.g. \`NL\` above with no cover of its own) →
+none.
+
+- Both paths are relative to the book root. Keeping cover art in \`images/\`
+  alongside other art (rather than inside \`Story/<lang>/\`) keeps the story
+  folders free of non-chapter files.
+- \`Bindery: Add Language\` prompts for the per-language path, prefilled with
+  \`images/<CODE>-cover.jpg\`; leave it blank to fall back to the book-level
+  cover (or to have no cover at all if neither is set).
+- Older Bindery versions used a fixed \`Story/<lang>/cover.jpg\` convention. That
+  file is still picked up as a fallback (with a warning) if neither
+  \`coverImage\` setting is present — the same one-time activation migration
+  above also offers to move it to \`images/<code>-cover.jpg\` and write the
+  per-language \`coverImage\` setting for you.
 
 ## Skill workflows (Claude / Copilot Chat / etc.)
 

@@ -78,7 +78,8 @@ export function addLanguage(
     code: string,
     folderName: string,
     chapterWord?: string,
-    actPrefix?: string
+    actPrefix?: string,
+    coverImage?: string
 ): void {
     const settings = readSettings(bookRoot) || { languages: [] };
     settings.languages ??= [];
@@ -94,6 +95,7 @@ export function addLanguage(
         actPrefix: actPrefix ?? 'Act',
         prologueLabel: 'Prologue',
         epilogueLabel: 'Epilogue',
+        ...(coverImage?.trim() ? { coverImage: coverImage.trim() } : {}),
     });
 
     writeSettings(bookRoot, settings);
