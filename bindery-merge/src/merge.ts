@@ -546,8 +546,9 @@ function detectOrphanedLegacyImages(files: OrderedFile[], options: MergeOptions,
         const imagePath = path.join(options.root, 'images', name);
         if (!fs.existsSync(imagePath)) { continue; }
         if (!hasImageLink(resolver.read(file))) {
+            const relativePath = path.relative(options.root, file.filePath).replaceAll('\\', '/');
             warnings.push(
-                `images/${name} exists but ${path.basename(file.filePath)} has no image link. ` +
+                `images/${name} exists but ${relativePath} has no image link. ` +
                 'Implicit chapter images are no longer inserted — add ![](path/to/image) to the chapter, ' +
                 'or run the image link migration in VS Code/Obsidian.'
             );

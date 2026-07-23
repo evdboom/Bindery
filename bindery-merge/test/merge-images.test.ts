@@ -95,6 +95,7 @@ describe('mergeBook() with inline images (md output)', () => {
         const merged = fs.readFileSync(result.outputs[0], 'utf-8');
         expect(merged).not.toContain('chapter1.jpg');
         expect(result.warnings.some(w => w.includes('images/chapter1.jpg') && w.includes('no image link'))).toBe(true);
+        expect(result.warnings.some(w => w.includes('Story/EN/Act I/Chapter 1.md'))).toBe(true);
     });
 
     it('does not warn when the chapter references the legacy image explicitly', async () => {

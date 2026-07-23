@@ -15,11 +15,11 @@ import * as path from 'node:path';
 
 // ─── Regex Patterns ─────────────────────────────────────────────────────────
 
-/** `![alt](target)` with optional "title" — target must not contain spaces or `)`. */
-const IMAGE_LINK_RE = /!\[([^\]]*)\]\(([^)\s]+)(\s+"[^"]*")?\)/g;
+/** `![alt](target)` with optional "title" — target must not contain spaces or parentheses. */
+const IMAGE_LINK_RE = /!\[([^\][]*)\]\(([^()\s]+)(\s+"[^"]*")?\)/g;
 
 /** Obsidian embed: `![[target]]` (images, notes, any vault attachment). */
-const WIKILINK_EMBED_RE = /!\[\[[^\]]*\]\]/g;
+const WIKILINK_EMBED_RE = /!\[\[[^\][]*\]\]/g;
 
 /** URL scheme (http:, https:, data:, …) — at least 2 chars so `C:` drive letters do not match. */
 const URL_SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]+:/;
@@ -154,6 +154,7 @@ export function makePortableMarkdown(
 ): PortableCopyResult {
     const warnings: string[] = [];
     const copied: string[] = [];
+    const copiedSet = new Set<string>();              // absolute dest paths already copied
     const sourceToDest = new Map<string, string>();   // absolute source → dest basename
     const usedNames = new Map<string, string>();      // dest basename (lowercase) → source it belongs to
 
@@ -193,13 +194,14 @@ export function makePortableMarkdown(
             const destName = destNameFor(absSource);
             const destPath = path.join(imagesDir, destName);
 
-            if (!copied.includes(destPath)) {
+            if (!copiedSet.has(destPath)) {
                 try {
                     if (!imagesDirCreated) {
                         fs.mkdirSync(imagesDir, { recursive: true });
                         imagesDirCreated = true;
                     }
                     fs.copyFileSync(absSource, destPath);
+                    copiedSet.add(destPath);
                     copied.push(destPath);
                 } catch (err: unknown) {
                     warnings.push(

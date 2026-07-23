@@ -211,6 +211,20 @@ describe('updateTypography()', () => {
         expect(result).toContain('(one--two.png)');
         expect(result).toContain('(three--four.png)');
     });
+
+    it('protects the full target when the path contains balanced parentheses', () => {
+        const input = '![alt](assets/a(b)--c.png) and prose--here';
+        const result = updateTypography(input);
+        expect(result).toContain('(assets/a(b)--c.png)');
+        expect(result).toContain('prose—here');
+    });
+
+    it('does not hang on pathological repeated wikilink openers', () => {
+        const input = '[['.repeat(20000);
+        const start = Date.now();
+        updateTypography(input);
+        expect(Date.now() - start).toBeLessThan(2000);
+    });
 });
 
 describe('applyTypography()', () => {

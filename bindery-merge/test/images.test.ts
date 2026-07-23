@@ -104,6 +104,14 @@ describe('rewriteImageLinks()', () => {
         expect(result.content).toContain(abs.replaceAll('\\', '/'));
         expect(result.warnings).toEqual([]);
     });
+
+    it('does not hang on pathological repeated image/embed openers', () => {
+        const root = makeRoot();
+        const start = Date.now();
+        rewriteImageLinks('![['.repeat(20000), root, 'ch5.md');
+        rewriteImageLinks('![](!'.repeat(20000), root, 'ch5.md');
+        expect(Date.now() - start).toBeLessThan(2000);
+    });
 });
 
 // ─── makePortableMarkdown ─────────────────────────────────────────────────────

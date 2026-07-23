@@ -21,11 +21,15 @@ const EM_DASH = '\u{2014}';       // —
 /** Matches HTML comments: <!-- ... --> */
 const COMMENT_RE = /<!--[\s\S]*?-->/g;
 
-/** Matches the target part of a markdown link/image: `](path "title")`. */
-const LINK_TARGET_RE = /\]\([^)\n]*\)/g;
+/**
+ * Matches the target part of a markdown link/image: `](path "title")`.
+ * Supports one level of balanced parentheses inside the target
+ * (e.g. `](assets/a(b)--c.png)`).
+ */
+const LINK_TARGET_RE = /\]\([^()\n]*(?:\([^()\n]*\)[^()\n]*)*\)/g;
 
 /** Matches Obsidian wikilinks and embeds: `[[target]]`, `![[target]]`. */
-const WIKILINK_RE = /!?\[\[[^\]\n]*\]\]/g;
+const WIKILINK_RE = /!?\[\[[^\][\n]*\]\]/g;
 
 /** Matches opening double quote context: after whitespace, line start, or brackets */
 const OPEN_DOUBLE_RE = /(^|[\s([{—–-])"/gm;
