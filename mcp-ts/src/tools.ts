@@ -766,7 +766,14 @@ export async function toolDownloadLatestMcp(_root: string, args: DownloadLatestM
     const arrayBuffer = await response.arrayBuffer();
     const extractedFiles = extractZipToDirectory(Buffer.from(arrayBuffer), destinationDir);
     const serverEntry = path.join(destinationDir, 'server', 'index.js');
-
+    if (!fs.existsSync(serverEntry)) {
+        return [
+            `Downloaded ZIP but could not find expected entrypoint at: ${serverEntry}`,
+            `Extracted files: ${extractedFiles}`,
+            `Please inspect ${destinationDir} and point your MCP client to the actual server/index.js path.`,
+            `Release page: ${releaseUrl}`,
+        ].join('\n');
+    }
     const guidance = [
         `Downloaded and unpacked Bindery standalone MCP ${latestVersion} to: ${destinationDir}`,
         `Extracted files: ${extractedFiles}`,
