@@ -11,11 +11,20 @@ import * as path from 'node:path';
 import {
     BINDERY_FOLDER,
     SETTINGS_FILENAME,
+    getStoryFolder,
     upsertSubstitutionRule,
     WorkspaceSettings,
 } from '@bindery/core';
 
 export type { WorkspaceSettings, LanguageConfig } from '@bindery/core';
+
+function normalizeLanguageFolderName(folderName: string): string | null {
+    const trimmed = folderName.trim();
+    if (!trimmed || trimmed === '.' || trimmed === '..' || /[\\/]/.test(trimmed)) {
+        return null;
+    }
+    return trimmed;
+}
 
 /**
  * Read workspace settings from .bindery/settings.json
@@ -83,6 +92,10 @@ export function addLanguage(
 ): void {
     const settings = readSettings(bookRoot) || { languages: [] };
     settings.languages ??= [];
+    const safeFolderName = normalizeLanguageFolderName(folderName);
+    if (!safeFolderName) {
+        throw new Error('Folder name must be a single relative folder name inside Story/.');
+    }
 
     if (settings.languages.some(l => l.code === code)) {
         throw new Error(`Language "${code}" already exists`);
@@ -90,7 +103,7 @@ export function addLanguage(
 
     settings.languages.push({
         code,
-        folderName,
+        folderName: safeFolderName,
         chapterWord: chapterWord ?? 'Chapter',
         actPrefix: actPrefix ?? 'Act',
         prologueLabel: 'Prologue',
@@ -101,8 +114,8 @@ export function addLanguage(
     writeSettings(bookRoot, settings);
 
     // Create the language folder structure
-    const storyFolder = settings.storyFolder ?? 'Story';
-    const langPath = path.join(bookRoot, storyFolder, folderName);
+    const storyFolder = getStoryFolder(settings);
+    const langPath = path.join(bookRoot, storyFolder, safeFolderName);
     if (!fs.existsSync(langPath)) {
         fs.mkdirSync(langPath, { recursive: true });
     }

@@ -302,6 +302,94 @@ function trimOrUndefined(value: string | undefined): string | undefined {
     return value?.trim() || undefined;
 }
 
+function normalizeRelativeInputPath(value: string): string {
+    return value.replace(/\\/g, '/').trim();
+}
+
+function resolvePathInside(baseDir: string, relativePath: string): string | null {
+    const normalized = path.posix.normalize(normalizeRelativeInputPath(relativePath));
+    if (
+        !normalized
+        || normalized === '.'
+        || normalized === '..'
+        || path.posix.isAbsolute(normalized)
+        || /^[a-zA-Z]:/.test(normalized)
+        || normalized.startsWith('../')
+    ) {
+        return null;
+    }
+    const resolved = path.resolve(baseDir, normalized);
+    const rel = path.relative(baseDir, resolved);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) { return null; }
+    return resolved;
+}
+
+function resolveWorkspacePath(root: string, relativePath: string): string | null {
+    return resolvePathInside(path.resolve(root), relativePath);
+}
+
+function normalizeFolderName(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === '.' || trimmed === '..' || /[\\/]/.test(trimmed)) {
+        return null;
+    }
+    return trimmed;
+}
+
+function validateSettingsPathValue(name: string, value: unknown, options: { allowNested?: boolean } = {}): string | null {
+    if (value === undefined) { return null; }
+    if (typeof value !== 'string') { return `Invalid ${name}: expected a string path.`; }
+    const normalized = normalizeRelativeInputPath(value);
+    if (!normalized) { return `Invalid ${name}: path cannot be empty.`; }
+    if (options.allowNested === false) {
+        if (!normalizeFolderName(normalized)) {
+            return `Invalid ${name}: must be a single relative folder name inside the workspace.`;
+        }
+        return null;
+    }
+    if (!resolveWorkspacePath('/', normalized)) {
+        return `Invalid ${name}: must stay inside the workspace.`;
+    }
+    return null;
+}
+
+function validateWorkspaceSettingsPaths(settings: Record<string, unknown>): string | null {
+    const validations: Array<[string, unknown, { allowNested?: boolean }?]> = [
+        ['storyFolder', settings['storyFolder']],
+        ['notesFolder', settings['notesFolder']],
+        ['arcFolder', settings['arcFolder']],
+        ['charactersFolder', settings['charactersFolder']],
+        ['sessionFile', settings['sessionFile']],
+        ['preferencesFile', settings['preferencesFile']],
+        ['mergedOutputDir', settings['mergedOutputDir']],
+        ['coverImage', settings['coverImage']],
+    ];
+
+    for (const [name, value, options] of validations) {
+        const error = validateSettingsPathValue(name, value, options);
+        if (error) { return error; }
+    }
+
+    const languages = settings['languages'];
+    if (languages !== undefined) {
+        if (!Array.isArray(languages)) {
+            return 'Invalid languages: expected an array.';
+        }
+        for (let i = 0; i < languages.length; i++) {
+            const entry = languages[i];
+            if (!isPlainObject(entry)) {
+                return `Invalid languages[${i}]: expected an object.`;
+            }
+            const folderError = validateSettingsPathValue(`languages[${i}].folderName`, entry['folderName'], { allowNested: false });
+            if (folderError) { return folderError; }
+            const coverError = validateSettingsPathValue(`languages[${i}].coverImage`, entry['coverImage']);
+            if (coverError) { return coverError; }
+        }
+    }
+
+    return null;
+}
+
 function listGitRemotes(root: string): string[] {
     const result = gitTry(root, ['remote']);
     if (result.status !== 0) { return []; }
@@ -1217,6 +1305,7 @@ function extractNamedSections(content: string, nameFilter: string): string[] {
 
 export function toolGetNotes(root: string, args: GetNotesArgs): string {
     const notesDir = notesRoot(root);
+    if (!notesDir) { return 'Invalid notesFolder in .bindery/settings.json'; }
     const candidates: string[] = [];
 
     if (fs.existsSync(notesDir)) {
@@ -1245,6 +1334,7 @@ export function toolGetNotes(root: string, args: GetNotesArgs): string {
 
 export function toolNoteList(root: string, args: NoteListArgs): string {
     const baseDir = notesRoot(root);
+    if (!baseDir) { return 'Invalid notesFolder in .bindery/settings.json'; }
     const listDir = args.category ? safeNoteDir(root, args.category) : baseDir;
     if (!listDir) { return `Invalid note category: ${args.category}`; }
     if (!fs.existsSync(listDir)) { return args.category ? `Note category not found: ${args.category}` : 'No notes folder found.'; }
@@ -1265,6 +1355,7 @@ export function toolNoteList(root: string, args: NoteListArgs): string {
 }
 
 export function toolNoteGet(root: string, args: NoteGetArgs): string {
+    if (!notesRoot(root)) { return 'Invalid notesFolder in .bindery/settings.json'; }
     const filePath = safeNoteFile(root, args.path);
     if (!filePath) { return `Invalid note path: ${args.path}`; }
     if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) { return `Note not found: ${normalizeNotePath(args.path)}`; }
@@ -1272,6 +1363,7 @@ export function toolNoteGet(root: string, args: NoteGetArgs): string {
 }
 
 export function toolNoteCreate(root: string, args: NoteCreateArgs): string {
+    if (!notesRoot(root)) { return 'Invalid notesFolder in .bindery/settings.json'; }
     const filePath = safeNoteFile(root, args.path);
     if (!filePath) { return `Invalid note path: ${args.path}`; }
     const rel = normalizeNotePath(args.path);
@@ -1288,6 +1380,7 @@ export function toolNoteCreate(root: string, args: NoteCreateArgs): string {
 }
 
 export function toolNoteAppend(root: string, args: NoteAppendArgs): string {
+    if (!notesRoot(root)) { return 'Invalid notesFolder in .bindery/settings.json'; }
     const filePath = safeNoteFile(root, args.path);
     if (!filePath) { return `Invalid note path: ${args.path}`; }
     const rel = normalizeNotePath(args.path);
@@ -1306,12 +1399,13 @@ export function toolNoteAppend(root: string, args: NoteAppendArgs): string {
     return `${existed ? 'Appended to' : 'Created and appended to'} note: ${rel} (${lineCount} lines).`;
 }
 
-function notesRoot(root: string): string {
-    return path.join(root, getNotesFolder(readSettings(root) ?? null));
+function notesRoot(root: string): string | null {
+    return resolveWorkspacePath(root, getNotesFolder(readSettings(root) ?? null));
 }
 
 function safeNoteDir(root: string, noteDir: string): string | null {
     const baseDir = notesRoot(root);
+    if (!baseDir) { return null; }
     const resolved = path.resolve(baseDir, noteDir);
     const rel = path.relative(baseDir, resolved);
     if (rel.startsWith('..') || path.isAbsolute(rel)) { return null; }
@@ -1320,6 +1414,7 @@ function safeNoteDir(root: string, noteDir: string): string | null {
 
 function safeNoteFile(root: string, notePath: string): string | null {
     const baseDir = notesRoot(root);
+    if (!baseDir) { return null; }
     const normalized = normalizeNotePath(notePath);
     const resolved = path.resolve(baseDir, normalized);
     const rel = path.relative(baseDir, resolved);
@@ -1386,6 +1481,7 @@ const CHARACTER_SECTION_FIELDS: Array<[keyof CharacterProfile, string]> = [
 
 export function toolCharacterList(root: string, args: CharacterListArgs = {}): string {
     const baseDir = charactersRoot(root);
+    if (!baseDir) { return 'Invalid charactersFolder in .bindery/settings.json'; }
     if (!fs.existsSync(baseDir)) { return 'No character folder found.'; }
 
     const files: string[] = [];
@@ -1406,6 +1502,7 @@ export function toolCharacterList(root: string, args: CharacterListArgs = {}): s
 }
 
 export function toolCharacterGet(root: string, args: CharacterGetArgs): string {
+    if (!charactersRoot(root)) { return 'Invalid charactersFolder in .bindery/settings.json'; }
     const filePath = findCharacterFile(root, args.name);
     if (!filePath) { return `Character not found: ${args.name}`; }
     return fs.readFileSync(filePath, 'utf-8');
@@ -1416,7 +1513,9 @@ export function toolCharacterCreate(root: string, args: CharacterCreateArgs): st
     if (!name) { return 'Character name is required.'; }
 
     const baseDir = charactersRoot(root);
+    if (!baseDir) { return 'Invalid charactersFolder in .bindery/settings.json'; }
     const filePath = characterFilePath(root, name);
+    if (!filePath) { return 'Invalid charactersFolder in .bindery/settings.json'; }
     const rel = normalizeSlashes(path.relative(baseDir, filePath));
     if (fs.existsSync(filePath) && !args.overwrite) {
         return `Character already exists: ${name} (${rel}). Pass overwrite: true to replace it.`;
@@ -1430,18 +1529,21 @@ export function toolCharacterCreate(root: string, args: CharacterCreateArgs): st
 }
 
 export function toolCharacterUpdate(root: string, args: CharacterUpdateArgs): string {
+    const baseDir = charactersRoot(root);
+    if (!baseDir) { return 'Invalid charactersFolder in .bindery/settings.json'; }
     const filePath = findCharacterFile(root, args.name);
     if (!filePath) { return `Character not found: ${args.name}. Use character_create first.`; }
 
     const existing = parseCharacterProfile(fs.readFileSync(filePath, 'utf-8'), args.name);
     const updated = mergeDefined(existing, characterProfileFromArgs(args));
     fs.writeFileSync(filePath, renderCharacterProfile(updated), 'utf-8');
-    updateCharacterIndex(root, updated, normalizeSlashes(path.relative(charactersRoot(root), filePath)));
-    return `Updated character: ${updated.name} (${normalizeSlashes(path.relative(charactersRoot(root), filePath))})`;
+    const rel = normalizeSlashes(path.relative(baseDir, filePath));
+    updateCharacterIndex(root, updated, rel);
+    return `Updated character: ${updated.name} (${rel})`;
 }
 
-function charactersRoot(root: string): string {
-    return path.join(root, getCharactersFolder(readSettings(root) ?? null));
+function charactersRoot(root: string): string | null {
+    return resolveWorkspacePath(root, getCharactersFolder(readSettings(root) ?? null));
 }
 
 function characterSlug(name: string): string {
@@ -1452,13 +1554,15 @@ function characterSlug(name: string): string {
         .replace(/^-+|-+$/g, '') || 'character';
 }
 
-function characterFilePath(root: string, name: string): string {
-    return path.join(charactersRoot(root), `${characterSlug(name)}.md`);
+function characterFilePath(root: string, name: string): string | null {
+    const baseDir = charactersRoot(root);
+    if (!baseDir) { return null; }
+    return path.join(baseDir, `${characterSlug(name)}.md`);
 }
 
 function findCharacterFile(root: string, name: string): string | null {
     const baseDir = charactersRoot(root);
-    if (!fs.existsSync(baseDir)) { return null; }
+    if (!baseDir || !fs.existsSync(baseDir)) { return null; }
     const slug = characterSlug(name);
     const direct = path.join(baseDir, `${slug}.md`);
     if (fs.existsSync(direct)) { return direct; }
@@ -1534,6 +1638,7 @@ function parseCharacterProfile(content: string, fallbackName: string): Character
 
 function updateCharacterIndex(root: string, profile: CharacterProfile, relPath: string): void {
     const baseDir = charactersRoot(root);
+    if (!baseDir) { return; }
     const indexPath = path.join(baseDir, 'index.md');
     fs.mkdirSync(baseDir, { recursive: true });
     if (!fs.existsSync(indexPath)) { fs.writeFileSync(indexPath, characterIndexTemplate(), 'utf-8'); }
@@ -1584,6 +1689,7 @@ const ARC_SECTION_FIELDS: Array<[keyof ArcProfile, string]> = [
 
 export function toolArcList(root: string, args: ArcListArgs = {}): string {
     const baseDir = arcRoot(root);
+    if (!baseDir) { return 'Invalid arcFolder in .bindery/settings.json'; }
     if (!fs.existsSync(baseDir)) { return 'No arc folder found.'; }
 
     const files: string[] = [];
@@ -1603,6 +1709,7 @@ export function toolArcList(root: string, args: ArcListArgs = {}): string {
 }
 
 export function toolArcGet(root: string, args: ArcGetArgs): string {
+    if (!arcRoot(root)) { return 'Invalid arcFolder in .bindery/settings.json'; }
     const filePath = safeArcFile(root, args.path);
     if (!filePath) { return `Invalid arc path: ${args.path}`; }
     if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) { return `Arc file not found: ${normalizeMarkdownPath(args.path)}`; }
@@ -1610,6 +1717,7 @@ export function toolArcGet(root: string, args: ArcGetArgs): string {
 }
 
 export function toolArcCreate(root: string, args: ArcCreateArgs): string {
+    if (!arcRoot(root)) { return 'Invalid arcFolder in .bindery/settings.json'; }
     const filePath = safeArcFile(root, args.path);
     if (!filePath) { return `Invalid arc path: ${args.path}`; }
     const rel = normalizeMarkdownPath(args.path);
@@ -1625,6 +1733,8 @@ export function toolArcCreate(root: string, args: ArcCreateArgs): string {
 }
 
 export function toolArcUpdate(root: string, args: ArcUpdateArgs): string {
+    const baseDir = arcRoot(root);
+    if (!baseDir) { return 'Invalid arcFolder in .bindery/settings.json'; }
     const filePath = safeArcFile(root, args.path);
     if (!filePath) { return `Invalid arc path: ${args.path}`; }
     if (!fs.existsSync(filePath)) { return `Arc file not found: ${normalizeMarkdownPath(args.path)}. Use arc_create first.`; }
@@ -1632,16 +1742,18 @@ export function toolArcUpdate(root: string, args: ArcUpdateArgs): string {
     const existing = parseArcProfile(fs.readFileSync(filePath, 'utf-8'), titleFromNotePath(args.path));
     const updated = mergeDefined(existing, arcProfileFromArgs(args, existing.title));
     fs.writeFileSync(filePath, renderArcProfile(updated), 'utf-8');
-    updateArcIndex(root, updated, normalizeSlashes(path.relative(arcRoot(root), filePath)));
-    return `Updated arc file: ${normalizeSlashes(path.relative(arcRoot(root), filePath))}`;
+    const rel = normalizeSlashes(path.relative(baseDir, filePath));
+    updateArcIndex(root, updated, rel);
+    return `Updated arc file: ${rel}`;
 }
 
-function arcRoot(root: string): string {
-    return path.join(root, getArcFolder(readSettings(root) ?? null));
+function arcRoot(root: string): string | null {
+    return resolveWorkspacePath(root, getArcFolder(readSettings(root) ?? null));
 }
 
 function safeArcFile(root: string, arcPath: string): string | null {
     const baseDir = arcRoot(root);
+    if (!baseDir) { return null; }
     const normalized = normalizeMarkdownPath(arcPath);
     const resolved = path.resolve(baseDir, normalized);
     const rel = path.relative(baseDir, resolved);
@@ -1702,6 +1814,7 @@ function inferredArcKind(baseDir: string, filePath: string): string | undefined 
 
 function updateArcIndex(root: string, profile: ArcProfile, relPath: string): void {
     const baseDir = arcRoot(root);
+    if (!baseDir) { return; }
     const indexPath = path.join(baseDir, 'index.md');
     fs.mkdirSync(baseDir, { recursive: true });
     if (!fs.existsSync(indexPath)) { fs.writeFileSync(indexPath, arcIndexTemplate(getArcFolder(readSettings(root) ?? null)), 'utf-8'); }
@@ -1828,7 +1941,9 @@ export interface FormatArgs {
 export function toolFormat(root: string, args: FormatArgs): string {
     let target = root;
     if (args.filePath) {
-        target = path.isAbsolute(args.filePath) ? args.filePath : path.join(root, args.filePath);
+        const resolved = resolveWorkspacePath(root, args.filePath);
+        if (!resolved) { return 'Invalid path: filePath must be a relative path within the workspace.'; }
+        target = resolved;
     }
 
     const changed: string[] = [];
@@ -2437,9 +2552,13 @@ export function toolAddLanguage(root: string, args: AddLanguageArgs): string {
     catch { return 'Error: .bindery/settings.json not found. Run init_workspace first.'; }
 
     const upper = args.code.trim().toUpperCase();
+    const folderName = normalizeFolderName(args.folderName?.trim() ?? upper);
+    if (!folderName) {
+        return 'Error: folderName must be a single relative folder name inside Story/.';
+    }
     const newLang: LanguageEntry = {
         code:          upper,
-        folderName:    args.folderName?.trim()    ?? upper,
+        folderName,
         chapterWord:   args.chapterWord?.trim()   ?? 'Chapter',
         actPrefix:     args.actPrefix?.trim()     ?? 'Act',
         prologueLabel: args.prologueLabel?.trim() ?? 'Prologue',
@@ -2451,6 +2570,11 @@ export function toolAddLanguage(root: string, args: AddLanguageArgs): string {
     if (dupIdx >= 0) { languages[dupIdx] = newLang; } else { languages.push(newLang); }
     existing['languages'] = languages;
 
+    const settingsValidationError = validateWorkspaceSettingsPaths(existing);
+    if (settingsValidationError) {
+        return `Error: ${settingsValidationError}`;
+    }
+
     fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
 
     // Create stub files mirroring source language (default: true)
@@ -2460,11 +2584,14 @@ export function toolAddLanguage(root: string, args: AddLanguageArgs): string {
 
     let stubCount = 0;
     if (createStubs && sourceLang && sourceLang.code !== upper) {
-        const sourceDir = path.join(root, storyFolderName, sourceLang.folderName);
-        const targetDir = path.join(root, storyFolderName, newLang.folderName);
+        const sourceDir = resolveWorkspacePath(root, path.posix.join(storyFolderName, sourceLang.folderName));
+        const targetDir = resolveWorkspacePath(root, path.posix.join(storyFolderName, newLang.folderName));
+        if (!targetDir) {
+            return `Error: invalid language folder target for ${upper}.`;
+        }
         fs.mkdirSync(targetDir, { recursive: true });
 
-        if (fs.existsSync(sourceDir)) {
+        if (sourceDir && fs.existsSync(sourceDir)) {
             const createStubsIn = (srcDir: string, dstDir: string) => {
                 fs.mkdirSync(dstDir, { recursive: true });
                 for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
@@ -2549,7 +2676,8 @@ function seedTranslations(translationsPath: string, languages: Array<Record<stri
 }
 
 function writeScaffoldFile(root: string, relPath: string, content: string): boolean {
-    const filePath = path.join(root, ...relPath.split('/'));
+    const filePath = resolveWorkspacePath(root, relPath);
+    if (!filePath) { return false; }
     if (fs.existsSync(filePath)) { return false; }
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, content, 'utf-8');
@@ -2557,7 +2685,8 @@ function writeScaffoldFile(root: string, relPath: string, content: string): bool
 }
 
 function ensureScaffoldDir(root: string, relPath: string): boolean {
-    const dirPath = path.join(root, ...relPath.split('/'));
+    const dirPath = resolveWorkspacePath(root, relPath);
+    if (!dirPath) { return false; }
     const existed = fs.existsSync(dirPath);
     fs.mkdirSync(dirPath, { recursive: true });
     return !existed;
@@ -2788,6 +2917,11 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
         languages,
     };
 
+    const settingsValidationError = validateWorkspaceSettingsPaths(settings);
+    if (settingsValidationError) {
+        return `Error: ${settingsValidationError}`;
+    }
+
     fs.mkdirSync(path.join(root, '.bindery'), { recursive: true });
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
     const created: string[] = ['.bindery/settings.json'];
@@ -2904,6 +3038,10 @@ export function toolSettingsUpdate(root: string, args: SettingsUpdateArgs): stri
     }
 
     const merged = deepMergeSettings(existing, args.patch);
+    const settingsValidationError = validateWorkspaceSettingsPaths(merged);
+    if (settingsValidationError) {
+        return `Error: ${settingsValidationError}`;
+    }
     fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
     return `Updated .bindery/settings.json (merged keys: ${safeKeys.join(', ')}).`;
 }
@@ -2988,6 +3126,15 @@ export function toolMemoryList(root: string): string {
     }).join('\n');
 }
 
+function safeMemoryFile(root: string, memoryFile: string): string | null {
+    const memDir = path.join(root, '.bindery', 'memories');
+    const normalized = normalizeNotePath(memoryFile);
+    const resolved = path.resolve(memDir, normalized);
+    const rel = path.relative(memDir, resolved);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) { return null; }
+    return resolved;
+}
+
 // ─── memory_append ────────────────────────────────────────────────────────────
 
 export interface MemoryAppendArgs {
@@ -3000,7 +3147,8 @@ export function toolMemoryAppend(root: string, args: MemoryAppendArgs): string {
     const memDir = path.join(root, '.bindery', 'memories');
     fs.mkdirSync(memDir, { recursive: true });
 
-    const filePath  = path.join(memDir, args.file);
+    const filePath  = safeMemoryFile(root, args.file);
+    if (!filePath) { return `Invalid memory file: ${args.file}`; }
     const date      = new Date().toISOString().slice(0, 10);
     const header    = `## Session ${date} — ${args.title}`;
     const addition  = `\n${header}\n${args.content}`;
@@ -3022,7 +3170,8 @@ export interface MemoryCompactArgs {
 
 export function toolMemoryCompact(root: string, args: MemoryCompactArgs): string {
     const memDir   = path.join(root, '.bindery', 'memories');
-    const filePath = path.join(memDir, args.file);
+    const filePath = safeMemoryFile(root, args.file);
+    if (!filePath) { return `Invalid memory file: ${args.file}`; }
 
     const oldLineCount = fs.existsSync(filePath)
         ? fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).length
@@ -3061,8 +3210,8 @@ const SESSION_SECTIONS = [
 
 type SessionSectionKey = (typeof SESSION_SECTIONS)[number][0];
 
-function sessionFilePath(root: string): string {
-    return path.join(root, getSessionFile(readSettings(root) ?? null));
+function sessionFilePath(root: string): string | null {
+    return resolveWorkspacePath(root, getSessionFile(readSettings(root) ?? null));
 }
 
 interface ParsedSection { title: string; body: string; }
@@ -3102,6 +3251,9 @@ function serializeSessionFile(parsed: ParsedSessionFile): string {
 export function toolSessionFocusGet(root: string, args: { section?: string } = {}): string {
     const filePath = sessionFilePath(root);
     const rel = getSessionFile(readSettings(root) ?? null);
+    if (!filePath) {
+        return `Invalid sessionFile in .bindery/settings.json: ${rel}`;
+    }
     if (!fs.existsSync(filePath)) {
         return `No session file on record at ${rel}. Run init_workspace or use session_focus_update to create it.`;
     }
@@ -3138,6 +3290,9 @@ export function toolSessionFocusUpdate(root: string, args: SessionFocusUpdateArg
 
     const filePath = sessionFilePath(root);
     const rel = getSessionFile(readSettings(root) ?? null);
+    if (!filePath) {
+        return `Invalid sessionFile in .bindery/settings.json: ${rel}`;
+    }
     const mode = args.mode === 'append' ? 'append' : 'replace';
 
     let text: string;
@@ -3170,10 +3325,10 @@ export function toolSessionFocusUpdate(root: string, args: SessionFocusUpdateArg
 
 // ─── Inbox processing (Notes/Inbox.md) ──────────────────────────────────────────
 
-function inboxFilePath(root: string): { abs: string; rel: string } {
+function inboxFilePath(root: string): { abs: string | null; rel: string } {
     const notesFolder = getNotesFolder(readSettings(root) ?? null);
     const rel = normalizeSlashes(path.posix.join(notesFolder, 'Inbox.md'));
-    return { abs: path.join(root, notesFolder, 'Inbox.md'), rel };
+    return { abs: resolveWorkspacePath(root, rel), rel };
 }
 
 interface ParsedInbox { preamble: string; items: string[]; }
@@ -3219,6 +3374,9 @@ function inboxItemPreview(item: string): string {
 
 export function toolInboxProcess(root: string): string {
     const { abs, rel } = inboxFilePath(root);
+    if (!abs) {
+        return `Invalid notesFolder in .bindery/settings.json: ${rel}`;
+    }
     if (!fs.existsSync(abs)) {
         return `Inbox not found at ${rel}. Run init_workspace to create it, or add notes there first.`;
     }
@@ -3257,6 +3415,9 @@ export function toolInboxResolve(root: string, args: InboxResolveArgs): string {
         return 'Error: provide the item numbers to remove (as shown by inbox_process).';
     }
     const { abs, rel } = inboxFilePath(root);
+    if (!abs) {
+        return `Invalid notesFolder in .bindery/settings.json: ${rel}`;
+    }
     if (!fs.existsSync(abs)) {
         return `Inbox not found at ${rel}. Nothing to resolve.`;
     }

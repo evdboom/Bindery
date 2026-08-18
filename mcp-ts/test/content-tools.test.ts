@@ -221,4 +221,13 @@ describe('toolFormat', () => {
         const result = toolFormat(root, { filePath: relPath });
         expect(result).toContain('Formatted 1 file');
     });
+
+    it('rejects absolute paths outside the workspace', () => {
+        const root = makeRoot();
+        const outside = path.join(path.dirname(root), 'outside.md');
+        write(outside, '# Outside\n"Hello..."\n');
+
+        const result = toolFormat(root, { filePath: outside });
+        expect(result).toContain('Invalid path');
+    });
 });
