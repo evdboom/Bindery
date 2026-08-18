@@ -18,7 +18,7 @@ const CONTENT = [
     '',
     '## Prerequisites',
     '1. A Bindery workspace. If unsure, call `bindery_identify_book` to check. If no workspace is found, tell the user and stop.',
-    '2. An existing image style guide. `CHAPTER_IMAGE_STYLE.md` (book root) read with `bindery_get_text`. If none is found, tell the user and offer to run `/image-style` first, then stop — do not improvise a style guide or generate an image without one.',    
+    '2. An existing image style guide. `CHAPTER_IMAGE_STYLE.md` (book root) read with `bindery_get_text`. If none is found, tell the user and offer to run `/image-style` first, then stop — do not improvise a style guide or generate an image without one.',
     '3. Image generation capability in your environment. If none is available, tell the user and either follow this skill and provide a prompt for them to run in their own image-generation tool, or stop.',
     '',
     '## Trigger',
