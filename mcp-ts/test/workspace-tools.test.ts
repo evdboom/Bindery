@@ -106,6 +106,14 @@ describe('toolInitWorkspace', () => {
         expect(prefs).toContain('## Working Style');
     });
 
+    it('rejects storyFolder values that escape the workspace', () => {
+        const root = makeRoot();
+        const result = toolInitWorkspace(root, { storyFolder: '../Outside' });
+
+        expect(result).toContain('Error');
+        expect(fs.existsSync(path.join(path.dirname(root), 'Outside'))).toBe(false);
+    });
+
     it('uses configured authoring paths when updating an existing workspace', () => {
         const root = makeRoot();
         write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
@@ -287,6 +295,22 @@ describe('toolAddLanguage', () => {
         expect(content).toBe(existing);
     });
 
+    it('rejects folder names that escape Story/', () => {
+        const root = makeRoot();
+        write(
+            path.join(root, '.bindery', 'settings.json'),
+            JSON.stringify({
+                bookTitle: 'B',
+                storyFolder: 'Story',
+                languages: [{ code: 'EN', folderName: 'EN', chapterWord: 'Chapter', actPrefix: 'Act', prologueLabel: 'Prologue', epilogueLabel: 'Epilogue', isDefault: true }],
+            }) + '\n'
+        );
+
+        const result = toolAddLanguage(root, { code: 'FR', folderName: '../FR' });
+        expect(result).toContain('Error');
+        expect(fs.existsSync(path.join(path.dirname(root), 'FR'))).toBe(false);
+    });
+
     it('returns error when settings.json is missing', () => {
         const root = makeRoot();
         const result = toolAddLanguage(root, { code: 'DE' });
@@ -365,6 +389,15 @@ describe('toolMemoryAppend', () => {
         const today = new Date().toISOString().slice(0, 10);
         expect(content).toContain(`## Session ${today} — Test Entry`);
     });
+
+    it('rejects memory paths that escape the memories folder', () => {
+        const root = makeRoot();
+        const outside = path.join(path.dirname(root), `${path.basename(root)}-outside.md`);
+
+        const result = toolMemoryAppend(root, { file: `../${path.basename(outside)}`, title: 'Nope', content: 'Nope.' });
+        expect(result).toContain('Invalid memory file');
+        expect(fs.existsSync(outside)).toBe(false);
+    });
 });
 
 // ─── toolMemoryCompact ────────────────────────────────────────────────────────
@@ -415,6 +448,15 @@ describe('toolMemoryCompact', () => {
         const backups = fs.readdirSync(archiveDir).filter(f => f.startsWith('global_'));
         // At minimum one backup file exists (same day = same filename, overwritten)
         expect(backups.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('rejects compaction paths that escape the memories folder', () => {
+        const root = makeRoot();
+        const outside = path.join(path.dirname(root), `${path.basename(root)}-outside.md`);
+        const result = toolMemoryCompact(root, { file: `../${path.basename(outside)}`, compacted_content: 'Nope.' });
+
+        expect(result).toContain('Invalid memory file');
+        expect(fs.existsSync(outside)).toBe(false);
     });
 });
 

@@ -98,6 +98,14 @@ describe('Workspace Management', () => {
 
             expect(() => addLanguage(tempRoot, 'NL', 'NL')).toThrow(/already exists/);
         });
+
+        it('should reject folder names that escape Story/', () => {
+            const settings = { storyFolder: 'Story', languages: [] };
+            writeSettings(tempRoot, settings);
+
+            expect(() => addLanguage(tempRoot, 'FR', '../FR')).toThrow(/Folder name/);
+            expect(fs.existsSync(path.join(path.dirname(tempRoot), 'FR'))).toBe(false);
+        });
     });
 
     describe('Dialect Rule Management', () => {

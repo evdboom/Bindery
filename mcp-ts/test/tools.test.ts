@@ -336,6 +336,23 @@ describe('mcp tools', () => {
     expect(result).not.toContain('__proto__');
   });
 
+  it('rejects settings_update patches with escaping path values', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ bookTitle: 'Test Book', storyFolder: 'Story', sessionFile: 'SESSION.md' }, null, 2) + '\n');
+
+    const result = toolSettingsUpdate(root, { patch: { sessionFile: '../outside.md' } });
+    expect(result).toContain('Error');
+    expect(result).toContain('sessionFile');
+  });
+
+  it('rejects session focus writes when sessionFile escapes the workspace', () => {
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({ sessionFile: '../outside.md' }, null, 2) + '\n');
+
+    const result = toolSessionFocusUpdate(root, { currentFocus: 'Stay inside.' });
+    expect(result).toContain('Invalid sessionFile');
+  });
+
   it('builds index and returns search results', async () => {
     const root = makeRoot();
     write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Arrival\nThe red comet crossed the sky.\n');

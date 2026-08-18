@@ -170,6 +170,14 @@ function isUkLanguage(lang: LanguageConfig): boolean {
     return c === 'UK' || c === 'EN-GB';
 }
 
+function normalizeLanguageFolderName(folderName: string): string | null {
+    const trimmed = folderName.trim();
+    if (!trimmed || trimmed === '.' || trimmed === '..' || /[\\/]/.test(trimmed)) {
+        return null;
+    }
+    return trimmed;
+}
+
 /** True if the language has a story folder that exists on disk. */
 function languageCanExport(root: string, storyFolder: string, lang: LanguageConfig): boolean {
     if (isUkLanguage(lang)) {
@@ -764,6 +772,11 @@ async function addLanguageCommand() {
         value:       preset?.folderName ?? upper,
     });
     if (!folderName?.trim()) { return; }
+    const safeFolderName = normalizeLanguageFolderName(folderName);
+    if (!safeFolderName) {
+        vscode.window.showErrorMessage('Folder name must be a single relative folder name inside Story/.');
+        return;
+    }
 
     const chapterWord = await vscode.window.showInputBox({
         title:       'Bindery: Add Language (3/7) — Chapter word',
@@ -800,7 +813,7 @@ async function addLanguageCommand() {
 
     const newLang: LanguageConfig = {
         code:          upper,
-        folderName:    folderName.trim(),
+        folderName:    safeFolderName,
         chapterWord:   chapterWord.trim(),
         actPrefix:     actPrefix.trim(),
         prologueLabel: prologueLabel.trim(),
