@@ -24,7 +24,7 @@ const CONTENT = [
     '## Trigger',
     'User says `/chapter-image`, "make a chapter cover", "create a chapter image", "generate an illustration for chapter X", or "add a cover image to this chapter".',
     '',
-    'If none of these exist, tell the user no image style guide was found and that consistent chapter images depend on one. Offer to run `/image-style` first, then stop — do not improvise a style guide or generate an image without one.',
+    'If no image style guide exists, tell the user none was found and that consistent chapter images depend on one. Offer to run `/image-style` first, then stop — do not improvise a style guide or generate an image without one.',
     '',
     '## Tools',
     '- `bindery_get_text(path)` — read the style guide and `.bindery/settings.json`',
