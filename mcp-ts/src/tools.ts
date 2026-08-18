@@ -308,7 +308,14 @@ function normalizeRelativeInputPath(value: string): string {
 
 function resolvePathInside(baseDir: string, relativePath: string): string | null {
     const normalized = path.posix.normalize(normalizeRelativeInputPath(relativePath));
-    if (!normalized || normalized === '.' || normalized === '..' || path.posix.isAbsolute(normalized) || normalized.startsWith('../')) {
+    if (
+        !normalized
+        || normalized === '.'
+        || normalized === '..'
+        || path.posix.isAbsolute(normalized)
+        || /^[a-zA-Z]:/.test(normalized)
+        || normalized.startsWith('../')
+    ) {
         return null;
     }
     const resolved = path.resolve(baseDir, normalized);
@@ -1935,7 +1942,7 @@ export function toolFormat(root: string, args: FormatArgs): string {
     let target = root;
     if (args.filePath) {
         const resolved = resolveWorkspacePath(root, args.filePath);
-        if (!resolved) { return `Invalid path: ${args.filePath}`; }
+        if (!resolved) { return 'Invalid path: filePath must be a relative path within the workspace.'; }
         target = resolved;
     }
 
@@ -2874,9 +2881,6 @@ export function toolInitWorkspace(root: string, args: InitWorkspaceArgs): string
     }
 
     const storyFolderName = args.storyFolder ?? (existing['storyFolder'] as string | undefined) ?? 'Story';
-    if (validateSettingsPathValue('storyFolder', storyFolderName)) {
-        return 'Error: storyFolder must stay inside the workspace.';
-    }
     const bookTitle       = args.bookTitle   ?? existing['bookTitle'] ?? path.basename(root);
     const existingLangs   = ((existing['languages'] as unknown[] | undefined) ?? []) as Array<Record<string, unknown>>;
     const languages       = detectWorkspaceLangs(path.join(root, storyFolderName), existingLangs);
@@ -3206,9 +3210,8 @@ const SESSION_SECTIONS = [
 
 type SessionSectionKey = (typeof SESSION_SECTIONS)[number][0];
 
-function sessionFilePath(root: string): string {
-    const resolved = resolveWorkspacePath(root, getSessionFile(readSettings(root) ?? null));
-    return resolved ?? '';
+function sessionFilePath(root: string): string | null {
+    return resolveWorkspacePath(root, getSessionFile(readSettings(root) ?? null));
 }
 
 interface ParsedSection { title: string; body: string; }
@@ -3322,10 +3325,10 @@ export function toolSessionFocusUpdate(root: string, args: SessionFocusUpdateArg
 
 // ─── Inbox processing (Notes/Inbox.md) ──────────────────────────────────────────
 
-function inboxFilePath(root: string): { abs: string; rel: string } {
+function inboxFilePath(root: string): { abs: string | null; rel: string } {
     const notesFolder = getNotesFolder(readSettings(root) ?? null);
     const rel = normalizeSlashes(path.posix.join(notesFolder, 'Inbox.md'));
-    return { abs: resolveWorkspacePath(root, rel) ?? '', rel };
+    return { abs: resolveWorkspacePath(root, rel), rel };
 }
 
 interface ParsedInbox { preamble: string; items: string[]; }

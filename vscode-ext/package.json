@@ -903,7 +903,8 @@
           "type": "object",
           "properties": {
             "filePath": {
-              "type": "string"
+              "type": "string",
+              "description": "Relative path to a file or folder inside the workspace."
             },
             "dryRun": {
               "type": "boolean"
