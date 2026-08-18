@@ -372,6 +372,48 @@ describe('renderTemplate — plan-beats skill', () => {
   });
 });
 
+describe('renderTemplate — image-style skill', () => {
+  it('contains YAML front-matter, title, trigger, tools, steps, and rules', () => {
+    const result = renderTemplate('image-style', makeCtx());
+    expect(result).toContain('name: image-style');
+    expect(result).toContain('# Skill: /image-style');
+    expect(result).toContain('## Trigger');
+    expect(result).toContain('## Tools');
+    expect(result).toContain('## Steps');
+    expect(result).toContain('## Rules');
+  });
+
+  it('outputs a book-agnostic CHAPTER_IMAGE_STYLE.md at the book root', () => {
+    const result = renderTemplate('image-style', makeCtx());
+    expect(result).toContain('CHAPTER_IMAGE_STYLE.md');
+    expect(result).not.toMatch(/Landa|Flux Core|Burrox|Tetherfang/);
+  });
+});
+
+describe('renderTemplate — chapter-image skill', () => {
+  it('contains YAML front-matter, title, trigger, tools, steps, and rules', () => {
+    const result = renderTemplate('chapter-image', makeCtx());
+    expect(result).toContain('name: chapter-image');
+    expect(result).toContain('# Skill: /chapter-image');
+    expect(result).toContain('argument-hint');
+    expect(result).toContain('## Trigger');
+    expect(result).toContain('## Tools');
+    expect(result).toContain('## Steps');
+    expect(result).toContain('## Rules');
+  });
+
+  it('requires the image style guide and redirects to /image-style when missing', () => {
+    const result = renderTemplate('chapter-image', makeCtx());
+    expect(result).toContain('CHAPTER_IMAGE_STYLE.md');
+    expect(result).toContain('/image-style');
+  });
+
+  it('is book-agnostic', () => {
+    const result = renderTemplate('chapter-image', makeCtx());
+    expect(result).not.toMatch(/Landa|Flux Core|Burrox|Tetherfang/);
+  });
+});
+
 describe('renderTemplate — translate skill', () => {
   it('contains YAML front-matter, title, trigger, tools, and steps', () => {
     const result = renderTemplate('translate', makeCtx());
@@ -533,6 +575,8 @@ describe('renderTemplate — bindery-readme', () => {
     expect(result).toContain('bindery_setup_ai_files');
     expect(result).toContain('/plan-beats');
     expect(result).toContain('/character-setup');
+    expect(result).toContain('/image-style');
+    expect(result).toContain('/chapter-image');
     expect(result).toContain('bindery_note_list');
     expect(result).toContain('bindery_note_append');
     expect(result).toContain('bindery_character_list');

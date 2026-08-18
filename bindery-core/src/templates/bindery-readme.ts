@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-  version: 13,
+  version: 14,
     label:   'bindery capabilities',
 };
 
@@ -232,6 +232,8 @@ command or by paraphrasing the description.
 | \`/read-aloud\` | "read this aloud", reading-aloud test |
 | \`/read-in\` | start-of-session context loading |
 | \`/proof-read\` | "proofread chapter X", "get reader feedback" |
+| \`/image-style\` | "set up my image style", "define my book's art style" |
+| \`/chapter-image\` | "make a chapter cover", "generate an illustration for chapter X" |
 
 ## How to answer "What can Bindery do?"
 

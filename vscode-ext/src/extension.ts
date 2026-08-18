@@ -1040,6 +1040,8 @@ const SKILL_ITEMS: Array<{ label: string; description: string; value: SkillTempl
     { label: '/proof-read', description: 'Multi-perspective proofread with reader and author personas',  value: 'proof-read' },
     { label: '/plan-beats',      description: 'Create or refine a chapter or scene beatmap',                  value: 'plan-beats'      },
     { label: '/character-setup', description: 'Build or update a structured character profile',                value: 'character-setup' },
+    { label: '/image-style',     description: 'Define a reusable illustration style guide for this book',     value: 'image-style'     },
+    { label: '/chapter-image',   description: 'Generate a style-consistent illustration for a chapter',       value: 'chapter-image'   },
 ];
 
 async function setupAiCommand(context?: vscode.ExtensionContext) {
