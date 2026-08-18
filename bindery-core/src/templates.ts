@@ -30,6 +30,8 @@ import * as readIn          from './templates/skills/read-in';
 import * as proofRead       from './templates/skills/proof-read';
 import * as planBeats       from './templates/skills/plan-beats';
 import * as characterSetup  from './templates/skills/character-setup';
+import * as imageStyle      from './templates/skills/image-style';
+import * as chapterImage    from './templates/skills/chapter-image';
 
 import type { TemplateContext, TemplateMeta } from './templates/context';
 
@@ -58,6 +60,8 @@ const TEMPLATES: Record<string, TemplateModule> = {
     'proof-read':          proofRead,
     'plan-beats':          planBeats,
     'character-setup':     characterSetup,
+    'image-style':         imageStyle,
+    'chapter-image':       chapterImage,
 };
 
 // ─── File version metadata ────────────────────────────────────────────────────
@@ -80,7 +84,8 @@ export const FILE_VERSION_INFO: Record<string, { version: number; label: string;
  * Top-level file templates: 'claude', 'copilot', 'cursor', 'agents', 'bindery-readme'
  * Skill templates: 'review', 'brainstorm', 'memory', 'translate',
  *                  'translation-review', 'status', 'continuity', 'read-aloud',
- *                  'read-in', 'proof-read', 'plan-beats', 'character-setup'
+ *                  'read-in', 'proof-read', 'plan-beats', 'character-setup',
+ *                  'image-style', 'chapter-image'
  */
 export function renderTemplate(name: string, ctx: TemplateContext): string {
     const t = TEMPLATES[name];

@@ -177,7 +177,7 @@ host-specific UI/activation):
 | `cursor` | `.cursor/rules` |
 | `agents` | `AGENTS.md` |
 
-Skills: `review`, `brainstorm`, `memory`, `translate`, `translation-review`, `status`, `continuity`, `read-aloud`, `read-in`, `proof-read`, `plan-beats`, `character-setup`.
+Skills: `review`, `brainstorm`, `memory`, `translate`, `translation-review`, `status`, `continuity`, `read-aloud`, `read-in`, `proof-read`, `plan-beats`, `character-setup`, `image-style`, `chapter-image`.
 
 The **memory skill** uses `bindery_memory_list` → `bindery_memory_append` → `bindery_memory_compact` for session decisions and `bindery_note_list` / `bindery_note_get` / `bindery_note_create` / `bindery_note_append` for canonical story notes. Do not fall back to `bindery_get_text` + Edit tool for memory or note writes when a structured tool exists.
 

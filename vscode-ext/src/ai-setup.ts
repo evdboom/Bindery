@@ -58,10 +58,12 @@ export type SkillTemplate =
     | 'read-in'
     | 'proof-read'
     | 'plan-beats'
-    | 'character-setup';
+    | 'character-setup'
+    | 'image-style'
+    | 'chapter-image';
 
 export const ALL_SKILLS: SkillTemplate[] = [
-    'review', 'brainstorm', 'memory', 'translate', 'translation-review', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read', 'plan-beats', 'character-setup',
+    'review', 'brainstorm', 'memory', 'translate', 'translation-review', 'status', 'continuity', 'read-aloud', 'read-in', 'proof-read', 'plan-beats', 'character-setup', 'image-style', 'chapter-image',
 ];
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
