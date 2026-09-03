@@ -524,7 +524,7 @@
         "displayName": "Bindery: Get Overview",
         "toolReferenceName": "binderyGetOverview",
         "canBeReferencedInPrompt": true,
-        "modelDescription": "List the chapter structure (acts, chapters, titles) for one or all languages.",
+        "modelDescription": "List the chapter structure (acts, chapters, titles) for one or all languages. Optionally include per-file and aggregate word counts.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -535,6 +535,10 @@
             "act": {
               "type": "number",
               "description": "Act number 1, 2 or 3"
+            },
+            "includeWordCounts": {
+              "type": "boolean",
+              "description": "Append per-file word counts plus act, top-level, and language totals (default: false)"
             }
           }
         }
