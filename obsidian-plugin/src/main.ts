@@ -191,7 +191,6 @@ interface AuthoringTools {
 function loadAuthoringTools(): AuthoringTools {
     try {
         // Keep this literal so esbuild can bundle the shared tools into the Obsidian plugin release.
-        // eslint-disable-next-line @typescript-eslint/no-require-imports -- runtime bridge to shared MCP tool module
         return require('../../mcp-ts/out/tools') as AuthoringTools;
     } catch {
         // Fall back to runtime paths for local development and manually copied release layouts.
@@ -206,7 +205,7 @@ function loadAuthoringTools(): AuthoringTools {
     if (!modulePath) {
         throw new Error('Compiled Bindery authoring tools were not found. Run npm run compile --workspace=mcp-ts before using authoring commands.');
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports -- runtime bridge to shared MCP tool module
+    
     return require(modulePath) as AuthoringTools;
 }
 
