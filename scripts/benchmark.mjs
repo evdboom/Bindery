@@ -58,13 +58,13 @@ function parseArgs(argv) {
  * index discover them. Content is a pure function of (chapter, word index),
  * so two runs produce byte-identical fixtures.
  */
-function generateFixture(root, chapters, words) {
+function generateFixture(root, chapters, wordsPerChapter) {
     const actDir = path.join(root, 'Story', 'EN', 'Act I');
     fs.mkdirSync(actDir, { recursive: true });
 
     for (let c = 1; c <= chapters; c++) {
         const words = [];
-        for (let w = 0; w < words; w++) {
+        for (let w = 0; w < wordsPerChapter; w++) {
             // Deterministic pseudo-vocabulary; stable across runs and platforms.
             words.push(`word${(c * 1000 + w) % 5000}`);
         }

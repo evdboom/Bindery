@@ -190,7 +190,7 @@ interface AuthoringTools {
 
 function loadAuthoringTools(): AuthoringTools {
     try {
-        // Keep this literal so esbuild can bundle the shared tools into the Obsidian plugin release.        
+        // Keep this literal so esbuild can bundle the shared tools into the Obsidian plugin release.
         return require('../../mcp-ts/out/tools') as AuthoringTools;
     } catch {
         // Fall back to runtime paths for local development and manually copied release layouts.
