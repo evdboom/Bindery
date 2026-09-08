@@ -17,7 +17,7 @@ import * as path   from 'node:path';
 interface GetTextInput    { identifier: string; startLine?: number; endLine?: number }
 interface GetChapterInput { chapterNumber: number; language: string }
 interface GetBookUntilInput { chapterNumber: number; language: string; startChapter?: number }
-interface GetOverviewInput { language?: string; act?: number }
+interface GetOverviewInput { language?: string; act?: number; includeWordCounts?: boolean }
 interface GetNotesInput   { category?: string; name?: string }
 interface NoteListInput   { category?: string }
 interface NoteGetInput    { path: string }

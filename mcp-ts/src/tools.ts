@@ -8,6 +8,7 @@
 
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { unzipSync } from 'fflate';
 import { updateTypography }                 from './format.js';
@@ -127,6 +128,7 @@ const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/evdboom/Bindery/
 type LatestReleaseAsset = {
     name: string;
     browser_download_url?: string;
+    digest?: string;
 };
 
 type LatestRelease = {
@@ -852,6 +854,22 @@ export async function toolDownloadLatestMcp(_root: string, args: DownloadLatestM
     }
 
     const arrayBuffer = await response.arrayBuffer();
+    const expectedDigest = zipAsset.digest?.match(/^sha256:([a-f0-9]{64})$/i)?.[1];
+    if (!expectedDigest) {
+        return [
+            'GitHub release asset metadata did not include a verifiable SHA-256 digest.',
+            'Refusing to unpack an unverified release asset.',
+            `Release page: ${releaseUrl}`,
+        ].join('\n');
+    }
+    const actualDigest = createHash('sha256').update(Buffer.from(arrayBuffer)).digest('hex');
+    if (actualDigest.toLowerCase() !== expectedDigest.toLowerCase()) {
+        return [
+            'Downloaded ZIP failed GitHub SHA-256 verification.',
+            'Refusing to unpack a potentially tampered release asset.',
+            `Release page: ${releaseUrl}`,
+        ].join('\n');
+    }
     const extractedFiles = extractZipToDirectory(Buffer.from(arrayBuffer), destinationDir);
     const serverEntry = path.join(destinationDir, 'server', 'index.js');
     if (!fs.existsSync(serverEntry)) {
@@ -1013,10 +1031,11 @@ export interface GetChapterArgs {
 
 export function toolGetChapter(root: string, args: GetChapterArgs): string {
     const story    = storyFolder(root);
-    const langDir  = path.join(root, story, args.language.toUpperCase());
+    const lang      = args.language.toUpperCase();
+    const langDir  = resolveLanguageDirectory(root, story, lang);
 
-    if (!fs.existsSync(langDir)) {
-        return `Language folder not found: ${args.language.toUpperCase()}`;
+    if (!langDir) {
+        return `Language folder not found: ${lang}`;
     }
 
     // Search recursively for a file whose name contains the chapter number
@@ -1039,8 +1058,8 @@ export interface GetBookUntilArgs {
 export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
     const story = storyFolder(root);
     const lang = args.language.toUpperCase();
-    const langDir = path.join(root, story, lang);
-    if (!fs.existsSync(langDir)) {
+    const langDir = resolveLanguageDirectory(root, story, lang);
+    if (!langDir) {
         return `Language folder not found: ${lang}`;
     }
 
@@ -1062,6 +1081,30 @@ export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
     }
 
     return sections.join('\n\n---\n\n');
+}
+
+function resolveLanguageDirectory(root: string, story: string, language: string): string | null {
+    if (!language || language === '.' || language === '..' || /[\\/]/.test(language)) {
+        return null;
+    }
+    const storyDir = path.resolve(root, story);
+    const candidate = path.resolve(storyDir, language);
+    const relative = path.relative(storyDir, candidate);
+    if (relative.startsWith('..') || path.isAbsolute(relative) || !fs.existsSync(candidate)) {
+        return null;
+    }
+
+    try {
+        const realStoryDir = fs.realpathSync(storyDir);
+        const realCandidate = fs.realpathSync(candidate);
+        const realRelative = path.relative(realStoryDir, realCandidate);
+        if (realRelative.startsWith('..') || path.isAbsolute(realRelative) || !fs.statSync(realCandidate).isDirectory()) {
+            return null;
+        }
+        return realCandidate;
+    } catch {
+        return null;
+    }
 }
 
 function findChapterFile(dir: string, num: number): string | null {
@@ -1101,6 +1144,7 @@ function findChapterFiles(dir: string, acc = new Map<number, string>()): Map<num
 export interface GetOverviewArgs {
     language?: string;
     act?:      number;
+    includeWordCounts?: boolean;
 }
 
 export function toolGetOverview(root: string, args: GetOverviewArgs): string {
@@ -1112,15 +1156,37 @@ export function toolGetOverview(root: string, args: GetOverviewArgs): string {
     const lines: string[] = [];
 
     for (const lang of langs) {
-        const langDir = path.join(root, story, lang);
-        if (!fs.existsSync(langDir)) { continue; }
-        lines.push(`## ${lang}`, ...overviewForLang(langDir, args.act), '');
+        const langDir = resolveLanguageDirectory(root, story, lang);
+        if (!langDir) { continue; }
+        lines.push(`## ${lang}`, ...overviewForLang(langDir, args.act, args.includeWordCounts), '');
     }
 
     return lines.join('\n') || 'No language folders found.';
 }
 
-function actLines(langDir: string, actEntry: { name: string }): string[] {
+/**
+ * Count words in markdown prose.
+ *
+ * Rule: split on whitespace; a token counts as a word if it contains at least
+ * one Unicode letter or number. Headings therefore count (their text is
+ * letters), while pure Markdown punctuation tokens (`#`, `**`, `---`, `*`,
+ * `>`) do not.
+ */
+export function countWords(text: string): number {
+    let count = 0;
+    for (const token of text.split(/\s+/)) {
+        if (/\p{L}|\p{N}/u.test(token)) { count++; }
+    }
+    return count;
+}
+
+function readTextSafe(filePath: string): string {
+    try { return fs.readFileSync(filePath, 'utf-8'); } catch { return ''; }
+}
+
+interface OverviewBlock { lines: string[]; total: number; }
+
+function actLines(langDir: string, actEntry: { name: string }, includeWordCounts: boolean): OverviewBlock {
     const actDir = path.join(langDir, actEntry.name);
     const chapters = fs.readdirSync(actDir, { withFileTypes: true })
         .filter(e => e.isFile() && e.name.endsWith('.md'))
@@ -1132,17 +1198,26 @@ function actLines(langDir: string, actEntry: { name: string }): string[] {
         })
         .filter((n): n is number => n !== null);
     const gaps = findNumericGaps(numbers);
-    const lines = [
-        `### ${actEntry.name}`,
-        ...chapters.map(ch => {
-            const firstLine = firstH1(path.join(actDir, ch.name));
-            return `- ${ch.name}${firstLine ? ': ' + firstLine : ''}`;
-        }),
-    ];
+    let total = 0;
+    const lines = [`### ${actEntry.name}`];
+    for (const ch of chapters) {
+        const content = readTextSafe(path.join(actDir, ch.name));
+        const firstLine = firstH1(content);
+        let line = `- ${ch.name}${firstLine ? ': ' + firstLine : ''}`;
+        if (includeWordCounts) {
+            const wc = countWords(content);
+            total += wc;
+            line += ` (${wc} words)`;
+        }
+        lines.push(line);
+    }
     if (gaps.length > 0) {
         lines.push(`_Warning: non-contiguous chapter numbering, missing: ${gaps.join(', ')}_`);
     }
-    return lines;
+    if (includeWordCounts) {
+        lines.push(`_Subtotal: ${total} words_`);
+    }
+    return { lines, total };
 }
 
 /** Returns the list of integers missing from the range [min..max] of `nums`. */
@@ -1158,21 +1233,32 @@ function findNumericGaps(nums: number[]): number[] {
     return gaps;
 }
 
-function topLevelLines(langDir: string): string[] {
+function topLevelLines(langDir: string, includeWordCounts: boolean): OverviewBlock {
     const topLevel = fs.readdirSync(langDir, { withFileTypes: true })
         .filter(e => e.isFile() && e.name.endsWith('.md'));
-    if (topLevel.length === 0) { return []; }
-    return [
-        '### Top-level',
-        ...topLevel.map(f => {
-            const firstLine = firstH1(path.join(langDir, f.name));
-            return `- ${f.name}${firstLine ? ': ' + firstLine : ''}`;
-        }),
-    ];
+    if (topLevel.length === 0) { return { lines: [], total: 0 }; }
+    let total = 0;
+    const lines = ['### Top-level'];
+    for (const f of topLevel) {
+        const content = readTextSafe(path.join(langDir, f.name));
+        const firstLine = firstH1(content);
+        let line = `- ${f.name}${firstLine ? ': ' + firstLine : ''}`;
+        if (includeWordCounts) {
+            const wc = countWords(content);
+            total += wc;
+            line += ` (${wc} words)`;
+        }
+        lines.push(line);
+    }
+    if (includeWordCounts) {
+        lines.push(`_Subtotal: ${total} words_`);
+    }
+    return { lines, total };
 }
 
-function overviewForLang(langDir: string, actFilter?: number): string[] {
+function overviewForLang(langDir: string, actFilter?: number, includeWordCounts = false): string[] {
     const lines: string[] = [];
+    let langTotal = 0;
     const entries = fs.readdirSync(langDir, { withFileTypes: true })
         .filter(e => e.isDirectory())
         .sort((a, b) => a.name.localeCompare(b.name));
@@ -1180,22 +1266,27 @@ function overviewForLang(langDir: string, actFilter?: number): string[] {
     for (const actEntry of entries) {
         const actNum = parseActNumber(actEntry.name);
         if (actFilter !== undefined && actNum !== null && actNum !== actFilter) { continue; }
-        lines.push(...actLines(langDir, actEntry));
+        const block = actLines(langDir, actEntry, includeWordCounts);
+        lines.push(...block.lines);
+        langTotal += block.total;
     }
 
     if (actFilter === undefined) {
-        lines.push(...topLevelLines(langDir));
+        const block = topLevelLines(langDir, includeWordCounts);
+        lines.push(...block.lines);
+        langTotal += block.total;
+    }
+
+    if (includeWordCounts) {
+        lines.push(`_Total: ${langTotal} words_`);
     }
 
     return lines;
 }
 
-function firstH1(filePath: string): string | null {
-    try {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const m = /^#\s+(.+)/m.exec(content);
-        return m ? m[1].trim() : null;
-    } catch { return null; }
+function firstH1(content: string): string | null {
+    const m = /^#\s+(.+)/m.exec(content);
+    return m ? m[1].trim() : null;
 }
 
 function parseActNumber(name: string): number | null {
@@ -1347,8 +1438,9 @@ export function toolNoteList(root: string, args: NoteListArgs): string {
         .sort((a, b) => path.relative(baseDir, a).localeCompare(path.relative(baseDir, b), undefined, { numeric: true }))
         .map(filePath => {
             const rel = normalizeSlashes(path.relative(baseDir, filePath));
-            const title = firstH1(filePath);
-            const lineCount = fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).length;
+            const content = readTextSafe(filePath);
+            const title = firstH1(content);
+            const lineCount = content.split(/\r?\n/).length;
             return `- ${rel}${title ? ` — ${title}` : ''} (${lineCount} lines)`;
         })
         .join('\n');
@@ -2121,14 +2213,8 @@ function getStoryScanRoots(root: string, language: string): string[] {
     }
 
     const roots = getLanguageFolderNames(root, language)
-        .map(folder => path.join(storyRoot, folder))
-        .filter(dir => {
-            try {
-                return fs.existsSync(dir) && fs.statSync(dir).isDirectory();
-            } catch {
-                return false;
-            }
-        });
+        .map(folder => resolveLanguageDirectory(root, storyFolder(root), folder))
+        .filter((dir): dir is string => dir !== null);
 
     return roots.length > 0 ? uniquePaths(roots) : [];
 }

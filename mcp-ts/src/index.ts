@@ -239,15 +239,16 @@ server.registerTool('bindery_get_book_until', {
 
 server.registerTool('bindery_get_overview', {
     title: 'Get Overview',
-    description: 'List the chapter structure (acts, chapters, titles) for one or all languages.',
+    description: 'List the chapter structure (acts, chapters, titles) for one or all languages. Optionally include per-file and aggregate word counts.',
     inputSchema: {
-        book:     bookSchema,
-        language: z.string().optional().describe('Language code or ALL (default: ALL)'),
-        act:      z.number().optional().describe('Filter to act number 1, 2, or 3 (optional)'),
+        book:              bookSchema,
+        language:          z.string().optional().describe('Language code or ALL (default: ALL)'),
+        act:               z.number().optional().describe('Filter to act number 1, 2, or 3 (optional)'),
+        includeWordCounts: z.boolean().optional().describe('Append per-file word counts plus act, top-level, and language totals (default: false)'),
     },
     annotations: { readOnlyHint: true },
-}, ({ book, language, act }) => {
-    try { return ok(toolGetOverview(resolveBook(book).root, { language, act })); } catch (e) { return err(e); }
+}, ({ book, language, act, includeWordCounts }) => {
+    try { return ok(toolGetOverview(resolveBook(book).root, { language, act, includeWordCounts })); } catch (e) { return err(e); }
 });
 
 server.registerTool('bindery_get_notes', {
