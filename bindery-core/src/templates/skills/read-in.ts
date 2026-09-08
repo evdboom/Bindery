@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/read-in/SKILL.md',
-    version: 19,
+    version: 21,
     label:   'read-in skill',
 };
 

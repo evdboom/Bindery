@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/image-style/SKILL.md',
-    version: 1,
+    version: 2,
     label:   'image-style skill',
 };
 
@@ -22,7 +22,7 @@ const CONTENT = [
     'User says `/image-style`, "set up my image style", "define my book\'s art style", "create an image style guide", or the `/chapter-image` skill reports that no style guide exists yet.',
     '',
     '## Tools',
-    '- `bindery_get_text(path)` — read `.bindery/settings.json`, an existing `CHAPTER_IMAGE_STYLE.md`, or legacy locations',
+    '- `bindery_get_text(path)` — read `.bindery/settings.json`, an existing `CHAPTER_IMAGE_STYLE.md`',
     '- Your environment\'s file-browsing capability — list the `images/` folder for existing cover or chapter art to use as a style baseline',
     '- Your environment\'s image-viewing capability — inspect existing images before describing the style in words',
     '- Your environment\'s generic file-write capability — there is no dedicated Bindery tool for this file, so create or update it directly',
