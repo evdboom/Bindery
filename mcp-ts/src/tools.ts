@@ -8,6 +8,7 @@
 
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { unzipSync } from 'fflate';
 import { updateTypography }                 from './format.js';
@@ -127,6 +128,7 @@ const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/evdboom/Bindery/
 type LatestReleaseAsset = {
     name: string;
     browser_download_url?: string;
+    digest?: string;
 };
 
 type LatestRelease = {
@@ -852,6 +854,22 @@ export async function toolDownloadLatestMcp(_root: string, args: DownloadLatestM
     }
 
     const arrayBuffer = await response.arrayBuffer();
+    const expectedDigest = zipAsset.digest?.match(/^sha256:([a-f0-9]{64})$/i)?.[1];
+    if (!expectedDigest) {
+        return [
+            'Downloaded ZIP did not include a verifiable SHA-256 digest from GitHub.',
+            'Refusing to unpack an unverified release asset.',
+            `Release page: ${releaseUrl}`,
+        ].join('\n');
+    }
+    const actualDigest = createHash('sha256').update(Buffer.from(arrayBuffer)).digest('hex');
+    if (actualDigest.toLowerCase() !== expectedDigest.toLowerCase()) {
+        return [
+            'Downloaded ZIP failed GitHub SHA-256 verification.',
+            'Refusing to unpack a potentially tampered release asset.',
+            `Release page: ${releaseUrl}`,
+        ].join('\n');
+    }
     const extractedFiles = extractZipToDirectory(Buffer.from(arrayBuffer), destinationDir);
     const serverEntry = path.join(destinationDir, 'server', 'index.js');
     if (!fs.existsSync(serverEntry)) {
@@ -1013,10 +1031,11 @@ export interface GetChapterArgs {
 
 export function toolGetChapter(root: string, args: GetChapterArgs): string {
     const story    = storyFolder(root);
-    const langDir  = path.join(root, story, args.language.toUpperCase());
+    const lang      = args.language.toUpperCase();
+    const langDir  = resolveLanguageDirectory(root, story, lang);
 
-    if (!fs.existsSync(langDir)) {
-        return `Language folder not found: ${args.language.toUpperCase()}`;
+    if (!langDir) {
+        return `Language folder not found: ${lang}`;
     }
 
     // Search recursively for a file whose name contains the chapter number
@@ -1039,8 +1058,8 @@ export interface GetBookUntilArgs {
 export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
     const story = storyFolder(root);
     const lang = args.language.toUpperCase();
-    const langDir = path.join(root, story, lang);
-    if (!fs.existsSync(langDir)) {
+    const langDir = resolveLanguageDirectory(root, story, lang);
+    if (!langDir) {
         return `Language folder not found: ${lang}`;
     }
 
@@ -1062,6 +1081,27 @@ export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
     }
 
     return sections.join('\n\n---\n\n');
+}
+
+function resolveLanguageDirectory(root: string, story: string, language: string): string | null {
+    const storyDir = path.resolve(root, story);
+    const candidate = path.resolve(storyDir, language);
+    const relative = path.relative(storyDir, candidate);
+    if (relative.startsWith('..') || path.isAbsolute(relative) || !fs.existsSync(candidate)) {
+        return null;
+    }
+
+    try {
+        const realStoryDir = fs.realpathSync(storyDir);
+        const realCandidate = fs.realpathSync(candidate);
+        const realRelative = path.relative(realStoryDir, realCandidate);
+        if (realRelative.startsWith('..') || path.isAbsolute(realRelative) || !fs.statSync(realCandidate).isDirectory()) {
+            return null;
+        }
+        return realCandidate;
+    } catch {
+        return null;
+    }
 }
 
 function findChapterFile(dir: string, num: number): string | null {

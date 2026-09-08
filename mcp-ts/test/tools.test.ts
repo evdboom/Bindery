@@ -87,6 +87,15 @@ describe('mcp tools', () => {
     expect(result).toContain('Beta');
   });
 
+  it('rejects traversal in chapter language paths', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Inside\n');
+    write(path.join(path.dirname(root), 'secret', 'Act I', 'Chapter 1.md'), '# Outside\n');
+
+    const result = toolGetChapter(root, { chapterNumber: 1, language: '../secret' });
+    expect(result).toBe('Language folder not found: ../SECRET');
+  });
+
   it('returns concatenated chapter text from chapter 1 through N', () => {
     const root = makeRoot();
     write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# One\nAlpha\n');
