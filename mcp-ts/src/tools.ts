@@ -1280,7 +1280,7 @@ export interface ArcGetArgs {
     path: string;
 }
 
-export interface ArcCreateArgs {
+export interface ArcChangeArgs {
     path: string;
     title?: string;
     kind?: string;
@@ -1293,8 +1293,6 @@ export interface ArcCreateArgs {
     linkedChapters?: string;
     overwrite?: boolean;
 }
-
-export interface ArcUpdateArgs extends ArcCreateArgs {}
 
 function extractNamedSections(content: string, nameFilter: string): string[] {
     const lowerFilter = nameFilter.toLowerCase();
@@ -1716,7 +1714,7 @@ export function toolArcGet(root: string, args: ArcGetArgs): string {
     return fs.readFileSync(filePath, 'utf-8');
 }
 
-export function toolArcCreate(root: string, args: ArcCreateArgs): string {
+export function toolArcCreate(root: string, args: ArcChangeArgs): string {
     if (!arcRoot(root)) { return 'Invalid arcFolder in .bindery/settings.json'; }
     const filePath = safeArcFile(root, args.path);
     if (!filePath) { return `Invalid arc path: ${args.path}`; }
@@ -1732,7 +1730,7 @@ export function toolArcCreate(root: string, args: ArcCreateArgs): string {
     return `${fs.existsSync(filePath) && args.overwrite ? 'Wrote' : 'Created'} arc file: ${rel}`;
 }
 
-export function toolArcUpdate(root: string, args: ArcUpdateArgs): string {
+export function toolArcUpdate(root: string, args: ArcChangeArgs): string {
     const baseDir = arcRoot(root);
     if (!baseDir) { return 'Invalid arcFolder in .bindery/settings.json'; }
     const filePath = safeArcFile(root, args.path);
@@ -1766,7 +1764,7 @@ function normalizeMarkdownPath(markdownPath: string): string {
     return normalized.toLowerCase().endsWith('.md') ? normalized : `${normalized}.md`;
 }
 
-function arcProfileFromArgs(args: ArcCreateArgs, fallbackTitle: string): ArcProfile {
+function arcProfileFromArgs(args: ArcChangeArgs, fallbackTitle: string): ArcProfile {
     return {
         title: trimOrUndefined(args.title) ?? fallbackTitle,
         kind: trimOrUndefined(args.kind),
@@ -3208,8 +3206,6 @@ const SESSION_SECTIONS = [
     ['handoffNotes',  'Handoff Notes'],
 ] as const;
 
-type SessionSectionKey = (typeof SESSION_SECTIONS)[number][0];
-
 function sessionFilePath(root: string): string | null {
     return resolveWorkspacePath(root, getSessionFile(readSettings(root) ?? null));
 }
@@ -3281,7 +3277,7 @@ export interface SessionFocusUpdateArgs {
 
 export function toolSessionFocusUpdate(root: string, args: SessionFocusUpdateArgs): string {
     const provided = SESSION_SECTIONS.filter(([key]) => {
-        const value = args[key as SessionSectionKey];
+        const value = args[key];
         return typeof value === 'string' && value.trim().length > 0;
     });
     if (provided.length === 0) {
@@ -3305,7 +3301,7 @@ export function toolSessionFocusUpdate(root: string, args: SessionFocusUpdateArg
 
     const touched: string[] = [];
     for (const [key, title] of provided) {
-        const incoming = (args[key as SessionSectionKey] as string).trim();
+        const incoming = (args[key] as string).trim();
         let section = parsed.sections.find(s => s.title.toLowerCase() === title.toLowerCase());
         if (!section) {
             section = { title, body: '' };
