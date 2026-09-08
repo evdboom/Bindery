@@ -857,7 +857,7 @@ export async function toolDownloadLatestMcp(_root: string, args: DownloadLatestM
     const expectedDigest = zipAsset.digest?.match(/^sha256:([a-f0-9]{64})$/i)?.[1];
     if (!expectedDigest) {
         return [
-            'Downloaded ZIP did not include a verifiable SHA-256 digest from GitHub.',
+            'GitHub release asset metadata did not include a verifiable SHA-256 digest.',
             'Refusing to unpack an unverified release asset.',
             `Release page: ${releaseUrl}`,
         ].join('\n');
@@ -1084,6 +1084,9 @@ export function toolGetBookUntil(root: string, args: GetBookUntilArgs): string {
 }
 
 function resolveLanguageDirectory(root: string, story: string, language: string): string | null {
+    if (!language || language === '.' || language === '..' || /[\\/]/.test(language)) {
+        return null;
+    }
     const storyDir = path.resolve(root, story);
     const candidate = path.resolve(storyDir, language);
     const relative = path.relative(storyDir, candidate);
@@ -1153,8 +1156,8 @@ export function toolGetOverview(root: string, args: GetOverviewArgs): string {
     const lines: string[] = [];
 
     for (const lang of langs) {
-        const langDir = path.join(root, story, lang);
-        if (!fs.existsSync(langDir)) { continue; }
+        const langDir = resolveLanguageDirectory(root, story, lang);
+        if (!langDir) { continue; }
         lines.push(`## ${lang}`, ...overviewForLang(langDir, args.act, args.includeWordCounts), '');
     }
 
@@ -2210,14 +2213,8 @@ function getStoryScanRoots(root: string, language: string): string[] {
     }
 
     const roots = getLanguageFolderNames(root, language)
-        .map(folder => path.join(storyRoot, folder))
-        .filter(dir => {
-            try {
-                return fs.existsSync(dir) && fs.statSync(dir).isDirectory();
-            } catch {
-                return false;
-            }
-        });
+        .map(folder => resolveLanguageDirectory(root, storyFolder(root), folder))
+        .filter((dir): dir is string => dir !== null);
 
     return roots.length > 0 ? uniquePaths(roots) : [];
 }

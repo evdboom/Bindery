@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { strToU8, zipSync } from 'fflate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -94,6 +96,17 @@ describe('mcp tools', () => {
 
     const result = toolGetChapter(root, { chapterNumber: 1, language: '../secret' });
     expect(result).toBe('Language folder not found: ../SECRET');
+  });
+
+  it('rejects nested and dot-segment chapter language paths', () => {
+    const root = makeRoot();
+    write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Inside\n');
+    write(path.join(root, 'Story', 'EN', 'Bonus', 'Chapter 2.md'), '# Nested\n');
+
+    expect(toolGetChapter(root, { chapterNumber: 1, language: 'EN/..' }))
+      .toBe('Language folder not found: EN/..');
+    expect(toolGetChapter(root, { chapterNumber: 2, language: 'EN/Bonus' }))
+      .toBe('Language folder not found: EN/BONUS');
   });
 
   it('returns concatenated chapter text from chapter 1 through N', () => {
@@ -676,6 +689,43 @@ describe('mcp tools', () => {
         process.env['BINDERY_MCP_LOCATION'] = oldLocation;
       }
     }
+  });
+
+  it('download_latest_mcp verifies GitHub asset metadata before extracting', async () => {
+    const root = makeRoot();
+    const destination = path.join(root, 'downloads');
+    process.env['BINDERY_MCP_LOCATION'] = destination;
+    const zip = zipSync({ 'server/index.js': strToU8('console.log("Bindery");') });
+    const digest = createHash('sha256').update(zip).digest('hex');
+    const release = (assetDigest?: string) => new Response(JSON.stringify({
+      tag_name: '1.2.3',
+      html_url: 'https://github.com/evdboom/Bindery/releases/tag/1.2.3',
+      assets: [{
+        name: 'bindery-mcp-server-1.2.3.zip',
+        browser_download_url: 'https://example.test/bindery.zip',
+        digest: assetDigest,
+      }],
+    }), { status: 200 });
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock.mockResolvedValueOnce(release())
+      .mockResolvedValueOnce(new Response(zip));
+    const missingDigest = await toolDownloadLatestMcp(root, {});
+    expect(missingDigest).toContain('release asset metadata');
+    expect(fs.existsSync(path.join(destination, 'bindery-mcp-server-1.2.3', 'server', 'index.js'))).toBe(false);
+
+    fetchMock.mockResolvedValueOnce(release(`sha256:${'0'.repeat(64)}`))
+      .mockResolvedValueOnce(new Response(zip));
+    const mismatchedDigest = await toolDownloadLatestMcp(root, {});
+    expect(mismatchedDigest).toContain('failed GitHub SHA-256 verification');
+    expect(fs.existsSync(path.join(destination, 'bindery-mcp-server-1.2.3', 'server', 'index.js'))).toBe(false);
+
+    fetchMock.mockResolvedValueOnce(release(`sha256:${digest}`))
+      .mockResolvedValueOnce(new Response(zip));
+    const matchingDigest = await toolDownloadLatestMcp(root, {});
+    expect(matchingDigest).toContain('Downloaded and unpacked Bindery standalone MCP 1.2.3');
+    expect(fs.readFileSync(path.join(destination, 'bindery-mcp-server-1.2.3', 'server', 'index.js'), 'utf-8'))
+      .toBe('console.log("Bindery");');
   });
 
   it('reports an empty state when the session file is missing', () => {
