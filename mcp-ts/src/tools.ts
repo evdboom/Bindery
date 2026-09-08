@@ -36,7 +36,7 @@ import {
     type SkillTemplate,
 } from './aisetup.js';
 import { probeTool, type ProbeResult } from './tool-probe.js';
-import { BUILTIN_EN_GB_RULES, type TranslationRule } from './tools-dialect-defaults.js';
+import { BUILTIN_EN_GB_RULES } from './tools-dialect-defaults.js';
 import { parseUnifiedDiff, formatReviewFiles } from './tools-diff.js';
 import {
     isPlainObject,
@@ -52,6 +52,7 @@ import {
     getPreferencesFile,
     getStoryFolder,
     type WorkspaceSettings,
+    TranslationsFile,
 } from '@bindery/core';
 
 // Re-export so the VS Code extension can call this helper through the same
@@ -2388,9 +2389,6 @@ function detectWorkspaceLangs(
         return el ? { ...el, code: dl.code, folderName: dl.folderName } : (dl);
     });
 }
-
-interface TranslationEntry { label?: string; type: string; sourceLanguage?: string; rules?: TranslationRule[]; ignoredWords?: string[] }
-type TranslationsFile = Record<string, TranslationEntry>;
 
 function seedTranslations(translationsPath: string, languages: Array<Record<string, unknown>>): boolean {
     type LangWithDialects = { dialects?: Array<{ code: string }> };

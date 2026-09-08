@@ -9,17 +9,14 @@
 
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
-import { type TranslationRule } from './tools-dialect-defaults.js';
 import {
     normalizeFolderName,
     resolveWorkspacePath,
     validateWorkspaceSettingsPaths,
 } from './tools-path.js';
+import { TranslationsFile } from '@bindery/core';
 
 // ─── Domain-local types ───────────────────────────────────────────────────────
-
-interface TranslationEntry { label?: string; type: string; sourceLanguage?: string; rules?: TranslationRule[]; ignoredWords?: string[] }
-type TranslationsFile = Record<string, TranslationEntry>;
 
 interface LanguageEntry { code: string; folderName: string; chapterWord: string; actPrefix: string; prologueLabel: string; epilogueLabel: string; isDefault?: boolean }
 
@@ -103,7 +100,7 @@ export interface AddTranslationArgs {
 }
 
 // ─── Built-in en-gb substitution rules (US → British English) ────────────────
-// Data lives in ./tools-dialect-defaults.ts — BUILTIN_EN_GB_RULES is imported above.
+// Seeded by tools.ts via seedTranslations() using BUILTIN_EN_GB_RULES from ./tools-dialect-defaults.ts.
 
 export function toolAddTranslation(root: string, args: AddTranslationArgs): string {
     const { targetLangCode, from, to } = args;
