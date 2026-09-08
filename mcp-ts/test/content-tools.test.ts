@@ -7,6 +7,7 @@ import {
     toolGetOverview,
     toolGetNotes,
     toolFormat,
+    countWords,
 } from '../src/tools';
 
 const tempRoots: string[] = [];
@@ -96,6 +97,76 @@ describe('toolGetOverview', () => {
 
         const result = toolGetOverview(root, {});
         expect(result).toContain('The Dark Forest');
+    });
+
+    it('does not include word counts when the option is absent or false', () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Ch\nOne two.\n');
+        expect(toolGetOverview(root, {})).not.toContain('words');
+        expect(toolGetOverview(root, { includeWordCounts: false })).not.toContain('words');
+    });
+
+    it('appends per-file, act, top-level, and language word counts when enabled', () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Ch1\nOne two three.\n');
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 2.md'), '# Ch2\nFour five.\n');
+        write(path.join(root, 'Story', 'EN', 'Prologue.md'), '# Prologue\nSix seven eight.\n');
+
+        const result = toolGetOverview(root, { includeWordCounts: true });
+        expect(result).toContain('Chapter 1.md: Ch1 (4 words)');
+        expect(result).toContain('Chapter 2.md: Ch2 (3 words)');
+        expect(result).toContain('Prologue.md: Prologue (4 words)');
+        expect(result).toContain('_Subtotal: 7 words_');
+        expect(result).toContain('_Subtotal: 4 words_');
+        expect(result).toContain('_Total: 11 words_');
+    });
+
+    it('counts non-ASCII (Unicode) prose correctly', () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# Café\nhéllo wörld naïve.\n');
+
+        const result = toolGetOverview(root, { includeWordCounts: true });
+        expect(result).toContain('Chapter 1.md: Café (4 words)');
+    });
+
+    it('reports totals only for content visible under an act filter', () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '# A\nOne two.\n');
+        write(path.join(root, 'Story', 'EN', 'Act II', 'Chapter 2.md'), '# B\nThree four five.\n');
+        write(path.join(root, 'Story', 'EN', 'Prologue.md'), '# P\nSix seven eight nine.\n');
+
+        const result = toolGetOverview(root, { act: 1, includeWordCounts: true });
+        expect(result).toContain('Chapter 1.md: A (3 words)');
+        expect(result).toContain('_Subtotal: 3 words_');
+        expect(result).toContain('_Total: 3 words_');
+        expect(result).not.toContain('Act II');
+        expect(result).not.toContain('Prologue.md');
+    });
+
+    it('reports zero words for empty files without throwing', () => {
+        const root = makeRoot();
+        write(path.join(root, 'Story', 'EN', 'Act I', 'Chapter 1.md'), '');
+
+        const result = toolGetOverview(root, { includeWordCounts: true });
+        expect(result).toContain('Chapter 1.md (0 words)');
+        expect(result).toContain('_Subtotal: 0 words_');
+        expect(result).toContain('_Total: 0 words_');
+    });
+});
+
+describe('countWords', () => {
+    it('counts ASCII words and ignores pure punctuation tokens', () => {
+        expect(countWords('Hello world')).toBe(2);
+        expect(countWords('# Heading here')).toBe(2);
+        expect(countWords('**bold** text')).toBe(2);
+        expect(countWords('---')).toBe(0);
+        expect(countWords('')).toBe(0);
+        expect(countWords('123')).toBe(1);
+    });
+
+    it('counts non-ASCII (Unicode) words', () => {
+        expect(countWords('héllo wörld')).toBe(2);
+        expect(countWords('café naïve résumé')).toBe(3);
     });
 });
 

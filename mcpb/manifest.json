@@ -70,7 +70,7 @@
     { "name": "bindery_get_text",         "description": "Read a source file by relative path, optionally restricted to a line range." },
     { "name": "bindery_get_chapter",      "description": "Fetch the full content of a chapter by number and language code (e.g. EN or NL)." },
     { "name": "bindery_get_book_until",   "description": "Fetch chapters from a starting chapter through a target chapter (inclusive), concatenated in reading order." },
-    { "name": "bindery_get_overview",     "description": "List the chapter structure (acts, chapters, titles) for one or all languages." },
+    { "name": "bindery_get_overview",     "description": "List the chapter structure (acts, chapters, titles) for one or all languages. Optionally include per-file and aggregate word counts." },
     { "name": "bindery_get_notes",        "description": "Read from Notes/, optionally filtered by category or character name." },
     { "name": "bindery_note_list",        "description": "List markdown note files under the configured notes folder, optionally filtered to a category folder." },
     { "name": "bindery_note_get",         "description": "Read a single markdown note by path relative to the configured notes folder." },
