@@ -188,8 +188,77 @@ used in `.github/workflows/ci.yml`. This prevents lockfile skew across platforms
 
 ---
 
+## Benchmarks
+
+A local, reproducible benchmark harness measures three operations against a
+generated, deterministic fixture:
+
+- **Markdown-only merge** (`@bindery/merge` → `mergeBook`)
+- **Lexical index build** (`mcp-ts` → `buildIndex`)
+- **Repeated lexical query** (`mcp-ts` → `search`)
+
+### Running
+
+```bash
+npm run benchmark
+```
+
+The script builds the required packages (`bindery-core`, `bindery-merge`, `mcp-ts`)
+before measuring, so a fresh clone works with no extra steps.
+
+Fixture dimensions are configurable (defaults are conservative and finish quickly
+on a laptop):
+
+```bash
+npm run benchmark -- --chapters 10 --words 500
+```
+
+- `--chapters <n>` — number of chapters in the generated book (default `5`)
+- `--words <n>` — words per chapter (default `200`)
+
+Both options must be positive integers; any other value (or an unknown flag)
+exits non-zero with a concise message.
+
+### Interpreting the output
+
+The harness prints a single JSON object to stdout:
+
+```json
+{
+  "nodeVersion": "v24.13.1",
+  "platform": "win32",
+  "fixture": { "chapters": 5, "wordsPerChapter": 200 },
+  "warmupCount": 3,
+  "sampleCount": 10,
+  "operations": {
+    "merge":      { "medianMs": 1.05, "p95Ms": 1.38 },
+    "indexBuild": { "medianMs": 8.27, "p95Ms": 16.84 },
+    "search":     { "medianMs": 0.02, "p95Ms": 0.05 }
+  }
+}
+```
+
+- Each operation is run `warmupCount` times (untimed) then `sampleCount` times
+  (timed) with `performance.now()`.
+- `medianMs` is the median of the timed samples; `p95Ms` is the 95th percentile.
+- The fixture content is a pure function of the chapter/word counts, so two runs
+  with the same flags produce equivalent input and the same JSON shape. Absolute
+  timings vary by machine — compare runs on the *same* machine, or archive the
+  JSON for later comparison.
+
+The temporary workspace is created in the OS temp directory and always removed in
+a `finally` block, on both success and failure.
+
+### Scope
+
+This is a local harness only. It does **not** benchmark Pandoc, LibreOffice,
+Ollama, semantic embeddings, or host startup, and it has no CI job, pass/fail
+thresholds, or committed result files.
+
+---
+
 ## Future Enhancements
 
 - E2E tests with real pandoc/LibreOffice invocation
 - Code coverage reporting dashboards
-- Per-commit performance benchmarks (merge speed, search latency)
+- CI thresholds and dashboards on top of the local benchmark harness
