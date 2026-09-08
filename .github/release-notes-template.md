@@ -2,9 +2,9 @@
 
 ## Highlights
 
-- Added a unified image-handling pipeline for exports: chapter image links are normalized and rewritten for portable merged output.
-- Added legacy image migration support for older workspaces, including migration proposals and automatic settings updates when applied.
-- VS Code extension and Obsidian plugin now prompt for legacy image migration and report migration results after applying changes.
+- Extended tool capabilities
+- Updated skills
+- Added benchmarking
 
 ## Release Assets
 
