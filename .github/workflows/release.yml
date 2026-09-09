@@ -101,7 +101,7 @@ jobs:
           subject-path: bindery-mcp-server-*.zip
 
       - name: Upload .mcpb to release
-        uses: softprops/action-gh-release@5113cdc90fd4d541c801c55356214017bf5ae34b # v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           files: |
             mcpb/*.mcpb
@@ -163,7 +163,7 @@ jobs:
           subject-path: vscode-ext/*.vsix
 
       - name: Upload .vsix to release
-        uses: softprops/action-gh-release@5113cdc90fd4d541c801c55356214017bf5ae34b # v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           files: vscode-ext/*.vsix
           fail_on_unmatched_files: true
@@ -231,7 +231,7 @@ jobs:
           zip "../../bindery-obsidian-bundled-${VERSION}.zip" main.js manifest.json
 
       - name: Upload Obsidian plugin zip to release
-        uses: softprops/action-gh-release@5113cdc90fd4d541c801c55356214017bf5ae34b # v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           files: |
             bindery-obsidian-bundled-*.zip
