@@ -272,7 +272,7 @@ describe('renderTemplate — review skill', () => {
     const result = renderTemplate('review', makeCtx());
     expect(result).toContain('Bindery: Review start');
     expect(result).toContain('Bindery: Review stop');
-    expect(result).toContain('removes the marker lines');
+    expect(result).toContain('removes the markers, leaving their lines blank');
   });
 });
 

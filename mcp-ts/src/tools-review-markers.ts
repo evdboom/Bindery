@@ -101,7 +101,7 @@ export function scanReviewMarkers(content: string): ReviewMarkerScan {
 }
 
 /**
- * Remove every review-marker line from `content`. Inner content stays.
+ * Remove every review marker from `content`, preserving its line and line ending.
  * Returns the new text and a count of removed marker lines.
  */
 export function stripReviewMarkers(content: string): { text: string; removed: number } {
@@ -111,6 +111,7 @@ export function stripReviewMarkers(content: string): { text: string; removed: nu
     for (const line of lines) {
         if (START_RE.test(line) || STOP_RE.test(line)) {
             removed++;
+            out.push(line.endsWith('\r') ? '\r' : '');
             continue;
         }
         out.push(line);

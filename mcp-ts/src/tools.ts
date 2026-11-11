@@ -2083,7 +2083,7 @@ export function toolGetReviewText(root: string, args: GetReviewTextArgs): string
                 } catch { /* best effort — staging failure shouldn't break the review */ }
             }
         }
-        // Strip marker lines so the next review pass is clean. This performs
+        // Strip markers so the next review pass is clean. This performs
         // local file edits and then best-effort git add on touched files.
         if (markerFiles.length > 0) {
             consumeReviewMarkers(root, markerFiles.map(f => f.file));

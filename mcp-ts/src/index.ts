@@ -455,7 +455,7 @@ server.registerTool('bindery_get_review_text', {
         '(<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->). ' +
         'Marker regions are included even when the surrounding lines have already been committed — useful when an author commits work-in-progress and continues on another machine. ' +
         'A missing stop marker means the region runs to end of file. Filter by language folder (EN, NL, or ALL). Ignores CR-at-EOL to avoid CRLF noise. ' +
-        'Set autoStage to true to stage reviewed files AND remove the review-marker lines from disk (staged together) so the next call only shows new changes.',
+        'Set autoStage to true to stage reviewed files AND remove the review markers from disk, leaving their lines blank (staged together) so the next call only shows new changes.',
     inputSchema: {
         book:         bookSchema,
         language:     z.string().optional().describe('Language filter: EN, NL, or ALL (default ALL)'),
