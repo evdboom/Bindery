@@ -1,0 +1,13 @@
+name: Dependabot branch provenance
+
+on: create
+
+permissions: {}
+
+jobs:
+  record:
+    name: Record Dependabot branch creation
+    if: github.event.ref_type == 'branch' && startsWith(github.ref, 'refs/heads/dependabot/') && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Dependabot created this branch."

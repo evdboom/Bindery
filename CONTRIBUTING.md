@@ -112,6 +112,24 @@ When adding or changing commands:
 
 ---
 
+## Dependabot auto-approval
+
+Dependabot auto-approval requires the active `Protect Dependabot branches` ruleset:
+only the Dependabot integration may bypass its branch creation, update, and
+deletion restrictions. It also requires a successful Dependabot branch-creation
+workflow run, every PR commit to have the expected author and a valid GitHub
+signature, and the head to remain unchanged during approval.
+
+Branches created before the provenance workflow was installed cannot be
+auto-approved. Review those PRs manually or have Dependabot create a fresh
+branch after the workflow is on the default branch. The approval workflow fails
+closed if branch provenance is missing or the ruleset changes. After changing
+the ruleset, audit its bypass actors and restrictions and update the audited
+ruleset timestamp in `scripts/dependabot-auto-approve.cjs` through a reviewed
+PR. Previously created branches will need a fresh creation record.
+
+---
+
 ## MCP stdio integration tests (`mcp-ts/test/integration-stdio.test.ts`)
 
 These tests spawn `node out/index.js` as a real child process and drive it over
