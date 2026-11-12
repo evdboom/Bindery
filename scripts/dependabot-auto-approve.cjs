@@ -117,7 +117,8 @@ async function verifyAndApprove({ github, context, sleep = ms => new Promise(res
   }
 
   const { data: latestPr } = await github.rest.pulls.get({ owner, repo, pull_number });
-  if (latestPr.state !== 'open' || latestPr.head.sha !== expectedSha || latestPr.head.ref !== branch) {
+  if (latestPr.state !== 'open' || latestPr.head.sha !== expectedSha || latestPr.head.ref !== branch ||
+      latestPr.base.ref !== eventPr.base.ref) {
     throw new Error('Pull request changed during verification; refusing to approve.');
   }
   await github.rest.pulls.createReview({

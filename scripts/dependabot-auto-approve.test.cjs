@@ -141,3 +141,13 @@ test('rejects a head that changes while commit signatures are being checked', as
   await assert.rejects(verifyAndApprove(f), /changed during verification/);
   assert.equal(f.state.reviews.length, 0);
 });
+
+test('rejects a PR retargeted while commit signatures are being checked', async () => {
+  const f = fixture();
+  f.github.graphql = async () => {
+    f.state.pr.base.ref = 'unprotected';
+    return { repository: { object: { signature: f.state.signature } } };
+  };
+  await assert.rejects(verifyAndApprove(f), /changed during verification/);
+  assert.equal(f.state.reviews.length, 0);
+});
