@@ -117,6 +117,12 @@ When adding or changing commands:
 
 ## Dependabot auto-approval
 
+Dependabot does not update `@types/vscode` automatically. Keep its exact version
+aligned with the minimum `engines.vscode` version in `vscode-ext/package.json`.
+Update both deliberately in a reviewed PR when raising the minimum supported
+VS Code version; newer API types can break VSIX packaging or permit APIs that
+are unavailable on supported versions.
+
 Dependabot auto-approval requires the active `Protect Dependabot branches` ruleset:
 only the Dependabot integration may bypass its branch creation, update, and
 deletion restrictions. It also requires a successful Dependabot branch-creation
