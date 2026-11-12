@@ -1574,7 +1574,7 @@
   "devDependencies": {
     "@bindery/core": "*",
     "@bindery/merge": "*",
-    "@types/node": "^25.6.0",
+    "@types/node": "^26.6.6",
     "@types/vscode": "1.116.0",
     "@vitest/coverage-v8": "^4.1.12",
     "esbuild": "^0.28.1",
