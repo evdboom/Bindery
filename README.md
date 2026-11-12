@@ -79,12 +79,13 @@ Build and install:
 npm ci
 npm run build --workspace=bindery-core
 npm run build --workspace=bindery-merge
+npm run compile --workspace=mcp-ts
 npm run compile --workspace=obsidian-plugin
 npm run bundle --workspace=obsidian-plugin
-# out/main.js is ready for manual Obsidian installation
+# obsidian-plugin/out/main.js is ready for manual Obsidian installation
 ```
 
-Then in Obsidian: Settings → Community plugins (if not restricted) → Install from folder or manual install from `out/main.js`.
+Then in Obsidian: Settings → Community plugins (if not restricted) → Install from folder or manually install `obsidian-plugin/out/main.js`.
 
 ### [mcpb/](mcpb/) — Claude Desktop Extension
 

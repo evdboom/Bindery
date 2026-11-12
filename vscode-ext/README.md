@@ -254,6 +254,7 @@ To install locally:
 
 ```bash
 npm install -g @vscode/vsce
+cd vscode-ext
 vsce package
 code --install-extension bindery-*.vsix
 ```
