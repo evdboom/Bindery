@@ -74,18 +74,17 @@ declare module 'obsidian' {
     }
 }
 
-declare global {
-    interface CreateElementOptions {
-        text?: string;
-        cls?: string;
-        type?: string;
-        value?: string;
-    }
+interface CreateElementOptions {
+    text?: string;
+    cls?: string;
+    type?: string;
+    value?: string;
+}
 
-    interface HTMLElement {
-        empty(): void;
-        addClass(..._classes: string[]): void;
-        createEl<K extends keyof HTMLElementTagNameMap>(_tag: K, _options?: CreateElementOptions): HTMLElementTagNameMap[K];
-        createDiv(_options?: CreateElementOptions): HTMLDivElement;
-    }
+interface HTMLElement {
+    empty(): void;
+    setText(_text: string): void;
+    addClass(..._classes: string[]): void;
+    createEl<K extends keyof HTMLElementTagNameMap>(_tag: K, _options?: CreateElementOptions): HTMLElementTagNameMap[K];
+    createDiv(_options?: CreateElementOptions): HTMLDivElement;
 }
