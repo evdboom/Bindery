@@ -243,9 +243,11 @@ You usually do not need to configure anything — install Pandoc/LibreOffice nor
 ## Building from Source
 
 ```bash
-cd vscode-ext
-npm install
-npm run compile
+npm ci
+npm run build --workspace=bindery-core
+npm run build --workspace=bindery-merge
+npm run compile --workspace=mcp-ts
+npm run compile --workspace=vscode-ext
 ```
 
 To install locally:

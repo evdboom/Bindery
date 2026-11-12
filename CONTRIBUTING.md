@@ -6,6 +6,9 @@ Thank you for contributing! This document explains how to run the tests and what
 
 ## Running Tests Locally
 
+Run `npm ci` from the repository root. All packages share the root workspace
+lockfile; Dependabot checks that workspace as a single npm project.
+
 ### Quick test (all packages)
 
 ```bash

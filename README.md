@@ -28,9 +28,12 @@ The **Bindery** extension provides:
 Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=option-a.bindery) or:
 
 ```bash
+npm ci
+npm run build --workspace=bindery-core
+npm run build --workspace=bindery-merge
+npm run compile --workspace=mcp-ts
+npm run compile --workspace=vscode-ext
 cd vscode-ext
-npm install
-npm run compile
 npx @vscode/vsce package
 ```
 
@@ -73,10 +76,11 @@ The **Bindery** Obsidian plugin provides the same feature set as the VS Code ext
 Build and install:
 
 ```bash
-cd obsidian-plugin
-npm install
-npm run compile
-npm run bundle
+npm ci
+npm run build --workspace=bindery-core
+npm run build --workspace=bindery-merge
+npm run compile --workspace=obsidian-plugin
+npm run bundle --workspace=obsidian-plugin
 # out/main.js is ready for manual Obsidian installation
 ```
 
