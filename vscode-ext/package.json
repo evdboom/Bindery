@@ -1575,7 +1575,7 @@
     "@bindery/core": "*",
     "@bindery/merge": "*",
     "@types/node": "^26.6.6",
-    "@types/vscode": "1.116.0",
+    "@types/vscode": "1.145.0",
     "@vitest/coverage-v8": "^5.1.0",
     "esbuild": "^0.28.1",
     "typescript": "7.0.2",
