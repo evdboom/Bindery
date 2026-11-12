@@ -1,137 +1,38 @@
 name: Dependabot auto-approve and merge
 
-# PREREQUISITE — branch protection must be configured or auto-merge fires
-# immediately even when CI is red. In GitHub repo settings:
-#   Settings → Branches → Add rule for "main":
-#     ✓ Require status checks to pass before merging
-#       Add required check: "Test & template-sync check"   (from ci.yml)
-#     ✓ Require branches to be up to date before merging
-#
-# With those rules in place, "gh pr merge --auto" below only merges once CI
-# has passed — it will not merge a failing PR.
-
-on: pull_request_target
+on:
+  pull_request_target:
+    types: [opened, synchronize]
 
 permissions:
   contents: write
+  actions: read
   pull-requests: write
 
 jobs:
   dependabot:
     name: Auto-approve & enable auto-merge
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
-
+    if: github.event.sender.login == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
-      - name: Verify PR commits are only from Dependabot
+      - name: Check out trusted base
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Verify and approve protected Dependabot branch
+        id: verify
         uses: actions/github-script@v9
         with:
           script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const pull_number = context.payload.pull_request.number;
+            const { verifyAndApprove } = require('./scripts/dependabot-auto-approve.cjs');
+            const sha = await verifyAndApprove({ github, context });
+            core.setOutput('sha', sha);
 
-            const commits = await github.paginate(github.rest.pulls.listCommits, {
-              owner,
-              repo,
-              pull_number,
-              per_page: 100,
-            });
-
-            if (commits.length === 0) {
-              core.setFailed('Refusing to auto-approve: PR has no commits.');
-              return;
-            }
-
-            // For each commit verify via GraphQL that:
-            //   1. author and committer are dependabot[bot] (server-side resolved, not just git metadata)
-            //   2. wasSignedByGitHub is true — cryptographically proves the commit was signed by
-            //      GitHub's infrastructure keys, preventing spoofing via personal GPG keys or
-            //      forged author/committer email addresses.
-            const invalidCommits = [];
-            for (const commit of commits) {
-              const authorLogin = commit.author?.login;
-              const committerLogin = commit.committer?.login;
-
-              if (authorLogin !== 'dependabot[bot]' || committerLogin !== 'dependabot[bot]') {
-                invalidCommits.push({
-                  sha: commit.sha,
-                  author: authorLogin ?? 'unknown',
-                  committer: committerLogin ?? 'unknown',
-                  reason: 'not authored/committed by dependabot[bot]',
-                });
-                continue;
-              }
-
-              let signature;
-              try {
-                const result = await github.graphql(`
-                  query($owner: String!, $repo: String!, $oid: GitObjectID!) {
-                    repository(owner: $owner, name: $repo) {
-                      object(oid: $oid) {
-                        ... on Commit {
-                          signature {
-                            isValid
-                            wasSignedByGitHub
-                            state
-                          }
-                        }
-                      }
-                    }
-                  }
-                `, { owner, repo, oid: commit.sha });
-                signature = result?.repository?.object?.signature;
-              } catch (err) {
-                invalidCommits.push({
-                  sha: commit.sha,
-                  author: authorLogin,
-                  committer: committerLogin,
-                  reason: `GraphQL signature query failed: ${err.message}`,
-                });
-                continue;
-              }
-
-              if (!signature) {
-                invalidCommits.push({
-                  sha: commit.sha,
-                  author: authorLogin,
-                  committer: committerLogin,
-                  reason: 'commit is not signed',
-                });
-                continue;
-              }
-
-              const isValid = signature.isValid === true;
-              const wasSignedByGitHub = signature.wasSignedByGitHub === true;
-
-              if (!isValid || !wasSignedByGitHub) {
-                invalidCommits.push({
-                  sha: commit.sha,
-                  author: authorLogin,
-                  committer: committerLogin,
-                  reason: `signature check failed (isValid=${isValid}, wasSignedByGitHub=${wasSignedByGitHub}, state=${signature.state})`,
-                });
-              }
-            }
-
-            if (invalidCommits.length > 0) {
-              core.setFailed([
-                'Refusing to auto-approve: PR contains commits that are not verified Dependabot commits.',
-                ...invalidCommits.map((c) => `- ${c.sha.slice(0, 7)}: author=${c.author}, committer=${c.committer}, reason=${c.reason}`),
-              ].join('\n'));
-              return;
-            }
-
-            core.info(`Verified ${commits.length} Dependabot-authored commit(s) — all signed by GitHub infrastructure.`);
-
-      - name: Approve PR
-        run: gh pr review --approve "$PR_URL"
+      - name: Enable auto-merge for verified head
+        run: gh pr merge --auto --squash --match-head-commit "$HEAD_SHA" "$PR_URL"
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable auto-merge
-        run: gh pr merge --auto --squash "$PR_URL"
-        env:
+          HEAD_SHA: ${{ steps.verify.outputs.sha }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

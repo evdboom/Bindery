@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/review/SKILL.md',
-    version: 16,
+    version: 17,
     label:   'review skill',
 };
 
@@ -28,7 +28,7 @@ const CONTENT = [
     "",
     "## Tools",
     "Use these Bindery MCP tools to gather context:",
-    "- `bindery_get_review_text(autoStage: true, contextLines: 3)` — returns the git diff of uncommitted changes **plus** any regions wrapped in `<!-- Bindery: Review start -->` / `<!-- Bindery: Review stop -->` markers (works even on committed work). `autoStage: true` stages reviewed files **and** removes the marker lines from disk so the next call only shows new changes. Pass more contextLines when join points to existing prose need checking",
+    "- `bindery_get_review_text(autoStage: true, contextLines: 3)` — returns the git diff of uncommitted changes **plus** any regions wrapped in `<!-- Bindery: Review start -->` / `<!-- Bindery: Review stop -->` markers (works even on committed work). `autoStage: true` stages reviewed files **and** removes the markers, leaving their lines blank, so the next call only shows new changes. Pass more contextLines when join points to existing prose need checking",
     "- `bindery_get_chapter(chapterNumber, language)` — read the full chapter text",
     "- `bindery_get_notes(category, name)` — look up character profiles (`category: \"Characters\"`) or world rules",
     "- `bindery_search(query, language)` — find related passages across the book",

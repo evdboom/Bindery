@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from '../context';
 
 export const meta: TemplateMeta = {
     file:    '.claude/skills/translation-review/SKILL.md',
-    version: 7,
+    version: 8,
     label:   'translation-review skill',
 };
 
@@ -29,7 +29,7 @@ const CONTENT = [
     "",
     "## Tools",
     "Use these Bindery MCP tools:",
-    "- `bindery_get_review_text(autoStage: true, contextLines: 3)` — git diff of uncommitted changes **plus** any regions wrapped in `<!-- Bindery: Review start -->` / `<!-- Bindery: Review stop -->` markers. Marker regions surface even after the author committed and continued elsewhere. `autoStage: true` stages files **and** consumes (removes) the marker lines so the next pass starts clean.",
+    "- `bindery_get_review_text(autoStage: true, contextLines: 3)` — git diff of uncommitted changes **plus** any regions wrapped in `<!-- Bindery: Review start -->` / `<!-- Bindery: Review stop -->` markers. Marker regions surface even after the author committed and continued elsewhere. `autoStage: true` stages files **and** removes the markers, leaving their lines blank, so the next pass starts clean.",
     "- `bindery_get_text(identifier, startLine?, endLine?)` — fetch matching source lines or focused ranges",
     "- `bindery_get_translation(targetLanguage)` — load glossary terms for the target language before reviewing",
     "- `bindery_get_chapter(chapterNumber, language)` — full chapter source/target pair for full spot-check mode",

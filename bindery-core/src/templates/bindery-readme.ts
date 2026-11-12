@@ -2,7 +2,7 @@ import type { TemplateContext, TemplateMeta } from './context';
 
 export const meta: TemplateMeta = {
     file:    '.bindery/README.md',
-  version: 14,
+  version: 15,
     label:   'bindery capabilities',
 };
 
@@ -106,7 +106,7 @@ tagged **(writes)** modify files or git state.
 | \`bindery_search\` (reads) | BM25 / semantic search across the corpus (Ollama optional). |
 | \`bindery_index_build\` / \`bindery_index_status\` (writes / reads) | Build or inspect the lexical/semantic index. |
 | \`bindery_format\` (writes) | Apply typography to a file or folder (\`dryRun\` supported). |
-| \`bindery_get_review_text\` (writes) | Returns the **git diff of uncommitted changes** *plus* any regions wrapped in \`<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->\` markers. Marker regions surface even after a commit, so committed work-in-progress can still be reviewed. \`autoStage: true\` stages files **and** consumes (removes) the marker lines. |
+| \`bindery_get_review_text\` (writes) | Returns the **git diff of uncommitted changes** *plus* any regions wrapped in \`<!-- Bindery: Review start --> ... <!-- Bindery: Review stop -->\` markers. Marker regions surface even after a commit, so committed work-in-progress can still be reviewed. \`autoStage: true\` stages files **and** removes the markers, leaving their lines blank. |
 | \`bindery_git_snapshot\` (writes) | Commit changes in bindery workspace, optional push. |
 | \`bindery_get_translation\` / \`bindery_add_translation\` (reads / writes) | Glossary lookup and upsert per target language. |
 | \`bindery_get_dialect\` / \`bindery_add_dialect\` (reads / writes) | Dialect substitution lookup and upsert (e.g. \`en-gb\`). |
@@ -148,8 +148,8 @@ work-in-progress and continue on another machine.
 - Multiple regions per file are supported.
 - Insert markers via the VS Code / Obsidian commands above, or just type them.
 - \`get_review_text(autoStage: true)\` returns marker regions in addition to the
-  git diff and **removes** the marker lines as part of staging, so the next
-  review pass starts clean.
+  git diff and **removes** the markers as part of staging, leaving their lines
+  blank, so the next review pass starts clean.
 
 ## Inline images in chapters
 

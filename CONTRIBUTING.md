@@ -6,6 +6,9 @@ Thank you for contributing! This document explains how to run the tests and what
 
 ## Running Tests Locally
 
+Run `npm ci` from the repository root. All packages share the root workspace
+lockfile; Dependabot checks that workspace as a single npm project.
+
 ### Quick test (all packages)
 
 ```bash
@@ -109,6 +112,24 @@ When adding or changing commands:
 - **Update command wiring**: Update in both `vscode-ext/src/extension.ts` and `obsidian-plugin/src/main.ts`
 - **Add tests**: Add to both host test suites to validate host-specific integration
 - **Document exceptions**: Clearly note any intentional host-specific behavior in the PR description
+
+---
+
+## Dependabot auto-approval
+
+Dependabot auto-approval requires the active `Protect Dependabot branches` ruleset:
+only the Dependabot integration may bypass its branch creation, update, and
+deletion restrictions. It also requires a successful Dependabot branch-creation
+workflow run, every PR commit to have the expected author and a valid GitHub
+signature, and the head to remain unchanged during approval.
+
+Branches created before the provenance workflow was installed cannot be
+auto-approved. Review those PRs manually or have Dependabot create a fresh
+branch after the workflow is on the default branch. The approval workflow fails
+closed if branch provenance is missing or the ruleset changes. After changing
+the ruleset, audit its bypass actors and restrictions and update the audited
+ruleset timestamp in `scripts/dependabot-auto-approve.cjs` through a reviewed
+PR. Previously created branches will need a fresh creation record.
 
 ---
 

@@ -151,4 +151,42 @@ describe('setupAiFiles skill generation', () => {
     const stamped = readAiVersionFile(root);
     expect(stamped.versions['.agents/skills/read-in/SKILL.md'].version).toBeGreaterThan(0);
   });
+
+  it('updates previously stamped review instructions without forcing overwrite', async () => {
+    const { setupAiFiles, readAiVersionFile } = await loadAiSetup();
+    const root = makeRoot();
+    write(path.join(root, '.bindery', 'settings.json'), JSON.stringify({
+      bookTitle: 'Test Book',
+      storyFolder: 'Story',
+      languages: [{ code: 'EN', folderName: 'EN' }],
+    }));
+
+    const previousVersions: Record<string, number> = {
+      '.bindery/README.md': 14,
+      '.claude/skills/review/SKILL.md': 16,
+      '.claude/skills/translation-review/SKILL.md': 7,
+      '.agents/skills/review/SKILL.md': 16,
+      '.agents/skills/translation-review/SKILL.md': 7,
+    };
+    const versions: Record<string, { version: number; label: string }> = {};
+    for (const [file, version] of Object.entries(previousVersions)) {
+      write(path.join(root, file), 'Old instructions');
+      versions[file] = { version, label: file };
+    }
+    write(path.join(root, '.bindery', 'ai-version.json'), JSON.stringify({ versions }));
+
+    const result = setupAiFiles({
+      root,
+      targets: ['claude', 'agents'],
+      skills: ['review', 'translation-review'],
+      overwrite: false,
+    });
+
+    const stamped = readAiVersionFile(root);
+    for (const [file, version] of Object.entries(previousVersions)) {
+      expect(result.regenerated).toContain(file);
+      expect(fs.readFileSync(path.join(root, file), 'utf-8')).toContain('leaving their lines');
+      expect(stamped.versions[file].version).toBeGreaterThan(version);
+    }
+  });
 });

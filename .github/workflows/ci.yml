@@ -31,6 +31,9 @@ jobs:
       - name: Install all workspace dependencies
         run: npm ci
 
+      - name: Test Dependabot approval policy
+        run: node --test scripts/dependabot-auto-approve.test.cjs
+
       # ── bindery-core ──────────────────────────────────────────────────────────
       - name: Build bindery-core
         run: npm run build --workspace=bindery-core

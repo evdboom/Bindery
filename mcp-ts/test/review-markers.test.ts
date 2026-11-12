@@ -80,11 +80,21 @@ describe('scanReviewMarkers', () => {
 });
 
 describe('stripReviewMarkers', () => {
-    it('removes both marker variants and reports the count', () => {
+    it('removes both marker variants while preserving their lines', () => {
         const text = `a\n${REVIEW_START_MARKER}\nb\n${REVIEW_STOP_MARKER}\nc\n`;
         const { text: out, removed } = stripReviewMarkers(text);
         expect(removed).toBe(2);
-        expect(out).toBe('a\nb\nc\n');
+        expect(out).toBe('a\n\nb\n\nc\n');
+    });
+
+    it('preserves CRLF, surrounding whitespace and the final line', () => {
+        const text = `a\r\n  ${REVIEW_START_MARKER}  \r\nb\r\n${REVIEW_STOP_MARKER}`;
+        expect(stripReviewMarkers(text)).toEqual({ text: 'a\r\n\r\nb\r\n', removed: 2 });
+    });
+
+    it('does not remove inline or unrelated comments', () => {
+        const text = `a ${REVIEW_START_MARKER}\n<!-- another comment -->\n`;
+        expect(stripReviewMarkers(text)).toEqual({ text, removed: 0 });
     });
 
     it('is a no-op when no markers are present', () => {
@@ -184,14 +194,14 @@ describe('toolGetReviewText — review markers', () => {
         expect(out).toContain('New content.');
     });
 
-    it('autoStage=true removes marker lines and stages the removal', () => {
+    it('autoStage=true removes markers, preserves their lines and stages the result', () => {
         const root = makeGitRepo();
         const file = path.join(root, 'Story', 'EN', 'Chapter 1.md');
         const body =
-            `# Chapter\n` +
+            `# Chapter\nPrevious paragraph.\n` +
             `${REVIEW_START_MARKER}\n` +
             `Reviewed paragraph.\n` +
-            `${REVIEW_STOP_MARKER}\n`;
+            `${REVIEW_STOP_MARKER}\nNext paragraph.\n`;
         write(file, body);
         spawnSync('git', ['add', '.'], { cwd: root });
         spawnSync('git', ['commit', '-m', 'add chapter'], { cwd: root });
@@ -202,12 +212,13 @@ describe('toolGetReviewText — review markers', () => {
         toolGetReviewText(root, { autoStage: true });
 
         const after = fs.readFileSync(file, 'utf-8');
-        expect(after).not.toContain('Bindery: Review start');
-        expect(after).not.toContain('Bindery: Review stop');
-        expect(after).toContain('Reviewed paragraph.');
+        expect(after).toBe('# Chapter\nPrevious paragraph.\n\nReviewed paragraph.\n\nNext paragraph.\n\nUnstaged tweak\n');
 
         const staged = spawnSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf-8' });
         expect(staged.stdout).toContain('Chapter 1.md');
+        const stagedContent = spawnSync('git', ['show', ':Story/EN/Chapter 1.md'], { cwd: root, encoding: 'utf-8' });
+        expect(stagedContent.status).toBe(0);
+        expect(stagedContent.stdout).toBe(after);
     });
 
     it('language filter excludes other-language marker regions', () => {
