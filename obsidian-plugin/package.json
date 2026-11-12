@@ -19,7 +19,7 @@
     "@types/node": "^26.6.6",
     "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.59.2",
-    "@vitest/coverage-v8": "^4.1.12",
+    "@vitest/coverage-v8": "^5.1.0",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.4",
     "typescript": "7.0.2",
