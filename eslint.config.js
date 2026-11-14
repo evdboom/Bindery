@@ -90,6 +90,7 @@ export default [
       ...obsidianMergedRules,
       // TypeScript handles undefined identifiers; no-undef causes false positives on imported types
       'no-undef': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
       'no-alert': 'error',
       '@typescript-eslint/require-await': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
