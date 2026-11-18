@@ -19,7 +19,7 @@
     "benchmark": "npm run build --workspace=bindery-core && npm run build --workspace=bindery-merge && npm run compile --workspace=mcp-ts && node scripts/benchmark.mjs"
   },
   "devDependencies": {
-    "eslint-plugin-obsidianmd": "^0.5.1"
+    "eslint-plugin-obsidianmd": "^0.6.0"
   },
   "overrides": {
     "qs": "^6.16.1",
